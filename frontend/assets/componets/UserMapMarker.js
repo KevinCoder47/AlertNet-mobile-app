@@ -132,6 +132,7 @@ const styles = StyleSheet.create({
     borderRightWidth: 2,
     borderBottomWidth: 2,
     borderColor: '#C80110',
+    marginBottom: 5
   },
   shadow: {
     position: 'absolute',
