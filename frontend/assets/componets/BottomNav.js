@@ -3,6 +3,7 @@ import React, { useState } from 'react'
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import SOSBtn from './SOSBtn';
 import { useMapContext } from '../contexts/MapContext';
+import Helpline from './Helpline';
 
 const { width, height } = Dimensions.get('window');
 const BottomNav = ({ isNotHome, setIsNotHome }) => {
@@ -71,7 +72,12 @@ const BottomNav = ({ isNotHome, setIsNotHome }) => {
               {/* Help line button */}
               <TouchableOpacity style = {{maxWidth: 45}} onPress={toggleHelpLine}>
                   <Image source={require('../icons/phone-2.png')} style={[styles.image, {opacity: isHelpLine ? 1:0.5}]} />
-              </TouchableOpacity>
+                    </TouchableOpacity>
+                    
+                    {/* HelpLine popup modal  */}
+                    {/* if isHelpLine == true: */}
+                    {isHelpLine ? <Helpline /> : <></> }
+
           </View>
 
           {/* SOS Button */}
