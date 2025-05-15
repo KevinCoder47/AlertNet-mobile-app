@@ -1,48 +1,41 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Appearance } from 'react-native';
+import { useColorScheme } from 'react-native'; // Expo's built-in hook
 
-//light and dark themes
-const themes = {
+export const themes = {
   light: {
-    background: '',
-    text: '',
-    primary: '',
-    primaryTwo: '',
-    secondary: '',
-    border: '',
-    altText: '',
+    background: '#FFFFFF',
+    text: '#000000',
+    primary: '#212121',
+    primaryTwo: "#FFFFFF",
+    secondary: '#A1A1A1',
+    border: '#2C2C2C',
     isDark: false,
+    altText: "#FFFFFF"
+    
   },
   dark: {
-    background: '',
-    text: '',
-    primary: '',
-    primaryTwo: '',
-    secondary: '',
-    border: '',
-    altText: '',
+    background: '#121212',
+    text: '#FFFFFF',
+    primary: '#FFFFFF',
+    primaryTwo: "#212121",
+    secondary: '#666666',
+    border: '#E5E5E5',
     isDark: true,
+    altText: "#000000"
   },
 };
 
-
-const ThemeContext = createContext();
-
+export const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
-  const [isDark, setIsDark] = useState(Appearance.getColorScheme() === 'dark');
-
-  useEffect(() => {
-    const subscription = Appearance.addChangeListener(({ colorScheme }) => {
-      setIsDark(colorScheme === 'dark');
-    });
-
-    return () => subscription.remove();
-  }, []);
+  const systemColorScheme = useColorScheme(); // Get system theme
+  console.log(systemColorScheme);
+  const [isLoaded, setIsLoaded] = useState(true); // Always loaded since we don't check storage
 
   const theme = {
-    isDark,
-    colors: isDark ? themes.dark : themes.light,
+    isDark: systemColorScheme === 'dark',
+    isLoaded,
+    colors: systemColorScheme === 'dark' ? themes.dark : themes.light,
   };
 
   return (
@@ -52,4 +45,10 @@ export const ThemeProvider = ({ children }) => {
   );
 };
 
-export const useTheme = () => useContext(ThemeContext);
+export const useTheme = () => {
+  const context = useContext(ThemeContext);
+  if (!context) {
+    throw new Error('useTheme must be used within a ThemeProvider');
+  }
+  return context;
+};

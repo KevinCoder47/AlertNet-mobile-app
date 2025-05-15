@@ -3,19 +3,21 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState, useEffect, useRef } from 'react'
 import TopBarComponents from './TopBarComponents';
+import { useTheme } from '../contexts/ColorContext';
 
 const { width, height } = Dimensions.get('window');
 
 const TopBar = ({isNotHome}) => {
+  const { colors } = useTheme();
   
   const wrapperHeight = useRef(new Animated.Value(isNotHome ? 120 : 190)).current;
   
   // Update the animation when isNotHome changes
   useEffect(() => {
     Animated.timing(wrapperHeight, {
-      toValue: isNotHome ? 120 : 190, // 
-      duration: 300, // Animation duration in ms
-      useNativeDriver: false // 
+      toValue: isNotHome ? 120 : 190,
+      duration: 300,
+      useNativeDriver: false
     }).start();
   }, [isNotHome]);
   
@@ -24,24 +26,51 @@ const TopBar = ({isNotHome}) => {
   const [opacityHeight, setOpacityHeight] = useState(isNotHome ? 140 : 200);
   
   useEffect(() => {
-    // For iOS, we'll update the BlurView height without animation API
     setBlurHeight(isNotHome ? 140 : 200);
     setOpacityHeight(isNotHome ? 140 : 200);
   }, [isNotHome]);
   
+  // Dark mode styles
+  const darkModeStyles = StyleSheet.create({
+    wrapper: {
+      shadowColor: colors.isDark ? '#000' : 'black',
+      shadowOpacity: colors.isDark ? 0.5 : 0.2,
+    },
+    topBarOpacity: {
+      backgroundColor: colors.isDark 
+        ? Platform.select({
+            ios: "rgba(18, 18, 18, 0.7)",
+            android: "rgba(18, 18, 18, 0.9)"
+          })
+        : Platform.select({
+            ios: "rgba(255, 255, 255, 0.2)",
+            android: "rgba(255, 255, 255, 0.85)"
+          })
+    },
+    gradientOverlay: {
+      colors: colors.isDark
+        ? ['rgba(18, 18, 18, 0.7)', 'rgba(18, 18, 18, 0.3)']
+        : ['rgba(255, 255, 255, 0.7)', 'rgba(255, 255, 255, 0.3)']
+    }
+  });
+
   return (
-    <Animated.View style={[styles.wrapper, { height: wrapperHeight }]}>
+    <Animated.View style={[styles.wrapper, darkModeStyles.wrapper, { height: wrapperHeight }]}>
       <TopBarComponents isNotHome={isNotHome} />
       {Platform.OS === 'ios' ? (
         <>
-          <View style={[styles.topBarOpacity, { height: opacityHeight }]} />
-          <BlurView intensity={15} tint="light" style={[styles.topBarBlur, { height: blurHeight }]} />
+          <View style={[styles.topBarOpacity, darkModeStyles.topBarOpacity, { height: opacityHeight }]} />
+          <BlurView 
+            intensity={15} 
+            tint={colors.isDark ? 'dark' : 'light'} 
+            style={[styles.topBarBlur, { height: blurHeight }]} 
+          />
         </>
       ) : (
         <>
-          <Animated.View style={[styles.topBarOpacity, { height: wrapperHeight }]} />
+          <Animated.View style={[styles.topBarOpacity, darkModeStyles.topBarOpacity, { height: wrapperHeight }]} />
           <LinearGradient
-            colors={['rgba(255,255,255,0.7)', 'rgba(255,255,255,0.3)']}
+            colors={darkModeStyles.gradientOverlay.colors}
             style={styles.gradientOverlay}
             start={{ x: 0, y: 0 }}
             end={{ x: 0, y: 1 }}
@@ -52,19 +81,16 @@ const TopBar = ({isNotHome}) => {
   );
 };
 
-export default TopBar;
-
+// Base styles remain the same
 const styles = StyleSheet.create({
   wrapper: {
     position: 'absolute',
     top: 0,
     width: width,
     zIndex: 2,
-    shadowColor: 'black',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
     shadowRadius: 2,
-    elevation: 60, // for Android
+    elevation: 60,
   },
   container: {
     position: 'absolute',
@@ -82,10 +108,6 @@ const styles = StyleSheet.create({
       android: {
         height: 190
       }
-    }),
-    backgroundColor: Platform.select({
-      ios: "rgba(255, 255, 255, 0.2)",
-      android: "rgba(255, 255, 255, 0.85)", // Slightly more opaque on Android
     }),
     zIndex: 2,
     position: "absolute"
@@ -113,3 +135,5 @@ const styles = StyleSheet.create({
     }),
   }
 });
+
+export default TopBar;

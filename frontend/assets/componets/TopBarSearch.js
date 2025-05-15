@@ -1,18 +1,21 @@
 import { StyleSheet, View, TextInput, Image } from 'react-native';
 import React from 'react';
+import { useTheme } from '../contexts/ColorContext';
 
 const TopBarSearch = () => {
+  const { colors, isDark } = useTheme();
+
   return (
     <View style={styles.searchContainer}>
-      <View style={styles.searchBar}>
+      <View style={[styles.searchBar, {borderBottomColor: colors.border,}]}>
         <Image 
-          source={require('../icons/search-light.png')} 
+          source={isDark ? require('../icons/search-dark.png') : require('../icons/search-light.png')} 
           style={styles.searchIcon} 
         />
         <TextInput
-          style={styles.searchInput}
+          style={[styles.searchInput, {color: colors.text}]}
           placeholder="Search something..."
-          placeholderTextColor="#757575"
+          placeholderTextColor= {isDark ? "#BDBDBD" : "#757575"}
         />
       </View>
     </View>

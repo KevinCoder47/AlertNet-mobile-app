@@ -61,11 +61,6 @@ react {
 
     /* Autolinking */
     autolinkLibrariesWithApp()
-
-    project.ext.vectoricons = [
-      iconFontNames: ['MaterialCommunityIcons.ttf', 'FontAwesome.ttf', 'AntDesign.ttf'] // Add other font files as needed
-]
-apply from: "../../node_modules/react-native-vector-icons/fonts.gradle"
 }
 
 /**
@@ -92,7 +87,7 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.frontend"
+    namespace 'alertnet.co.za'
     defaultConfig {
         applicationId 'alertnet.co.za'
         minSdkVersion rootProject.ext.minSdkVersion

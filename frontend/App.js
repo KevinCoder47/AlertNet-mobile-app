@@ -1,21 +1,22 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
-import AppNavigator from './assets/navigation/AppNavigator';
-import { ThemeProvider } from './assets/contexts/ColorContext';
-import { Provider } from 'react-redux'; 
+import { StyleSheet, View, Text, Button } from 'react-native';
+import { ThemeProvider, useTheme } from './assets/contexts/ColorContext';
+import AppNavigator from './assets/navigation/AppNavigator'
+
+
 
 export default function App() {
   return (
-      <ThemeProvider>
-        <NavigationContainer>
-            <AppNavigator />
-        </NavigationContainer>
-      </ThemeProvider>
-
+    <ThemeProvider>
+      <AppNavigator />
+    </ThemeProvider>
   );
 }
 
 const styles = StyleSheet.create({
-
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 });
