@@ -111,6 +111,8 @@ const MAP_IDS = {
   dark: "f48cf5b0589cd8bfd9dedc8e" 
 };
 
+
+
 export default function SafetyMap() {
   const { colors } = useTheme();
   const [location, setLocation] = useState(null);
@@ -135,12 +137,6 @@ export default function SafetyMap() {
     colors.isDark ? MAP_STYLES.dark : MAP_STYLES.light
   ), [colors.isDark]);
 
-  //testing
-useEffect(() => {
-  console.log(`Using ${colors.isDark ? 'dark' : 'light'} theme`);
-  console.log(`Map ID: ${mapId}`);
-  console.log(`Platform: ${Platform.OS}`);
-}, [colors.isDark, mapId]);
 
 
 // Get user location
@@ -156,6 +152,95 @@ useEffect(() => {
       setUserLocation(current.coords);
     })();
   }, [setUserLocation]);
+
+  // temporal friends location code:
+const [friends, setFriends] = useState([
+  {
+    id: 1,
+    name: "Unathi Gumede",
+    location: {
+      latitude: -26.1076,
+      longitude: 28.0567
+    },
+    description: "Sandton City",
+    avatar: require('../images/profile-pictures/junior.jpeg')
+  },
+  {
+    id: 2,
+    name: "Chayenne Luthuli",
+    location: {
+      latitude: -26.1184,
+      longitude: 28.0603
+    },
+    description: "Melrose Arch",
+    avatar: require('../images/profile-pictures/cheyenne.jpeg')
+  },
+  {
+    id: 3,
+    name: "Musa Buthelezi",
+    location: {
+      latitude: -26.2034,
+      longitude: 28.0456
+    },
+    description: "Maboneng Precinct",
+    avatar: require('../images/profile-pictures/Musa.jpeg')
+  },
+  {
+    id: 4,
+    name: "Junior Madiba",
+    location: {
+      latitude: -33.9056,
+      longitude: 18.4189
+    },
+    description: "V&A Waterfront",
+   avatar: require('../images/profile-pictures/junior.jpeg')
+  },
+  {
+    id: 5,
+    name: "Kevin Serakalala",
+    location: {
+      latitude: 25.2048,  
+      longitude: 55.2708
+    },
+    description: "Dubai, UAE",
+    avatar: require('../images/profile-pictures/junior.jpeg'),
+    isInternational: true
+  },
+  {
+    id: 6,
+    name: "Siphephile Mtshali",
+    location: {
+      latitude: -29.8587,  
+      longitude: 31.0218
+    },
+    description: "Durban Beachfront",
+   avatar: require('../images/profile-pictures/siphe.jpeg')
+  },
+  {
+    id: 7,
+    name: "Okuhle Mgudlwa",
+    location: {
+      latitude: 53.4830,  
+      longitude: -2.2444
+    },
+    description: "Manchester, UK",
+    avatar: require('../images/profile-pictures/Musa.jpeg'),
+    isInternational: true
+  }
+]);
+  
+  const FriendMarker = ({ friend, onPress }) => (
+  <Marker
+    coordinate={friend.location}
+    title={friend.name}
+    description={friend.description}
+    onPress={onPress}
+  >
+    <View style={styles.friendMarker}>
+      <Image source={friend.avatar} style={styles.friendAvatar} />
+    </View>
+  </Marker>
+);
 
 
 
@@ -190,6 +275,7 @@ useEffect(() => {
           initialRegion={initialRegion}
           zoomEnabled={true}
         >
+          {/* user marker */}
           <Marker
             coordinate={{
               latitude: userLocation.latitude,
@@ -201,8 +287,30 @@ useEffect(() => {
           >
             {Platform.OS === 'ios' && <UserMapMarker />}
           </Marker>
+
+
+          {/* Friend Markers */}
+          {friends.map((friend) => (
+            <FriendMarker 
+              key={friend.id}
+              friend={friend}
+              onPress={() => {
+                // Handle marker press (e.g., show more info)
+                Alert.alert(
+                  friend.name,
+                  `${friend.description}\nLast updated: 10 mins ago`,
+                  [
+                    { text: "OK" },
+                    { text: "Navigate", onPress: () => openNavigation(friend.location) }
+                  ]
+                );
+              }}
+            />
+          ))}
         </MapView>
       )}
+
+
       
       {/* Hidden MapView for initialization */}
       {!mapReady && (
@@ -230,5 +338,22 @@ const styles = StyleSheet.create({
     height: 50,
     backgroundColor: '#C80110',
     borderRadius: 25
-  }
+  },
+  friendMarker: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    elevation: 3,
+  },
+  friendAvatar: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 25,
+  },
 });
