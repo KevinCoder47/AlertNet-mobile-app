@@ -14,7 +14,7 @@ export const MapProvider = ({ children }) => {
         longitude: userLocation.longitude,
         latitudeDelta: 0.01,
         longitudeDelta: 0.01,
-      }, 500);
+      }, 800);
     }
   };
 
