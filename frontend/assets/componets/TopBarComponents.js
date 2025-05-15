@@ -2,10 +2,13 @@ import { StyleSheet, Text, View, Image, ImageBackground, TouchableOpacity, TextI
 import React, { useState, useEffect, useRef } from 'react'
 import { View as SafeView } from 'react-native'
 import TopBarSearch from './TopBarSearch'
+import { useTheme } from '../contexts/ColorContext'
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const TopBarComponents = ({isNotHome}) => {
   const [userName, setUserName] = useState("Mpilo");
   const [location, setLocation] = useState("School, AuklandPark, Johannesburg");
+  const { colors, isDark } = useTheme();
   
   // Create animated value for search bar height
   const searchBarHeight = useRef(new Animated.Value(isNotHome ? 0 : 60)).current;
@@ -35,26 +38,26 @@ const TopBarComponents = ({isNotHome}) => {
         {/* User name and location */}
         <View style={{ gap: 4, marginTop: 0, marginLeft: 10 }}>
           <View style={{ flexDirection: "row" }}>
-            <Text style={[styles.text, { fontFamily: "Helvetica Light" }]}>Hello, </Text>
-            <Text style={[styles.text, { fontFamily: "Helvetica Bold" }]}>{userName}</Text>
+            <Text style={[styles.text, { fontFamily: "Helvetica Light",color: colors.text }]}>Hello, </Text>
+            <Text style={[styles.text, { fontFamily: "Helvetica Bold", color: colors.text  }]}>{userName}</Text>
           </View>
           
           {/* location */}
           <View style={{ flexDirection: "row", alignItems: "center" }}>
             <Image source={require('../icons/near-me.png')} style={{ width: 15, height: 15, marginRight: 5 }} />
-            <Text style={{ fontSize: 10, fontFamily: "Helvetica Light" }}>{location}</Text>
+            <Text style={{ fontSize: 10, fontFamily: "Helvetica Light",color: colors.text  }}>{location}</Text>
           </View>
         </View>
         
         {/* Notification bell */}
         <View style = {{marginLeft: "auto", marginHorizontal: 5, flexDirection: "row"}}>
           <TouchableOpacity style = {{width: 20, height: 20, marginRight: 20}}>
-            <Image source={require('../icons/notification-light.png')} style = {{width: 20, height: 20}} />
+            <Image source={isDark ? require('../icons/notification-dark.png') : require('../icons/notification-light.png')} style = {{width: 20, height: 20}} />
           </TouchableOpacity>
           
           {/* More menu */}
           <TouchableOpacity>
-            <Image source={require('../icons/menu-light.png')} style = {{width: 20, height: 20}} />
+            <Image source={isDark ? require('../icons/menu-dark.png'): require('../icons/menu-light.png')} style = {{width: 20, height: 20}} />
           </TouchableOpacity>
         </View>
       </View>

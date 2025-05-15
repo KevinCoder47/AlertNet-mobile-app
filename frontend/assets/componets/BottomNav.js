@@ -2,6 +2,7 @@ import { StyleSheet, Text, View, Dimensions, TouchableOpacity, Image } from 'rea
 import React, { useState } from 'react'
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import SOSBtn from './SOSBtn';
+import { useMapContext } from '../contexts/MapContext';
 
 const { width, height } = Dimensions.get('window');
 const BottomNav = ({ isNotHome, setIsNotHome }) => {
@@ -9,6 +10,7 @@ const BottomNav = ({ isNotHome, setIsNotHome }) => {
     const [isWalkPartner, setIsWalkPartner] = useState(false)
     const [isPeople, setIsPeople] = useState(false)
     const [isHelpLine, setIsHelpLine] = useState(false)
+    const { recenterToUserLocation } = useMapContext();
 
     const toggleHome = () => {
         setIsHome(true);
@@ -16,6 +18,7 @@ const BottomNav = ({ isNotHome, setIsNotHome }) => {
         setIsPeople(false);
         setIsHelpLine(false);
         setIsNotHome(false);
+        recenterToUserLocation();
     };
     
     const toggleWalkPartner = () => {
@@ -43,8 +46,9 @@ const BottomNav = ({ isNotHome, setIsNotHome }) => {
     }
 
 
-  return (
-      <View style={styles.container}>
+    return (
+        <View style = {{flex: 1, height: height}}>
+                  <View style={styles.container}>
           
           {/* Navigation tabs */}
           <View style={[styles.navContainer, { backgroundColor: "#1C1C1E" }]}>
@@ -75,6 +79,7 @@ const BottomNav = ({ isNotHome, setIsNotHome }) => {
           
 
     </View>
+      </View>
   )
 }
 

@@ -1,11 +1,13 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { StyleSheet, View, Dimensions, Alert } from 'react-native';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
+import { StyleSheet, View, Dimensions, Alert, Platform, Image } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { useTheme } from '../contexts/ColorContext';
 import UserMapMarker from './UserMapMarker';
+import AndroidMarker from './AndroidMarker';
+import { useMapContext } from '../contexts/MapContext';
 
-// Extracted map styles for better readability and reusability
+
 const MAP_STYLES = {
   light: [
     {
@@ -80,8 +82,13 @@ const MAP_STYLES = {
     {
       "featureType": "water",
       "elementType": "geometry",
-      "stylers": [{ "color": "#c9c9c9" }]
-    }
+      "stylers": [{ "color": "#a8c3d6" }]
+    },
+      {
+    "featureType": "poi.park",
+    "elementType": "geometry",
+    "stylers": [{ "color": "#e0f0e0" }, { "visibility": "on" }]
+    },
   ],
   dark: [
     { elementType: "geometry", stylers: [{ color: "#212121" }] },
@@ -98,16 +105,45 @@ const MAP_STYLES = {
   ]
 };
 
+// Map IDs from Google Cloud Console
+const MAP_IDS = {
+  light: "f48cf5b0589cd8bf33ff62a3", 
+  dark: "f48cf5b0589cd8bfd9dedc8e" 
+};
+
 export default function SafetyMap() {
   const { colors } = useTheme();
   const [location, setLocation] = useState(null);
   const [mapReady, setMapReady] = useState(false);
-
-  // Memoize map style to prevent unnecessary recalculations
+  const { mapRef, userLocation, setUserLocation } = useMapContext();
+  
+  // Platform-specific configuration
+  const isAndroid = Platform.OS === 'android';
+  
+  // Determine which approach to use based on platform
+  const mapId = useMemo(() => {
+    // On Android, use mapId approach with our cloud-stored styles
+    if (isAndroid) {
+      return colors.isDark ? MAP_IDS.dark : MAP_IDS.light;
+    }
+    // On iOS, we can use either approach
+    return colors.isDark ? MAP_IDS.dark : MAP_IDS.light;
+  }, [colors.isDark, isAndroid]);
+  
+  // Fallback custom style (primarily for iOS compatibility)
   const mapStyle = useMemo(() => (
     colors.isDark ? MAP_STYLES.dark : MAP_STYLES.light
   ), [colors.isDark]);
 
+  //testing
+useEffect(() => {
+  console.log(`Using ${colors.isDark ? 'dark' : 'light'} theme`);
+  console.log(`Map ID: ${mapId}`);
+  console.log(`Platform: ${Platform.OS}`);
+}, [colors.isDark, mapId]);
+
+
+// Get user location
   useEffect(() => {
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -117,59 +153,65 @@ export default function SafetyMap() {
       }
 
       const current = await Location.getCurrentPositionAsync({});
-      setLocation(current.coords);
+      setUserLocation(current.coords);
     })();
-  }, []);
+  }, [setUserLocation]);
+
+
 
   // Initial region calculation
   const initialRegion = useMemo(() => {
-    if (!location) return null;
+    if (!userLocation) return null;
     
     return {
-      latitude: location.latitude,
-      longitude: location.longitude,
+      latitude: userLocation.latitude,
+      longitude: userLocation.longitude,
       latitudeDelta: 0.01,
       longitudeDelta: 0.01,
     };
-  }, [location]);
+  }, [userLocation]);
 
   return (
-    <View style={styles.container}>
+   <View style={styles.container}>
       {/* Main Map View */}
-      {location && mapReady && (
+      {userLocation && mapReady && (
         <MapView
+          ref={mapRef}
           style={styles.map}
-          provider={PROVIDER_GOOGLE}
-          customMapStyle={mapStyle}
-          showsUserLocation={true}
-          showsMyLocationButton={true}
+          provider="google"
+          customMapStyle={!isAndroid ? mapStyle : mapId} 
+          googleMapId={isAndroid ? mapId : undefined}
+          showsMyLocationButton={false} // Disable default button
           showsCompass={true}
           showsBuildings={true}
           showsTraffic={false}
           showsIndoors={false}
           toolbarEnabled={false}
           initialRegion={initialRegion}
-          userInterfaceStyle={colors.isDark ? 'dark' : 'light'}
+          zoomEnabled={true}
         >
           <Marker
             coordinate={{
-              latitude: location.latitude,
-              longitude: location.longitude,
+              latitude: userLocation.latitude,
+              longitude: userLocation.longitude,
             }}
             title="My Location"
+            anchor={{ x: 0.5, y: 1 }} 
+            pinColor={Platform.OS === 'android' ? "#FF0000" : undefined} // Android-only
           >
-            <UserMapMarker />
+            {Platform.OS === 'ios' && <UserMapMarker />}
           </Marker>
         </MapView>
       )}
       
       {/* Hidden MapView for initialization */}
-      <MapView
-        style={StyleSheet.absoluteFillObject}
-        provider={PROVIDER_GOOGLE}
-        onMapReady={() => setMapReady(true)}
-        customMapStyle={mapStyle}
-      />
+      {!mapReady && (
+        <MapView
+          style={[StyleSheet.absoluteFillObject, { opacity: 0 }]}
+          provider={PROVIDER_GOOGLE}
+          onMapReady={() => setMapReady(true)}
+        />
+      )}
     </View>
   );
 }
@@ -183,4 +225,10 @@ const styles = StyleSheet.create({
     width: Dimensions.get('window').width,
     height: Dimensions.get('window').height,
   },
+  androidMarker: {
+    width: 50,
+    height: 50,
+    backgroundColor: '#C80110',
+    borderRadius: 25
+  }
 });

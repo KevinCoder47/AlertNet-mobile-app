@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '45deg' }],
     borderRightWidth: 2,
     borderBottomWidth: 2,
-    borderColor: '#FFFFFF',
+    borderColor: '#C80110',
   },
   shadow: {
     position: 'absolute',
