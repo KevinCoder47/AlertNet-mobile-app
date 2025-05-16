@@ -13,7 +13,7 @@ const { width, height } = Dimensions.get('window');
 const Home = () => {
   const [isNotHome, setIsNotHome] = useState(false);
   const [isSOS, setIsSOS] = useState(false);
-  const [isWalkPartner, setIsWalkPartner] = useState(true);
+  const [isWalkPartner, setIsWalkPartner] = useState(false);
 
   if (isWalkPartner) {
     // Render only WalkPartner screen
