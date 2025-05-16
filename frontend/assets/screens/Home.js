@@ -6,24 +6,34 @@ import BottomNav from '../componets/BottomNav';
 import TopBarSearch from '../componets/TopBarSearch';
 import { useTheme } from '../contexts/ColorContext';
 import { MapProvider } from '../contexts/MapContext';
+import WalkPartner from './WalkPartner';
 
 const { width, height } = Dimensions.get('window');
 
 const Home = () => {
   const [isNotHome, setIsNotHome] = useState(false);
   const [isSOS, setIsSOS] = useState(false);
-  
+  const [isWalkPartner, setIsWalkPartner] = useState(true);
+
+  if (isWalkPartner) {
+    // Render only WalkPartner screen
+    return <WalkPartner setIsWalkPartner={setIsWalkPartner} />;
+  }
+
+  else if (isSOS) {
+    return null
+  }
+
+  // Else render the full home layout
   return (
     <MapProvider>
       <View style={styles.container}>
-        {/* map view */}
-        <>
-          <Map />
-        </>
-        {/* top bar */}
-        <TopBar isNotHome={isNotHome} />
-        {/* Bottom navigation */}
-        <BottomNav isNotHome={isNotHome} setIsNotHome={setIsNotHome} />
+        <Map />
+        <TopBar />
+        <BottomNav isNotHome={isNotHome}
+          setIsNotHome={setIsNotHome}
+          isWalkPartner={isWalkPartner}
+          setIsWalkPartner={setIsWalkPartner} />
       </View>
     </MapProvider>
   );
@@ -33,9 +43,6 @@ export default Home;
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1
-  },
-  map: {
-    zIndex: 1
+    flex: 1,
   },
 });
