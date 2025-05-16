@@ -1,10 +1,14 @@
 import { StyleSheet, Text, View } from 'react-native'
-import React from 'react'
+import React, { useState } from 'react'
 import Home from '../screens/Home';
 
 const AppNavigator = () => {
+  const [isSplash, setisSplash] = useState(false)
+
+
   return (
     <View>
+
      <Home />
     </View>
   )
