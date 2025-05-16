@@ -6,9 +6,9 @@ import { useMapContext } from '../contexts/MapContext';
 import Helpline from './Helpline';
 
 const { width, height } = Dimensions.get('window');
-const BottomNav = ({ isNotHome, setIsNotHome }) => {
+const BottomNav = ({ isNotHome, setIsNotHome, isWalkPartner, setIsWalkPartner }) => {
     const [isHome, setIsHome] = useState(true)
-    const [isWalkPartner, setIsWalkPartner] = useState(false)
+    // const [isWalkPartner, setIsWalkPartner] = useState(false)
     const [isPeople, setIsPeople] = useState(false)
     const [isHelpLine, setIsHelpLine] = useState(false)
     const { recenterToUserLocation } = useMapContext();
