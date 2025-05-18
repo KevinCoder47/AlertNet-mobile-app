@@ -1,11 +1,18 @@
 import { StyleSheet, View, Text, Dimensions, TouchableOpacity, Image, Animated, Easing } from 'react-native'
-import React, { useRef, useEffect } from 'react'
+import React, { useRef, useEffect, useState } from 'react'
 import { useTheme } from '../contexts/ColorContext'
+import WalkPartnerSearchBar from '../componets/WalkPartnerSearchBar'
+import SavedLocation from '../componets/SavedLocation'
 
 const { width, height } = Dimensions.get('window')
 
 const WalkPartner = ({ setIsWalkPartner }) => {
   const { colors, isDark } = useTheme();
+
+  //location shortcut variables
+  const [LocationType, setLocationType] = useState("School")
+  const [LocationName, setLocationName] = useState("APB Campus")
+  const [address, setAddress] = useState("53 Bunting Road Johannesburg");
   
   // Animation values
   const opacityAnim = useRef(new Animated.Value(0)).current;
@@ -58,7 +65,8 @@ const WalkPartner = ({ setIsWalkPartner }) => {
         styles.container,
         {
           opacity: opacityAnim,
-          transform: [{ scale: scaleAnim }]
+          transform: [{ scale: scaleAnim }],
+          backgroundColor: colors.background
         }
       ]}
     >
@@ -78,6 +86,16 @@ const WalkPartner = ({ setIsWalkPartner }) => {
           />
         </TouchableOpacity>
       </View>
+
+      {/* Search button */}
+      <View style = {{marginTop: 20}}>
+        <WalkPartnerSearchBar />
+      </View>
+
+      {/* Saved location shortcuts */}
+      <View style = {{marginLeft: width * 0.05, marginTop: height * 0.02}}>
+        <SavedLocation LocationType={LocationType} LocationName={LocationName} address={address} />
+      </View>
       
     </Animated.View>
   )
@@ -87,8 +105,8 @@ export default WalkPartner
 
 const styles = StyleSheet.create({
   container: {
-   
-    backgroundColor: 'transparent'
+    flex: 1
+    // backgroundColor: 'transparent'
   },
   titleBack: {
     marginTop: height * 0.08,

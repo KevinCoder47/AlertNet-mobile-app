@@ -251,10 +251,14 @@ const [friends, setFriends] = useState([
     return {
       latitude: userLocation.latitude,
       longitude: userLocation.longitude,
-      latitudeDelta: 0.01,
-      longitudeDelta: 0.01,
+      latitudeDelta: 0.26262139386467,
+      longitudeDelta: 0.13496406376361492
     };
   }, [userLocation]);
+
+  // const onRegionChangeComplete = (region) => {
+  //   console.log("region", region);
+  // };
 
   return (
    <View style={styles.container}>
@@ -274,6 +278,7 @@ const [friends, setFriends] = useState([
           toolbarEnabled={false}
           initialRegion={initialRegion}
           zoomEnabled={true}
+          // onRegionChangeComplete={onRegionChangeComplete}
         >
           {/* user marker */}
           <Marker
