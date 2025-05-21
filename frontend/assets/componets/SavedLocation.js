@@ -40,7 +40,7 @@ const SavedLocation = ({LocationType,LocationName,address}) => {
               
                 {/* Arrow */}
                   <Image source={isDark ? require('../icons/advance-light.png') : require('../icons/advance-dark.png')}
-                      style = {{width: 20, height: 20, marginTop: "auto", marginBottom: "auto", marginHorizontal: 10}}
+                      style = {{width: 20, height: 20, marginTop: "auto", marginBottom: "auto", marginHorizontal: 20, marginLeft: "auto"}}
                   />
             </View>
     </TouchableOpacity >
