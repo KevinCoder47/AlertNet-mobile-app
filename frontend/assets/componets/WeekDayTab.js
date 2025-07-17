@@ -26,12 +26,12 @@ const WeekDayTab = ({ day, date, isActive, onPress, dotColors = [], slots }) => 
     <View
       key={index}
       style={{
-        width: 6,
-        height: 6,
-        borderRadius: 3,
+        width: 5,
+        height: 5,
+        borderRadius: 2.5,
         backgroundColor: color,
-        marginHorizontal: 1,
-        marginTop: 2
+        marginHorizontal: 0.8,
+        marginTop: 1.5
       }}
     />
   ));
@@ -50,8 +50,8 @@ const WeekDayTab = ({ day, date, isActive, onPress, dotColors = [], slots }) => 
                 shadowRadius: isActive ? 0.5 : 0, elevation: isActive ? 0.5 : 0
            }
         ]}>
-          <Text style={[styles.text, {marginTop: 5, color: isActive ? "#000000" : colors.text}]}>{day}</Text>
-          <Text style={{ color: isActive ? "#378D4E" : colors.text }}>{date}</Text>
+          <Text style={[styles.text, {marginTop: 4, color: isActive ? "#000000" : colors.text}]}>{day}</Text>
+          <Text style={{ marginTop: 4, color: isActive ? "#378D4E" : colors.text }}>{date}</Text>
           
           {/* //dots */}
           <View style={{ flexDirection: 'row', justifyContent: 'center' }}>
@@ -65,9 +65,9 @@ export default WeekDayTab
 
 const styles = StyleSheet.create({
     container: {
-        width: 50,
+        width: 45,
         height: 50,
-        marginRight: 10,
+        marginLeft: 10,
         borderRadius: 10,
         alignItems: "center",
     },
