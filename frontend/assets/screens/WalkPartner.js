@@ -4,6 +4,7 @@ import { useTheme } from '../contexts/ColorContext'
 import WalkPartnerSearchBar from '../componets/WalkPartnerSearchBar'
 import SavedLocation from '../componets/SavedLocation'
 import WeekdaySlotView from '../componets/WeekdaySlotView'
+import TimeSlots from './TimeSlots'
 
 
 const { width, height } = Dimensions.get('window')
@@ -18,22 +19,8 @@ const WalkPartner = ({ setIsWalkPartner }) => {
     address: ["53 Bunting Road Johannesburg", "39 Twickenham Avenue Johannesburg"]
   }
 
-const getDateParts = (date = new Date()) => {
-  const options = { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' };
-  const formatter = new Intl.DateTimeFormat('en-GB', options);
-  const parts = formatter.formatToParts(date);
-
-  const result = {};
-  parts.forEach(({ type, value }) => {
-    if (type !== 'literal') {
-      result[type] = value;
-    }
-  });
-
-  return result;
-};
   
-  const dateObj = getDateParts(new Date());
+  // const dateObj = getDateParts(new Date());
 
   
   // Animation values
@@ -124,19 +111,8 @@ const getDateParts = (date = new Date()) => {
       <Text style={[styles.h1, { marginLeft: width * 0.05,marginTop: height * 0.04,fontSize: 25,color: colors.text }]}>
         Time slots
       </Text>
+      <TimeSlots />
 
-      {/* Date */}
-      <View style = {{marginLeft: width * 0.05,marginTop: height * 0.02}}>
-        {/* weekday and date */}
-        <Text style = {[styles.h2, {fontSize: 12, color: "#717171"}]}>{dateObj.weekday}, {dateObj.day}</Text>
-        {/* month and year */}
-        <Text style={[styles.h2, { color: colors.text, fontSize: 15, marginTop: 5 }]}>{dateObj.month} {dateObj.year}</Text>
-      </View>
-
-      {/* Days of the week tabs  */}
-      <View style={{ marginTop: 20 }}>
-        <WeekdaySlotView />
-      </View>
 
 
     </Animated.View>

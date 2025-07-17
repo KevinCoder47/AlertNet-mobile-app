@@ -2,17 +2,30 @@ import { StyleSheet, Text, View, FlatList } from 'react-native'
 import React, {useState} from 'react'
 import WeekDayTab from '../componets/WeekDayTab'
 
-const WeekdaySlotView = () => {
+const WeekdaySlotView = ({isFullScreen, setIsFullScreen}) => {
     const [activeIndex, setActiveIndex] = useState(0);
-    const days = [
-  { day: 'Mon', date: '05', slots: 8 },
-  { day: 'Tue', date: '06', slots: 4 },
-  { day: 'Wed', date: '07', slots: 13 },
-  { day: 'Thu', date: '08', slots: 5 },
-  { day: 'Fri', date: '09', slots: 3 },
-  { day: 'Sat', date: '10', slots: 0 },
-  { day: 'Sun', date: '11', slots: 1 }
-]
+    const baseSlots = [8, 4, 13, 5, 3, 0, 1];
+    const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+    const getWeekStart = () => {
+      const today = new Date();
+      const day = today.getDay(); // Sunday - Saturday : 0 - 6
+      const diff = today.getDate() - ((day + 6) % 7); // Adjust to Monday
+      return new Date(today.setDate(diff));
+    };
+
+    const startOfWeek = getWeekStart();
+
+    const days = weekDays.map((day, index) => {
+      const date = new Date(startOfWeek);
+      date.setDate(date.getDate() + index);
+      const dayDate = date.getDate().toString().padStart(2, '0');
+      return {
+        day,
+        date: dayDate,
+        slots: baseSlots[index],
+      };
+    });
 
   return (
     <View style = {{height: 60, }}>
@@ -27,7 +40,10 @@ const WeekdaySlotView = () => {
               date={item.date}
               slots={item.slots}
               isActive={activeIndex === index}
-              onPress={() => setActiveIndex(index)}
+              onPress={() => {
+                setActiveIndex(index);
+                setIsFullScreen(true);
+              }}
               dotColors={[]} />
       )}
     />
