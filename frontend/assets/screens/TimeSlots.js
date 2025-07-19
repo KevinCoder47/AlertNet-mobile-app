@@ -112,7 +112,7 @@ const TimeSlots = () => {
             width: '100%',
             height: isFullScreen ? HANDLE_HEIGHT : HEADER_HEIGHT_NORMAL,
             zIndex: 101,
-            backgroundColor: isFullScreen ? 'transparent' : colors.background, // Fixes content overlap
+            backgroundColor: isFullScreen ? 'transparent' : colors.background, 
           }}
         >
           {/* Handle bar */}
@@ -126,10 +126,10 @@ const TimeSlots = () => {
             }}>
               <View style={{
                 width: 80,
-                height: 4, // Increased for better visibility
+                height: 4, 
                 backgroundColor: colors.text,
                 borderRadius: 2.5,
-                opacity: 0.7, // Better visibility
+                opacity: 0.7, 
               }} />
             </View>
           )}
@@ -230,7 +230,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Helvetica',
     fontWeight: '700',
   },
-  // Added for header layout
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
