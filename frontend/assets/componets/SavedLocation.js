@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View, TouchableOpacity, Dimensions, Image } from 'react-native'
+import { ChevronRight } from 'lucide-react-native'
 import React from 'react'
 import { useTheme } from '../contexts/ColorContext'
 
@@ -39,8 +40,15 @@ const SavedLocation = ({LocationType,LocationName,address}) => {
               </View>
               
                 {/* Arrow */}
-                  <Image source={isDark ? require('../icons/advance-light.png') : require('../icons/advance-dark.png')}
-                      style = {{width: 20, height: 20, marginTop: "auto", marginBottom: "auto", marginHorizontal: 20, marginLeft: "auto"}}
+                  <ChevronRight
+                    color={colors.text}
+                    size={20}
+                    style={{
+                      marginTop: 'auto',
+                      marginBottom: 'auto',
+                      marginHorizontal: 20,
+                      marginLeft: 'auto'
+                    }}
                   />
             </View>
     </TouchableOpacity >

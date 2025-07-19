@@ -61,7 +61,7 @@ const WalkPartnerSearchBar = () => {
         /> */}
 
         {/* 'where to' square */}
-        <View style={{ width: 10, height: 10, backgroundColor: colors.text, justifyContent: "center", alignItems: "center" }}>
+        <View style={{ width: 10, height: 10, backgroundColor: colors.text, justifyContent: "center", alignItems: "center", marginLeft: 5 }}>
           <View style={{ width: 4, height: 4, backgroundColor: colors.altText }}>
            
           </View>
@@ -81,9 +81,7 @@ const WalkPartnerSearchBar = () => {
         <FlatList
           data={suggestions}
           keyExtractor={(item) => item.place_id}
-          style={[styles.suggestionsList, {
-            backgroundColor: 'transparent',
-          }]}
+          style={[styles.suggestionsList, { backgroundColor: colors.background }]}
           renderItem={({ item }) => (
             <TouchableOpacity
               style={styles.suggestionItem}
@@ -136,10 +134,15 @@ const styles = StyleSheet.create({
     height: 20,
   },
   suggestionsList: {
+    position: 'absolute',
+    top: 60,
+    left: width * 0.05,
+    right: width * 0.09,
+    backgroundColor: colors => colors.background,
+    zIndex: 10,
     maxHeight: 200,
-    
-    marginHorizontal: width * 0.05,
-
+    borderRadius: 8,
+    overflow: 'hidden',
   },
   suggestionItem: {
     padding: 15,
