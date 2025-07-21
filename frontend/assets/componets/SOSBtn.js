@@ -2,9 +2,15 @@ import { StyleSheet, Text, View, TouchableOpacity, Dimensions } from 'react-nati
 import React from 'react'
 
 const { width, height } = Dimensions.get('window');
-const SOSBtn = () => {
+const SOSBtn = ({onPress}) => {
   return (
-      <TouchableOpacity style={styles.container}>
+      <TouchableOpacity
+      style={styles.container}
+      onPress={() => {
+        console.log('SOS Button Pressed');
+        onPress();
+      }}
+    >
           <View style={styles.innerCircle1}>
               <View style={styles.InnerCircle2}>
                   <Text style = {styles.text}>SOS</Text>

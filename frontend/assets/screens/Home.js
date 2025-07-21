@@ -7,6 +7,8 @@ import TopBarSearch from '../componets/TopBarSearch';
 import { useTheme } from '../contexts/ColorContext';
 import { MapProvider } from '../contexts/MapContext';
 import WalkPartner from './WalkPartner';
+import SOSPage from './SOS'
+import SOSBtn from '../componets/SOSBtn';
 
 const { width, height } = Dimensions.get('window');
 
@@ -21,8 +23,9 @@ const Home = () => {
   }
 
   else if (isSOS) {
-    return null
+  return <SOSPage setIsSOS={setIsSOS} />;
   }
+
 
   // Else render the full home layout
   return (
@@ -33,7 +36,8 @@ const Home = () => {
         <BottomNav isNotHome={isNotHome}
           setIsNotHome={setIsNotHome}
           isWalkPartner={isWalkPartner}
-          setIsWalkPartner={setIsWalkPartner} />
+          setIsWalkPartner={setIsWalkPartner}
+          setIsSOS={setIsSOS}/>
       </View>
     </MapProvider>
   );

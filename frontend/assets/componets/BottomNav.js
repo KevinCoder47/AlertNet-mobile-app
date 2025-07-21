@@ -6,7 +6,7 @@ import { useMapContext } from '../contexts/MapContext';
 import Helpline from './Helpline';
 
 const { width, height } = Dimensions.get('window');
-const BottomNav = ({ isNotHome, setIsNotHome, isWalkPartner, setIsWalkPartner }) => {
+const BottomNav = ({ isNotHome, setIsNotHome, isWalkPartner, setIsWalkPartner,setIsSOS }) => {
     const [isHome, setIsHome] = useState(true)
     // const [isWalkPartner, setIsWalkPartner] = useState(false)
     const [isPeople, setIsPeople] = useState(false)
@@ -81,7 +81,7 @@ const BottomNav = ({ isNotHome, setIsNotHome, isWalkPartner, setIsWalkPartner })
           </View>
 
           {/* SOS Button */}
-          <SOSBtn />
+          <SOSBtn onPress={() => setIsSOS(true)} />
           
 
     </View>
