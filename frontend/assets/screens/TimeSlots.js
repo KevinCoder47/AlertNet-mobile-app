@@ -6,14 +6,15 @@ import {
   Animated, 
   PanResponder, 
   ScrollView,
-  TouchableOpacity // Added for plus icon
+  TouchableOpacity 
 } from 'react-native';
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { useTheme } from '../contexts/ColorContext';
 import WeekdaySlotView from '../componets/WeekdaySlotView';
 import { BlurView } from 'expo-blur';
 import TimeView from '../componets/TimeView';
 import { Ionicons } from '@expo/vector-icons'; // Added for plus icon
+
 
 const { width, height } = Dimensions.get('window');
 const FULL_SCREEN_TOP = height * 0.07;
@@ -21,12 +22,12 @@ const NORMAL_TOP = height * 0.51;
 const HANDLE_HEIGHT = 50;
 const HEADER_HEIGHT_NORMAL = 70;
 
-const TimeSlots = () => {
+const TimeSlots = ({setIsAddScheduledWalkVisible}) => {
   const { colors } = useTheme();
-  const [isFullScreen, setIsFullScreen] = React.useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false);
   const animatedTop = useRef(new Animated.Value(NORMAL_TOP)).current;
   const isFullScreenRef = useRef(isFullScreen);
-
+  
   React.useEffect(() => {
     isFullScreenRef.current = isFullScreen;
   }, [isFullScreen]);
@@ -73,7 +74,7 @@ const TimeSlots = () => {
       tension: isFullScreen ? 80 : 60,
       friction: 12,
     }).start();
-  }, [isFullScreen, animatedTop]); // Added animatedTop to dependency array
+  }, [isFullScreen, animatedTop]); 
 
   const getDateParts = (date = new Date()) => {
     const options = { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' };
@@ -155,7 +156,7 @@ const TimeSlots = () => {
               
               {/* Plus icon */}
        
-                <TouchableOpacity onPress={() => console.log('Add pressed')}>
+                <TouchableOpacity onPress={() => setIsAddScheduledWalkVisible(true)}>
                   <Ionicons 
                     name="add" 
                     size={24} 
@@ -215,6 +216,8 @@ const TimeSlots = () => {
           style={{ position: 'absolute', width, height, zIndex: 99 }}
         />
       )}
+
+
     </>
   );
 };

@@ -5,12 +5,15 @@ import WalkPartnerSearchBar from '../componets/WalkPartnerSearchBar'
 import SavedLocation from '../componets/SavedLocation'
 import WeekdaySlotView from '../componets/WeekdaySlotView'
 import TimeSlots from './TimeSlots'
+import AddScheduledWalk from '../componets/AddScheduledWalk'; 
 
 
 const { width, height } = Dimensions.get('window')
 
 const WalkPartner = ({ setIsWalkPartner }) => {
   const { colors, isDark } = useTheme();
+  const [isAddScheduledWalkVisible, setIsAddScheduledWalkVisible] = useState(false);
+
 
   //location shortcut variables
   const savedLocations = {
@@ -111,8 +114,17 @@ const WalkPartner = ({ setIsWalkPartner }) => {
       <Text style={[styles.h1, { marginLeft: width * 0.05,marginTop: height * 0.04,fontSize: 25,color: colors.text }]}>
         Time slots
       </Text>
-      <TimeSlots />
+      <TimeSlots setIsAddScheduledWalkVisible={setIsAddScheduledWalkVisible} />
 
+      {/* New walk schedule component */}
+      {isAddScheduledWalkVisible && (
+        <View style = {{position: 'absolute', zIndex: 100, width, height}}>
+        <AddScheduledWalk 
+            onClose={() => setIsAddScheduledWalkVisible(false)} 
+            setIsAddScheduledWalkVisible={setIsAddScheduledWalkVisible}
+        />
+        </View>
+      )}
 
 
     </Animated.View>

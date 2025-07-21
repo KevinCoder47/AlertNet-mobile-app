@@ -1,29 +1,23 @@
 import { StyleSheet, View } from 'react-native';
 import React, { useState, useEffect } from 'react';
 import Home from '../screens/Home';
-import LoadingSplash from '../screens/LoadingSplash';
-import Splash from '../screens/splash'; 
-import BottomNav from '../componets/BottomNav';
+import AnimatedSplash from '../screens/AnimatedSplash'; 
 
 const AppNavigator = () => {
-  const [showLoading, setShowLoading] = useState(true);
   const [showSplash, setShowSplash] = useState(false);
 
-  const handleLoadingDone = () => {
-    setShowLoading(false);
+  useEffect(() => {
     setShowSplash(true);
-
-    // Automatically go to Home after splash finishes
-    setTimeout(() => {
+    const timeout = setTimeout(() => {
       setShowSplash(false);
-    }, 3000); 
-  };
+    }, 5300);
+    return () => clearTimeout(timeout);
+  }, []);
 
   return (
     <View style={{ flex: 1 }}>
-      {showLoading && <LoadingSplash onDone={handleLoadingDone} />}
-      {!showLoading && showSplash && <Splash />}
-      {!showLoading && !showSplash && <Home />}
+      {showSplash && <AnimatedSplash />}
+      {!showSplash && <Home />}
     </View>
   );
 };
