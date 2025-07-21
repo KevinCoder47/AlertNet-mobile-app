@@ -188,6 +188,8 @@ const AddScheduledWalk = ({setIsAddScheduledWalkVisible}) => {
                             style={{ position: 'absolute', right: 20, top: 15 }} />
                     </TouchableOpacity>
               </View>
+              {/* make sure to make the select time expand */}
+              <View ></View>
           </View>
       </View>
   )
