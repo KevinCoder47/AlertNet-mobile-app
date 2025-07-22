@@ -9,6 +9,9 @@ import { MapProvider } from '../contexts/MapContext';
 import WalkPartner from './WalkPartner';
 import SOSPage from './SOS'
 import SOSBtn from '../componets/SOSBtn';
+import QrCode from '../screens/QrCode';
+import SafetyResources from './SafetyResources'
+
 
 const { width, height } = Dimensions.get('window');
 
@@ -16,6 +19,9 @@ const Home = () => {
   const [isNotHome, setIsNotHome] = useState(false);
   const [isSOS, setIsSOS] = useState(false);
   const [isWalkPartner, setIsWalkPartner] = useState(false);
+  const [isQrCode, setIsQrCode] = useState(false);
+  const [isSafetyResources, setIsSafetyResources] = useState(false);
+
 
   if (isWalkPartner) {
     // Render only WalkPartner screen
@@ -23,8 +29,21 @@ const Home = () => {
   }
 
   else if (isSOS) {
-  return <SOSPage setIsSOS={setIsSOS} />;
+    return <SOSPage setIsSOS={setIsSOS}
+    setIsQrCode={setIsQrCode} 
+    setIsSafetyResources={setIsSafetyResources}/>;
   }
+
+  else if (isQrCode) {
+    return <QrCode setIsQrCode={setIsQrCode} setIsSOS={setIsSOS} />;
+  }
+
+  if (isSafetyResources){
+    return <SafetyResources setIsSafetyResources={setIsSafetyResources} 
+    setIsSOS={setIsSOS}
+  />
+}
+
 
 
   // Else render the full home layout

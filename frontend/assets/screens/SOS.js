@@ -10,7 +10,7 @@ import {
   ScrollView,
 } from 'react-native';
 
-export default function SOS({ setIsSOS }) {
+export default function SOS({ setIsSOS, setIsQrCode, setIsSafetyResources }) {
   console.log("SOS component rendered");
 
   const [activityLog, setActivityLog] = useState([
@@ -33,10 +33,12 @@ export default function SOS({ setIsSOS }) {
       return updatedLog.slice(-10); // Keep only latest 10 entries
     });
 
-    // Scroll after update has rendered
-    setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 100);
+    // Only auto-scroll if there are 4 or fewer notifications
+    if (activityLog.length < 4) {
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
 
     alert('Marked as Safe');
   };
@@ -48,77 +50,120 @@ export default function SOS({ setIsSOS }) {
         style={{ flex: 1 }}
         resizeMode="cover"
       >
-        <ExpoStatusBar style='auto' translucent backgroundColor="transparent" />
+        <ExpoStatusBar style="auto" translucent backgroundColor="transparent" />
 
-        {/* Top Content */}
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-start' }}>
-          {/* Back Button */}
+        {/* Top Header */}
+        <View
+          style={{
+            marginTop: 50,
+            paddingHorizontal: 20,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
           <TouchableOpacity
             onPress={() => setIsSOS(false)}
             style={{
-              position: 'absolute',
-              top: 48,
-              left: 30,
               padding: 10,
-              zIndex: 1,
+              borderWidth: 0.4, // Add white border
+              borderColor: 'white',
+              borderRadius: 10, // Circular border for button
             }}
           >
-            <Ionicons name="arrow-back" size={30} color="white" />
+            <Ionicons name="arrow-back" size={23} color="white" />
           </TouchableOpacity>
 
-          {/* Menu Button */}
-          <TouchableOpacity
+          <Text
             style={{
-              position: 'absolute',
-              top: 50,
-              right: 30,
-              padding: 10,
-              zIndex: 1,
+              color: 'white',
+              fontWeight: 'bold',
+              fontSize: 20,
+              textTransform: 'lowercase',
+              fontVariant: ['small-caps'],
+              flex: 1,
+              textAlign: 'center',
+            }}
+          >
+            sos
+          </Text>
+
+          <TouchableOpacity
+            style={{ padding: 10 }}
+            onPress={() => {
+              setIsSOS(false);
+              setIsSafetyResources(true);
             }}
           >
             <Ionicons name="menu-outline" size={24} color="white" />
           </TouchableOpacity>
+        </View>
 
-          <Text style={{ fontSize: 20, color: 'white', fontWeight: 'bold', marginTop: 40, top: 15 }}>
-            SOS
-          </Text>
-
-          <Text style={{ fontSize: 25, color: 'white', fontWeight: 'bold', marginTop: 40 }}>
+        {/* Main Content */}
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-start' }}>
+          <Text
+            style={{
+              fontSize: 25,
+              color: 'white',
+              fontWeight: 'bold',
+              marginTop: 40,
+            }}
+          >
             Emergency Calling...
           </Text>
 
-          <Text style={{ fontSize: 12, color: 'white', marginTop: 20 }}>
+          <Text
+            style={{
+              fontSize: 12,
+              color: 'white',
+              marginTop: 20,
+              textAlign: 'center',
+            }}
+          >
             Your Contacts, app users nearby, and your
           </Text>
 
-          <Text style={{ color: 'white', fontSize: 12 }}>
+          <Text
+            style={{
+              color: 'white',
+              fontSize: 12,
+              textAlign: 'center',
+            }}
+          >
             organisation will see your help
           </Text>
-          
-          <TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => {
+              setIsSOS(false); // Hide SOS
+              setIsQrCode(true); // Show QrCode
+            }}
+          >
             <Image
               source={require('../images/QR_Code_Updated.png')}
               style={{ width: 200, height: 200, marginTop: 50 }}
             />
           </TouchableOpacity>
 
-          {/* Safe Button - Not inside log pane */}
+          {/* Safe Button */}
           <TouchableOpacity
             onPress={handleSafePress}
             style={{
               backgroundColor: 'rgba(50, 49, 49, 0.2)',
               paddingVertical: 18,
               paddingHorizontal: 80,
-              borderRadius: 50,
+              borderRadius: 100,
               alignItems: 'center',
               marginTop: 50,
-              elevation: 1.5,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
               shadowOpacity: 0.6,
               shadowRadius: 6,
-              shadowOffset: { width: 0, height: 4 }
+              elevation: 2,
             }}
+            activeOpacity={0.7}
           >
-            <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 13 }}>
+            <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 14 }}>
               I'm Safe Now
             </Text>
           </TouchableOpacity>
