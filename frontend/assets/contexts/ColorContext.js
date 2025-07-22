@@ -18,7 +18,7 @@ export const themes = {
     text: '#FFFFFF',
     primary: '#FFFFFF',
     primaryTwo: "#212121",
-    secondary: '#666666',
+    secondary: '#8D8D8D',
     border: '#E5E5E5',
     isDark: true,
     altText: "#000000"
