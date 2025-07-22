@@ -1,64 +1,47 @@
-import { ImageBackground, Text, View, Image, StatusBar, StyleSheet, TouchableOpacity } from "react-native";
+import { ImageBackground, Text, View, Image, StyleSheet, TouchableOpacity } from "react-native";
 import AntDesign from '@expo/vector-icons/AntDesign';
 import { Feather } from '@expo/vector-icons';
 
-function QrCode() {
+export default function QrCode({ setIsQrCode, setIsSOS }) {
   const contacts = [
     {
       id: 1,
       name: "Lebron James",
       distance: "5KM Away",
       phone: "067 878 9765",
-      image: require("../assets/images/Lebron_James.jpg"),
+      image: require("../images/Lebron_James.jpg"),
     },
     {
       id: 2,
       name: "Josh Naidoo",
       distance: "30 km Away",
       phone: "072 654 2234",
-      image: require("../assets/images/josh_Naidoo.jpg"),
+      image: require("../images/josh_Naidoo.jpg"),
     },
   ];
 
   return (
-    <View style={styles.card}>
-      <Text style={styles.header}>Emergency Contacts</Text>
-      {contacts.map((contact) => (
-        <View key={contact.id} style={styles.contactRow}>
-          <Image source={contact.image} style={styles.avatar} />
-          <View style={styles.info}>
-            <Text style={styles.name}>{contact.name}</Text>
-            <Text style={styles.subText}>{contact.distance}</Text>
-            <Text style={styles.subText}>{contact.phone}</Text>
-          </View>
-          <TouchableOpacity style={styles.callButton}>
-            <Feather name="phone" size={20} color="#fff" />
-          </TouchableOpacity>
-        </View>
-      ))}
-    </View>
-  );
-}
-
-export default function Index() {
-  return (
     <ImageBackground
-      source={require("../assets/images/SOS-background.jpg")}
+      source={require("../images/SOS-background.jpg")}
       style={{ flex: 1 }}
       resizeMode="cover"
     >
       <View style={styles.overlay}>
-        <AntDesign
-          name="arrowleft"
-          size={24}
-          color="white"
-          style={styles.backIcon}
-        />
+        <TouchableOpacity
+          onPress={() => {
+            setIsQrCode(false);
+            setIsSOS(true);
+          }}
+          style={{ position: 'absolute', top: 40, left: 20, zIndex: 1 }}
+        >
+          <AntDesign name="arrowleft" size={24} color="white" />
+        </TouchableOpacity>
+
         <Text style={styles.title}>User Profile</Text>
         <Text style={styles.subtitle}>ID: 345679</Text>
 
         <Image
-          source={require("../assets/images/My Pic 2.0.jpg")}
+          source={require("../images/My Pic 2.0.jpg")}
           style={styles.profileImage}
         />
 
@@ -68,8 +51,22 @@ export default function Index() {
           <Text style={styles.subText}>Gender: Male</Text>
         </View>
 
-        {/* Emergency Contacts Component */}
-        <EmergencyContactsCard />
+        <View style={styles.card}>
+          <Text style={styles.header}>Emergency Contacts</Text>
+          {contacts.map((contact) => (
+            <View key={contact.id} style={styles.contactRow}>
+              <Image source={contact.image} style={styles.avatar} />
+              <View style={styles.info}>
+                <Text style={styles.name}>{contact.name}</Text>
+                <Text style={styles.subText}>{contact.distance}</Text>
+                <Text style={styles.subText}>{contact.phone}</Text>
+              </View>
+              <TouchableOpacity style={styles.callButton}>
+                <Feather name="phone" size={20} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
       </View>
     </ImageBackground>
   );
@@ -82,21 +79,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
-  backIcon: {
-    position: 'absolute',
-    top: 40,
-    left: 20,
-  },
   title: {
     color: "white",
-    top: 40,
-    position: 'absolute',
+    marginTop: 40,
     fontWeight: 'bold',
+    fontSize: 22,
+    alignItems: 'center',
   },
   subtitle: {
-    top: 60,
-    position: 'absolute',
     color: 'white',
+    marginBottom: 20,
   },
   profileImage: {
     width: 150,
@@ -108,10 +100,13 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
     paddingTop: 20,
+    fontSize: 18,
+    textAlign: "center",
   },
   subText: {
     color: 'white',
     fontSize: 12,
+    textAlign: "center",
   },
   card: {
     backgroundColor: "rgba(0,0,0,0.7)",
