@@ -3,7 +3,7 @@ import React from 'react'
 import { useTheme } from '../contexts/ColorContext'
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const ScheduledWalkRectangle = ({ slot }) => {
+const ScheduledWalkRectangle = ({ slot, progress = 0 }) => {
   const { colors, isDark } = useTheme();
 
   if (!slot) {
@@ -32,12 +32,13 @@ const ScheduledWalkRectangle = ({ slot }) => {
 
   return (
     <View>
-      {/* rectangle */}
+      {/* main rectangle */}
       <TouchableOpacity onPress={() => clearAllData()} style={[styles.container, {
         backgroundColor: isDark ? "#313131" : "#F6F6F6",
         borderWidth: 0.3,
         borderColor: "#717171",
-        borderRadius: 10
+        borderRadius: 10,
+        overflow: 'hidden' // Added for clipping overlay
       }]}>
         {/* small circle and name */}
         <View style={{ flexDirection: 'row', gap: 5 }}>
@@ -53,7 +54,8 @@ const ScheduledWalkRectangle = ({ slot }) => {
           <Text style={{
             fontWeight: '500',
             fontSize: 13,
-            color: colors.text
+            color: colors.text,
+            zIndex: 100
           }}>{slot.scheduleName}</Text>
         </View>
 
@@ -61,10 +63,24 @@ const ScheduledWalkRectangle = ({ slot }) => {
         <Text style={{
           fontWeight: '700',
           fontSize: 11,
-          color: colors.secondary,
+          color: isDark ? "#e7e7e7ff" : "#7d7d7dff",
           marginLeft: 15,
-          marginTop: 5
+          marginTop: 5,
+          zIndex: 100
         }}>{slot.to}</Text>
+
+        {/* OVERLAY RECTANGLE */}
+        <View style={[{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: `${progress * 60}`, // Dynamic height based on final height of 60
+          backgroundColor: slot.themeColor,
+          opacity: 0.5,
+          borderBottomLeftRadius: 0, // Only round bottom corners
+          borderBottomRightRadius: 0
+        }, ]} />
       </TouchableOpacity>
 
       {/* number of people joined */}

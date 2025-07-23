@@ -1,9 +1,9 @@
 import { StyleSheet, Text, View, Dimensions } from 'react-native'
 import React, { useState, useEffect, useMemo } from 'react'
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../contexts/ColorContext'
 import ScheduledWalkRectangle from './ScheduledWalkRectangle';
 import { ScrollView } from 'react-native';
+import { useScheduledSlots } from '../contexts/ScheduledSlotsContext';
 
 const {width} = Dimensions.get('window');
 const SLOT_WIDTH = 200;
@@ -13,7 +13,7 @@ const TimeView = () => {
   const hours = Array.from({ length: 18 }, (_, i) => `${String(i + 5).padStart(2, '0')}:00`);
   const { colors, isDark } = useTheme();
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [savedSlots, setSavedSlots] = useState([]);
+  const { scheduledSlots } = useScheduledSlots(); // Get slots from context
 
   // Helper to convert time to minutes from start (5:00)
   const getMinutesFromStart = (timeStr) => {
@@ -21,18 +21,29 @@ const TimeView = () => {
     return (hour - 5) * 60 + minute;
   };
 
-  // Calculate position for saved slots
-  const calculateSlotPosition = (time) => {
-    const minutesFromStart = getMinutesFromStart(time);
-    return 20 + (minutesFromStart * 2);
+  // Calculate progress for a slot (0 to 1)
+  const calculateProgress = (slotTime) => {
+    const [hour, minute] = slotTime.split(':').map(Number);
+    const slotStart = new Date();
+    slotStart.setHours(hour, minute, 0, 0);
+    
+    const slotEnd = new Date(slotStart.getTime() + 30 * 60000); // 30 min duration
+    const now = new Date();
+
+    if (now < slotStart) return 0; // Not started
+    if (now > slotEnd) return 1; // Completed
+
+    const totalDuration = slotEnd - slotStart;
+    const elapsed = now - slotStart;
+    return elapsed / totalDuration;
   };
 
   // Process slots to prevent overlapping
   const processedSlots = useMemo(() => {
-    if (savedSlots.length === 0) return [];
+    if (scheduledSlots.length === 0) return [];
 
     // Create a sorted copy by time
-    const sortedSlots = [...savedSlots].sort((a, b) => 
+    const sortedSlots = [...scheduledSlots].sort((a, b) => 
       getMinutesFromStart(a.time) - getMinutesFromStart(b.time)
     );
 
@@ -68,22 +79,7 @@ const TimeView = () => {
     }
 
     return assignments;
-  }, [savedSlots]);
-
-  useEffect(() => {
-    const fetchSlots = async () => {
-      try {
-        const slotsData = await AsyncStorage.getItem('scheduledSlots');
-        if (slotsData) {
-          setSavedSlots(JSON.parse(slotsData));
-        }
-      } catch (e) {
-        console.error(e);
-      }
-    };
-
-    fetchSlots();
-  }, []);
+  }, [scheduledSlots]); // Dependency on context's scheduledSlots
 
   // Update current time every minute
   useEffect(() => {
@@ -148,7 +144,10 @@ const TimeView = () => {
               left: left 
             }}
           >
-            <ScheduledWalkRectangle slot={slot} />
+            <ScheduledWalkRectangle 
+              slot={slot} 
+              progress={calculateProgress(slot.time)} 
+            />
           </View>
         ))}
       </View>
