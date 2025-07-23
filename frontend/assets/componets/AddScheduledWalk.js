@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { TextInput } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useScheduledSlots } from '../contexts/ScheduledSlotsContext';
 
 
 const saveSlot = async (slot) => {
@@ -32,6 +33,7 @@ const { width, height } = Dimensions.get('window');
 
 const AddScheduledWalk = ({ setIsAddScheduledWalkVisible }) => {
   const { colors, isDark } = useTheme();
+  const { addSlot } = useScheduledSlots();
   const [isSelectTime, setIsSelectTime] = React.useState(false);
   const [selectedHour, setSelectedHour] = React.useState('09');
   const [selectedMinute, setSelectedMinute] = React.useState('00');
@@ -77,16 +79,14 @@ const AddScheduledWalk = ({ setIsAddScheduledWalkVisible }) => {
       from: fromLocation,
       to: toLocation,
       scheduleName: scheduleName,
-      themeColor: randomColor
+      themeColor: randomColor,
+      id: Date.now().toString() // Add unique ID
     };
 
-    try {
-      await saveSlot(newSlot);
-      console.log("Slot saved successfully!");
-      setIsAddScheduledWalkVisible(false);
-    } catch (err) {
-      console.error("Failed to save slot:", err);
-    }
+    // Add to context (which will update storage and state)
+    addSlot(newSlot);
+    console.log("Slot saved successfully!");
+    setIsAddScheduledWalkVisible(false);
   };
 
   return (
