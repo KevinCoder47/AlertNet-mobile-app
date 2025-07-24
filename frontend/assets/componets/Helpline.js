@@ -1,10 +1,15 @@
 import { StyleSheet, Text, View , Dimensions} from 'react-native'
-import React from 'react'
+import { useTheme } from '../contexts/ColorContext';
+import React, { useState } from 'react'
 
 
 
 
 const Helpline = () => {
+
+  // calling the colors 
+  const  { colors } = useTheme()
+
   return (
     <View style={styles.container}>
       <Text style = {styles.title} > HELPLINE</Text>
