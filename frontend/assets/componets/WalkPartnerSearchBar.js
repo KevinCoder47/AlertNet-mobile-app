@@ -226,9 +226,6 @@ const WalkPartnerSearchBar = ({ isTapWhere, setISTapWhere }) => {
 export default WalkPartnerSearchBar;
 
 const styles = StyleSheet.create({
-  container: {
-
-  },
   expandedContainer: {
     width: width * 0.9,
     minHeight: height * 0.3,

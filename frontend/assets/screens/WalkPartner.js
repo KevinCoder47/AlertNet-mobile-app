@@ -215,7 +215,6 @@ const WalkPartner = ({ setIsWalkPartner }) => {
         left: 0,
         right: 0,
         paddingHorizontal: 20,
-        
       }}>
         <WalkPartnerSearchBar 
           isTapWhere={isTapWhere} 
