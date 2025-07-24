@@ -39,7 +39,7 @@ const BottomNav = ({ isNotHome, setIsNotHome, isWalkPartner, setIsWalkPartner,se
     }
 
     const toggleHelpLine = () => {
-        setIsHelpLine(true);
+        setIsHelpLine(!isHelpLine);
         setIsHome(false);
         setIsWalkPartner(false);
         setIsPeople(false);
@@ -52,7 +52,7 @@ const BottomNav = ({ isNotHome, setIsNotHome, isWalkPartner, setIsWalkPartner,se
                   <View style={styles.container}>
           
           {/* Navigation tabs */}
-          <View style={[styles.navContainer, { backgroundColor: "#1C1C1E" }]}>
+          <View style={[styles.navContainer, { backgroundColor: "#1C1C1E",  }]}>
               
               {/* Home button or full map default */}
               <TouchableOpacity style = {{maxWidth: 45, marginLeft: 20}} onPress={toggleHome}>
@@ -76,7 +76,9 @@ const BottomNav = ({ isNotHome, setIsNotHome, isWalkPartner, setIsWalkPartner,se
                     
                     {/* HelpLine popup modal  */}
                     {/* if isHelpLine == true: */}
-                    {isHelpLine ? <Helpline /> : <></> }
+                    {isHelpLine ? <View style = {{marginHorizontal: -45,}}>
+                        <Helpline />
+                    </View> : <></> }
 
           </View>
 

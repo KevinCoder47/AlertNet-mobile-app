@@ -10,7 +10,8 @@ export const themes = {
     secondary: '#A1A1A1',
     border: '#2C2C2C',
     isDark: false,
-    altText: "#FFFFFF"
+    altText: "#FFFFFF",
+    heplineBackground: ''
     
   },
   dark: {
@@ -18,10 +19,11 @@ export const themes = {
     text: '#FFFFFF',
     primary: '#FFFFFF',
     primaryTwo: "#212121",
-    secondary: '#666666',
+    secondary: '#8D8D8D',
     border: '#E5E5E5',
     isDark: true,
-    altText: "#000000"
+    altText: "#000000",
+    heplineBackground: ''
   },
 };
 

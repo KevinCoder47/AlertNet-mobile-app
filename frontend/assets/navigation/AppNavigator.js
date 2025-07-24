@@ -2,9 +2,11 @@ import { StyleSheet, View } from 'react-native';
 import React, { useState, useEffect } from 'react';
 import Home from '../screens/Home';
 import AnimatedSplash from '../screens/AnimatedSplash'; 
+import LoginScreen from '../screens/LoginScreen'
 
 const AppNavigator = () => {
   const [showSplash, setShowSplash] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(true)
 
   useEffect(() => {
     setShowSplash(true);
@@ -16,8 +18,13 @@ const AppNavigator = () => {
 
   return (
     <View style={{ flex: 1 }}>
-      {showSplash && <AnimatedSplash />}
-      {!showSplash && <Home />}
+      {showSplash ? (
+        <AnimatedSplash />
+      ) : isLoggedIn ? (
+        <Home />
+      ) : (
+        <LoginScreen onLogin={() => setIsLoggedIn(true)} />
+      )}
     </View>
   );
 };
