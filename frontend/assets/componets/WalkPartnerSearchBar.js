@@ -5,11 +5,12 @@ import { GOOGLE_MAPS_API_KEY } from '@env'
 
 const {width, height} = Dimensions.get("window")
 
-const WalkPartnerSearchBar = () => {
+const WalkPartnerSearchBar = ({isTapWhere, setISTapWhere}) => {
   const { colors, isDark } = useTheme();
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
+
 
   useEffect(() => {
     if (query.length > 2) {
@@ -52,13 +53,16 @@ const WalkPartnerSearchBar = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.searchContainer}>
+    <View style={[styles.container, {
+      height: isTapWhere ? height * 0.3 : height * 0.065,
+      backgroundColor: colors.background,
+      width: width ,
+      alignSelf: 'center',
+      paddingTop: 10
+      
+    }]}>
+      <TouchableOpacity style={styles.searchContainer} onPress={() => {setISTapWhere(!isTapWhere)}}>
         
-        {/* <Image
-          source={require('../icons/right.png')}
-          style={styles.searchIcon}
-        /> */}
 
         {/* 'where to' square */}
         <View style={{ width: 10, height: 10, backgroundColor: colors.text, justifyContent: "center", alignItems: "center", marginLeft: 5 }}>
@@ -74,8 +78,9 @@ const WalkPartnerSearchBar = () => {
           onChangeText={setQuery}
           fontSize={20}
           fontFamily="Helvetica Bold"
+          onPress={() => {setISTapWhere(true)}}
         />
-      </View>
+      </TouchableOpacity>
       
       {suggestions.length > 0 && (
         <FlatList
@@ -104,7 +109,7 @@ export default WalkPartnerSearchBar;
 
 const styles = StyleSheet.create({
   container: {
-    position: 'relative',
+    // position: 'relative',
   },
   searchContainer: {
     marginTop: 0,
