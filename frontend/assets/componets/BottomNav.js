@@ -39,7 +39,7 @@ const BottomNav = ({ isNotHome, setIsNotHome, isWalkPartner, setIsWalkPartner,se
     }
 
     const toggleHelpLine = () => {
-        setIsHelpLine(true);
+        setIsHelpLine(!isHelpLine);
         setIsHome(false);
         setIsWalkPartner(false);
         setIsPeople(false);

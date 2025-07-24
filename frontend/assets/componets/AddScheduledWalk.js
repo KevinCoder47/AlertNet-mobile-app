@@ -81,7 +81,7 @@ const AddScheduledWalk = ({ setIsAddScheduledWalkVisible }) => {
       to: toLocation,
       scheduleName: scheduleName,
       themeColor: randomColor,
-      id: Date.now().toString() // Add unique ID
+      id: Date.now().toString() 
     };
 
     // Add to context (which will update storage and state)
