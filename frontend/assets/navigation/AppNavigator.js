@@ -6,7 +6,7 @@ import LoginScreen from '../screens/LoginScreen'
 
 const AppNavigator = () => {
   const [showSplash, setShowSplash] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [isLoggedIn, setIsLoggedIn] = useState(true)
 
   useEffect(() => {
     setShowSplash(true);
