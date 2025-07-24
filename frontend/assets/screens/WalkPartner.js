@@ -208,14 +208,13 @@ const WalkPartner = ({ setIsWalkPartner }) => {
 
       {/* Search bar - always visible */}
       <View style={{ 
-        marginTop: isTapWhere ? height * 0 : 20,
+        marginTop: isTapWhere ? height * 0.13 : 20,
         zIndex: 100,
         position: isTapWhere ? 'absolute' : 'relative',
         top: isTapWhere ? 0 : undefined,
         left: 0,
         right: 0,
         paddingHorizontal: 20,
-        
       }}>
         <WalkPartnerSearchBar 
           isTapWhere={isTapWhere} 

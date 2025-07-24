@@ -1,16 +1,28 @@
-import { StyleSheet, View, TextInput, Image, Dimensions, FlatList, Text, TouchableOpacity } from 'react-native';
+import { 
+  StyleSheet, 
+  View, 
+  TextInput, 
+  Image, 
+  Dimensions, 
+  FlatList, 
+  Text, 
+  TouchableOpacity, 
+  Keyboard 
+} from 'react-native';
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../contexts/ColorContext';
-import { GOOGLE_MAPS_API_KEY } from '@env'
+import { GOOGLE_MAPS_API_KEY } from '@env';
 
-const {width, height} = Dimensions.get("window")
+const { width, height } = Dimensions.get("window");
 
-const WalkPartnerSearchBar = ({isTapWhere, setISTapWhere}) => {
+const WalkPartnerSearchBar = ({ isTapWhere, setISTapWhere }) => {
   const { colors, isDark } = useTheme();
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
-
+  const [pickupLocation, setPickupLocation] = useState('');
+  const [dropoffLocation, setDropoffLocation] = useState('');
+  const [activeInput, setActiveInput] = useState('pickup');
 
   useEffect(() => {
     if (query.length > 2) {
@@ -33,7 +45,6 @@ const WalkPartnerSearchBar = ({isTapWhere, setISTapWhere}) => {
           timeout: 10000,
         }
       );
-      
       const data = await response.json();
       if (data.predictions) {
         setSuggestions(data.predictions);
@@ -47,29 +58,156 @@ const WalkPartnerSearchBar = ({isTapWhere, setISTapWhere}) => {
   };
 
   const handlePlaceSelect = (place) => {
-    setQuery(place.description);
+    if (activeInput === 'pickup') {
+      setPickupLocation(place.description);
+    } else {
+      setDropoffLocation(place.description);
+    }
+    setQuery('');
     setSuggestions([]);
-    // Handle place selection here
+    Keyboard.dismiss();
   };
 
+  const handleInputFocus = (inputType) => {
+    setActiveInput(inputType);
+    if (inputType === 'pickup') {
+      setQuery(pickupLocation);
+    } else {
+      setQuery(dropoffLocation);
+    }
+  };
+
+  const handleQueryChange = (text) => {
+    setQuery(text);
+    if (activeInput === 'pickup') {
+      setPickupLocation(text);
+    } else {
+      setDropoffLocation(text);
+    }
+  };
+
+  const handleClose = () => {
+    setISTapWhere(false);
+    setQuery('');
+    setSuggestions([]);
+    Keyboard.dismiss();
+  };
+
+  if (isTapWhere) {
+    return (
+      <View style={[styles.expandedContainer, { backgroundColor: colors.background }]}>
+        <TouchableOpacity 
+          style={styles.closeButton} 
+          onPress={handleClose}
+        >
+          <Text style={[styles.closeButtonText, { color: colors.text }]}>×</Text>
+        </TouchableOpacity>
+
+        <View style={styles.locationContainer}>
+          {/* Pickup Location */}
+          <View style={styles.locationRow}>
+            <View style={styles.dotContainer}>
+              <View style={[styles.pickupOuter, { backgroundColor: colors.text }]}>
+                <View style={[styles.pickupInner, { backgroundColor: colors.altText }]} />
+              </View>
+            </View>
+            <View style={styles.inputContainer}>
+              <Text style={[styles.locationLabel, { color: "#cbcbcbff" }]}>START POINT</Text>
+              <TextInput
+                style={[styles.locationInput, { 
+                  color: colors.text, 
+                  borderBottomColor: colors.border 
+                }]}
+                placeholder="Horizon Heights Accomodation"
+                placeholderTextColor={isDark ? "#454545ff" : "#757575"}
+                value={activeInput === 'pickup' ? query : pickupLocation}
+                onChangeText={handleQueryChange}
+                onFocus={() => handleInputFocus('pickup')}
+                autoFocus={true}
+              />
+            </View>
+          </View>
+
+          {/* Connecting line */}
+          <View style={styles.connectingLineContainer}>
+            <View style={[styles.connectingLine, { backgroundColor: colors.border }]} />
+          </View>
+
+          {/* Drop off Location */}
+          <View style={styles.locationRow}>
+            <View style={styles.dotContainer}>
+              <View style={[styles.dropoffDot, { backgroundColor: colors.primary }]} />
+            </View>
+            <View style={styles.inputContainer}>
+              <Text style={[styles.locationLabel, { color: "#cbcbcbff" }]}>DESTINATION</Text>
+              <TextInput
+                style={[styles.locationInput, { 
+                  color: colors.text, 
+                  borderBottomColor: colors.border 
+                }]}
+                placeholder="UJ Kingsway Campus"
+                placeholderTextColor={isDark ? "#454545ff" : "#757575"}
+                value={activeInput === 'dropoff' ? query : dropoffLocation}
+                onChangeText={handleQueryChange}
+                onFocus={() => handleInputFocus('dropoff')}
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* Suggestions List */}
+        {suggestions.length > 0 && (
+          <FlatList
+            data={suggestions}
+            keyExtractor={(item) => item.place_id}
+            style={[styles.suggestionsList, { 
+              backgroundColor: colors.cardBackground,
+              borderColor: colors.border
+            }]}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[styles.suggestionItem, { borderBottomColor: colors.border }]}
+                onPress={() => handlePlaceSelect(item)}
+              >
+                <Image 
+                  source={require('../icons/right.png')} 
+                  style={[styles.suggestionIcon, { tintColor: colors.altText }]} 
+                />
+                <Text 
+                  style={[styles.suggestionText, { color: colors.text }]}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {item.description}
+                </Text>
+              </TouchableOpacity>
+            )}
+          />
+        )}
+      </View>
+    );
+  }
+
+  // Original collapsed search bar style
   return (
     <View style={[styles.container, {
-      height: isTapWhere ? height * 0.3 : height * 0.065,
+      height: height * 0.065,
       backgroundColor: colors.background,
       width: width ,
       alignSelf: 'center',
       paddingTop: 10
-      
     }]}>
-      <TouchableOpacity style={styles.searchContainer} onPress={() => {setISTapWhere(!isTapWhere)}}>
-        
-
-        {/* 'where to' square */}
-        <View style={{ width: 10, height: 10, backgroundColor: colors.text, justifyContent: "center", alignItems: "center", marginLeft: 5 }}>
-          <View style={{ width: 4, height: 4, backgroundColor: colors.altText }}>
-           
+      <TouchableOpacity 
+        style={styles.searchContainer} 
+        onPress={() => setISTapWhere(true)}
+      >
+        {/* Original dot-in-square indicator */}
+        <View style={styles.collapsedIndicator}>
+          <View style={[styles.collapsedIndicatorOuter, { backgroundColor: colors.text }]}>
+            <View style={[styles.collapsedIndicatorInner, { backgroundColor: colors.altText }]} />
           </View>
         </View>
+        
         <TextInput
           style={[styles.searchBar, { color: colors.text }]}
           placeholder="Where to?"
@@ -78,29 +216,9 @@ const WalkPartnerSearchBar = ({isTapWhere, setISTapWhere}) => {
           onChangeText={setQuery}
           fontSize={20}
           fontFamily="Helvetica Bold"
-          onPress={() => {setISTapWhere(true)}}
+          editable={false}
         />
       </TouchableOpacity>
-      
-      {suggestions.length > 0 && (
-        <FlatList
-          data={suggestions}
-          keyExtractor={(item) => item.place_id}
-          style={[styles.suggestionsList, { backgroundColor: colors.background }]}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.suggestionItem}
-              onPress={() => handlePlaceSelect(item)}
-            >
-              <Text style={[styles.suggestionText, { color: colors.text }]}>
-                {item.description}
-              </Text>
-            </TouchableOpacity>
-          )}
-        />
-      )}
-
-
     </View>
   );
 };
@@ -108,53 +226,138 @@ const WalkPartnerSearchBar = ({isTapWhere, setISTapWhere}) => {
 export default WalkPartnerSearchBar;
 
 const styles = StyleSheet.create({
-  container: {
-    // position: 'relative',
+  expandedContainer: {
+    width: width * 0.9,
+    minHeight: height * 0.3,
+    maxHeight: height * 0.6,
+    alignSelf: 'center',
+    borderRadius: 12,
+    padding: 16,
+    paddingTop: 40,
+    backgroundColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 12,
+    right: 16,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.05)',
+  },
+  closeButtonText: {
+    fontSize: 22,
+    lineHeight: 24,
+  },
+  locationContainer: {
+    marginTop: 8,
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 4,
+  },
+  dotContainer: {
+    width: 24,
+    alignItems: 'center',
+  },
+  pickupOuter: {
+    width: 10,
+    height: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pickupInner: {
+    width: 4,
+    height: 4,
+  },
+  dropoffDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  connectingLineContainer: {
+    width: 24,
+    alignItems: 'center',
+    height: 20,
+  },
+  connectingLine: {
+    width: 2,
+    height: 20,
+    opacity: 0.5,
+  },
+  inputContainer: {
+    flex: 1,
+  },
+  locationLabel: {
+    fontSize: 8,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  locationInput: {
+    fontSize: 16,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
   },
   searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginTop: 0,
     marginBottom: 10,
-    backgroundColor: "transparent",
-    flexDirection: "row",
-    alignItems: "center",
     marginLeft: width * 0.05,
     borderBottomWidth: 0.5,
     borderBottomColor: '#C1C1C1',
-    backgroundColor: "transparent",
     marginRight: width * 0.09,
+  },
+  collapsedIndicator: {
+    marginLeft: 5
+  },
+  collapsedIndicatorOuter: {
+    width: 10, 
+    height: 10, 
+    justifyContent: "center", 
+    alignItems: "center", 
+  },
+  collapsedIndicatorInner: {
+    width: 4, 
+    height: 4, 
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'transparent',
-    borderRadius: 30,
     height: 46,
     flex: 1,
     fontSize: 20,
     fontFamily: 'Helvetica Bold',
     marginLeft: 5
   },
-  searchIcon: {
-    width: 20,
-    height: 20,
-  },
   suggestionsList: {
-    position: 'absolute',
-    top: 60,
-    left: width * 0.05,
-    right: width * 0.09,
-    backgroundColor: colors => colors.background,
-    zIndex: 10,
-    maxHeight: 200,
+    marginTop: 16,
     borderRadius: 8,
-    overflow: 'hidden',
+    borderWidth: 1,
+    maxHeight: 200,
   },
   suggestionItem: {
-    padding: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+  },
+  suggestionIcon: {
+    width: 20,
+    height: 20,
+    marginRight: 12,
   },
   suggestionText: {
+    flex: 1,
     fontSize: 16,
   },
 });
