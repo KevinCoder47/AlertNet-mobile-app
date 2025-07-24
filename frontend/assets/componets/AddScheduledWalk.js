@@ -42,6 +42,7 @@ const AddScheduledWalk = ({ setIsAddScheduledWalkVisible }) => {
   const [toLocation, setToLocation] = useState('');
   const [scheduleName, setScheduleName] = useState('');
   
+  
   const animatedHeight = useRef(new Animated.Value(50)).current;
 
   const toggleDaySelection = (day) => {
