@@ -11,7 +11,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
-  AntDesign,
   Entypo,
   Feather,
   FontAwesome5,
@@ -20,10 +19,16 @@ import {
   Octicons,
 } from "@expo/vector-icons";
 
-export default function SafetyResources({ setIsSafetyResources, setIsSOS, setIsTestSOS }) {
+export default function SafetyResources({
+  setIsSafetyResources,
+  setIsSOS,
+  setIsTestSOS,
+  setIsLiveLocation,
+  setIsVoiceTrigger
+}) {
   const pan = useRef(new Animated.ValueXY()).current;
 
-  // Setup PanResponder to detect horizontal swipe right
+  // PanResponder for horizontal swipe right gesture to go back
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, gestureState) =>
@@ -35,11 +40,9 @@ export default function SafetyResources({ setIsSafetyResources, setIsSOS, setIsT
       },
       onPanResponderRelease: (_, gestureState) => {
         if (gestureState.dx > 100) {
-          // Trigger "go back"
           setIsSafetyResources(false);
           setIsSOS(true);
         } else {
-          // Snap back to zero position
           Animated.spring(pan, {
             toValue: { x: 0, y: 0 },
             useNativeDriver: true,
@@ -52,7 +55,7 @@ export default function SafetyResources({ setIsSafetyResources, setIsSOS, setIsT
   const SectionHeader = ({ title }) => <Text style={styles.sectionHeader}>{title}</Text>;
 
   const MenuItem = ({ icon, text, onPress }) => (
-    <TouchableOpacity style={styles.menuItem} onPress={onPress}>
+    <TouchableOpacity style={styles.menuItem} onPress={onPress} activeOpacity={0.7}>
       {icon}
       <Text style={styles.menuText}>{text}</Text>
     </TouchableOpacity>
@@ -61,12 +64,14 @@ export default function SafetyResources({ setIsSafetyResources, setIsSOS, setIsT
   return (
     <Animated.View
       {...panResponder.panHandlers}
-      style={{
-        flex: 1,
-        backgroundColor: "#000", // Black backdrop
-        justifyContent: "flex-end",
-        alignItems: "flex-end",
-      }}
+      style={[
+        {
+          flex: 1,
+          backgroundColor: "#000",
+          justifyContent: "flex-end",
+          alignItems: "flex-end",
+        },
+      ]}
     >
       <Animated.View
         style={[
@@ -76,14 +81,13 @@ export default function SafetyResources({ setIsSafetyResources, setIsSOS, setIsT
           },
         ]}
       >
-        {/* Everything inside your white panel */}
         <SafeAreaView style={{ flex: 1 }}>
-          <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 50 }}>
+          <ScrollView contentContainerStyle={styles.scrollContent}>
             <View>
               <Text style={styles.heading}>Safety</Text>
               <Text style={styles.heading}>Resources</Text>
 
-              <TouchableOpacity style={styles.helpIcon}>
+              <TouchableOpacity style={styles.helpIcon} activeOpacity={0.7}>
                 <Octicons name="question" size={30} color="black" />
               </TouchableOpacity>
 
@@ -95,7 +99,7 @@ export default function SafetyResources({ setIsSafetyResources, setIsSOS, setIsT
                 />
               </View>
 
-              {/* Your sections */}
+              {/* Sections */}
               <SectionHeader title="How to Use the App" />
               <MenuItem
                 icon={<MaterialIcons name="sos" size={20} color="black" />}
@@ -105,11 +109,29 @@ export default function SafetyResources({ setIsSafetyResources, setIsSOS, setIsT
                   setIsTestSOS(true);
                 }}
               />
-              <MenuItem icon={<Entypo name="location" size={20} color="black" />} text="How to share Live Location" />
-              <MenuItem icon={<Ionicons name="mic-outline" size={20} color="black" />} text="Activate Voice Recognition (Panic Word)" />
+              <MenuItem
+                icon={<Entypo name="location" size={20} color="black" />}
+                text="How to share Live Location"
+                onPress={() => {
+                  setIsSafetyResources(false);
+                  setIsLiveLocation(true);
+                }}
+              />
+              <MenuItem
+                icon={<Ionicons name="mic-outline" size={20} color="black" />}
+                text="Activate Voice Recognition (Panic Word)"
+                onPress={() => {
+                  console.log("Voice Trigger Clicked")
+                  setIsSafetyResources(false);
+                  setIsVoiceTrigger(true);
+                }}
+              />
 
               <SectionHeader title="Safety Instructions" />
-              <MenuItem icon={<Ionicons name="alert-circle-outline" size={20} color="black" />} text="What to do when feeling unsafe" />
+              <MenuItem
+                icon={<Ionicons name="alert-circle-outline" size={20} color="black" />}
+                text="What to do when feeling unsafe"
+              />
               <MenuItem icon={<FontAwesome5 name="walking" size={20} color="black" />} text="Tips for walking alone" />
               <MenuItem icon={<Feather name="map-pin" size={20} color="black" />} text="Finding safe zones" />
 
@@ -124,7 +146,7 @@ export default function SafetyResources({ setIsSafetyResources, setIsSOS, setIsT
               <SectionHeader title="Download" />
               <MenuItem icon={<Feather name="download" size={20} color="black" />} text="Offline maps" />
 
-              <TouchableOpacity style={styles.logoutBtn}>
+              <TouchableOpacity style={styles.logoutBtn} activeOpacity={0.7}>
                 <Text style={styles.logoutText}>Log out</Text>
                 <MaterialIcons name="logout" size={20} color="red" />
               </TouchableOpacity>
@@ -137,20 +159,13 @@ export default function SafetyResources({ setIsSafetyResources, setIsSOS, setIsT
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-  },
-  backButton: {
-    position: "absolute",
-    top: 10,
-    left: 10,
-    zIndex: 10,
+  scrollContent: {
+    padding: 20,
+    paddingTop: 50,
   },
   heading: {
     fontSize: 25,
     fontWeight: "bold",
-    paddingLeft: 0,
     fontFamily: "Helvetica",
   },
   helpIcon: {

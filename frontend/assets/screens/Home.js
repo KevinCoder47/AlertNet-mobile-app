@@ -1,34 +1,37 @@
 import { StyleSheet, View, Dimensions } from 'react-native';
-import React, { useState } from 'react';
+import React, { use, useState } from 'react';
 import Map from '../componets/Map';
 import TopBar from '../componets/TopBar';
 import BottomNav from '../componets/BottomNav';
-import TopBarSearch from '../componets/TopBarSearch';
-import { useTheme } from '../contexts/ColorContext';
 import { MapProvider } from '../contexts/MapContext';
+
 import WalkPartner from './WalkPartner';
 import SOSPage from './SOS';
-import SOSBtn from '../componets/SOSBtn';
 import QrCode from './QrCode';
 import SafetyResources from '../screens/SafetyResource_Screens/SafetyResources';
 import TestSOS from './SafetyResource_Screens/TestSOS';
+import LiveLocation from './SafetyResource_Screens/LiveLocation';
+import VoiceTrigger from './SafetyResource_Screens/VoiceTrigger';
 
 const { width, height } = Dimensions.get('window');
 
 const Home = () => {
+  // Main state toggles for screens
   const [isNotHome, setIsNotHome] = useState(false);
   const [isSOS, setIsSOS] = useState(false);
   const [isWalkPartner, setIsWalkPartner] = useState(false);
   const [isQrCode, setIsQrCode] = useState(false);
   const [isSafetyResources, setIsSafetyResources] = useState(false);
   const [isTestSOS, setIsTestSOS] = useState(false);
+  const [isLiveLocation, setIsLiveLocation] = useState(false);
+  const [isVoiceTrigger, setIsVoiceTrigger] = useState(false);
 
-  // Conditional screen rendering
+  // Conditional rendering based on state flags
   if (isWalkPartner) {
     return <WalkPartner setIsWalkPartner={setIsWalkPartner} />;
   }
 
-  else if (isSOS) {
+  if (isSOS) {
     return (
       <SOSPage
         setIsSOS={setIsSOS}
@@ -38,11 +41,11 @@ const Home = () => {
     );
   }
 
-  else if (isQrCode) {
+  if (isQrCode) {
     return <QrCode setIsQrCode={setIsQrCode} setIsSOS={setIsSOS} />;
   }
 
-  else if (isTestSOS) {
+  if (isTestSOS) {
     return (
       <TestSOS
         setIsTestSOS={setIsTestSOS}
@@ -51,17 +54,40 @@ const Home = () => {
     );
   }
 
-  else if (isSafetyResources) {
+  if (isLiveLocation) {
+    return (
+      <LiveLocation
+        setIsLiveLocation={setIsLiveLocation}
+        setIsSafetyResources={setIsSafetyResources}
+      />
+    );
+  }
+
+  if (isVoiceTrigger){
+    return(
+      <VoiceTrigger
+        setIsVoiceTrigger={setIsVoiceTrigger}
+        setIsSafetyResources={setIsSafetyResources}
+      />
+    )
+  }
+
+  if (isSafetyResources) {
     return (
       <SafetyResources
         setIsSafetyResources={setIsSafetyResources}
         setIsSOS={setIsSOS}
         setIsTestSOS={setIsTestSOS}
+        setIsLiveLocation={setIsLiveLocation}  // <-- Pass here!
+        setIsVoiceTrigger={setIsVoiceTrigger}
       />
     );
   }
 
-  // Default: show main home layout
+
+  
+
+  // Default home screen layout
   return (
     <MapProvider>
       <View style={styles.container}>
@@ -83,7 +109,7 @@ export default Home;
 
 const styles = StyleSheet.create({
   container: {
-    // You can add flex: 1 if needed
+    // add flex: 1 if needed for full screen sizing
     // flex: 1,
   },
 });

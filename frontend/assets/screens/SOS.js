@@ -12,8 +12,6 @@ import {
 } from 'react-native';
 
 export default function SOS({ setIsSOS, setIsQrCode, setIsSafetyResources }) {
-  console.log("SOS component rendered");
-
   const [activityLog, setActivityLog] = useState([
     { time: '21:45', message: 'Your friends have been notified' },
     { time: '21:47', message: 'Mpilo is on the way to you' },
@@ -31,14 +29,12 @@ export default function SOS({ setIsSOS, setIsQrCode, setIsSafetyResources }) {
 
     setActivityLog((prevLog) => {
       const updatedLog = [...prevLog, { time, message: 'You marked yourself as Safe' }];
-      return updatedLog.slice(-10);
+      return updatedLog.slice(-10); // Keep last 10 entries
     });
 
-    if (activityLog.length < 4) {
-      setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true });
-      }, 100);
-    }
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
 
     alert('Marked as Safe');
   };
