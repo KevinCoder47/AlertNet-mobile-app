@@ -15,14 +15,23 @@ import { GOOGLE_MAPS_API_KEY } from '@env';
 
 const { width, height } = Dimensions.get("window");
 
-const WalkPartnerSearchBar = ({ isTapWhere, setISTapWhere }) => {
+const WalkPartnerSearchBar = ({ isTapWhere, setISTapWhere,locationName,setIsDestinationDone,setIsStartPointDone }) => {
   const { colors, isDark } = useTheme();
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [pickupLocation, setPickupLocation] = useState('');
+
+  // useEffect(() => {
+  //   if (!pickupLocation && userLocation) {
+  //     setPickupLocation(userLocation);
+  //   }
+  // }, [userLocation]);
   const [dropoffLocation, setDropoffLocation] = useState('');
   const [activeInput, setActiveInput] = useState('pickup');
+
+
+  
 
   useEffect(() => {
     if (query.length > 2) {
@@ -58,12 +67,15 @@ const WalkPartnerSearchBar = ({ isTapWhere, setISTapWhere }) => {
   };
 
   const handlePlaceSelect = (place) => {
+    const selectedDescription = place.description;
     if (activeInput === 'pickup') {
-      setPickupLocation(place.description);
+      setPickupLocation(selectedDescription);
+      setIsStartPointDone(true)
     } else {
-      setDropoffLocation(place.description);
+      setDropoffLocation(selectedDescription);
+      setIsDestinationDone(true);
     }
-    setQuery('');
+    setQuery(selectedDescription); // Update the visible query
     setSuggestions([]);
     Keyboard.dismiss();
   };
@@ -71,7 +83,7 @@ const WalkPartnerSearchBar = ({ isTapWhere, setISTapWhere }) => {
   const handleInputFocus = (inputType) => {
     setActiveInput(inputType);
     if (inputType === 'pickup') {
-      setQuery(pickupLocation);
+      setQuery(pickupLocation || locationName);
     } else {
       setQuery(dropoffLocation);
     }
@@ -92,6 +104,8 @@ const WalkPartnerSearchBar = ({ isTapWhere, setISTapWhere }) => {
     setSuggestions([]);
     Keyboard.dismiss();
   };
+
+
 
   if (isTapWhere) {
     return (
@@ -217,6 +231,7 @@ const WalkPartnerSearchBar = ({ isTapWhere, setISTapWhere }) => {
           fontSize={20}
           fontFamily="Helvetica Bold"
           editable={false}
+          onPress={() => setISTapWhere(true)}
         />
       </TouchableOpacity>
     </View>
@@ -234,12 +249,14 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     paddingTop: 40,
-    backgroundColor: 'white',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 6,
+    // position: 'absolute',
+    // top: height * 0.53
+
   },
   closeButton: {
     position: 'absolute',
