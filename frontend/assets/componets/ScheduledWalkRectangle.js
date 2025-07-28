@@ -1,7 +1,6 @@
 import { StyleSheet, Text, View, Image, TouchableOpacity } from 'react-native'
 import React from 'react'
 import { useTheme } from '../contexts/ColorContext'
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const ScheduledWalkRectangle = ({ slot, progress = 0 }) => {
   const { colors, isDark } = useTheme();
@@ -9,37 +8,46 @@ const ScheduledWalkRectangle = ({ slot, progress = 0 }) => {
   if (!slot) {
       return (
           <View>
-          <Text >Slot empty</Text>
+          <Text>Slot empty</Text>
           </View>
       );
   }
 
+  // Test profile pictures
   const prof_pic = [
     require('../images/profile-pictures/14.jpg'),
     require('../images/profile-pictures/cheyenne.jpeg'),
     require('../images/profile-pictures/siphe.jpeg'),
   ];
-    
-    // for testing!!!!!!
+  
+  // Get invited friends count (default to 0 if undefined)
+  const invitedFriendsCount = slot.invitedFriendsCount || 0;
+
+  // Calculate how many profile pictures to show (max 3)
+  const visibleFriendsCount = Math.min(invitedFriendsCount, 3);
+
+        // for testing!!!!!!
     const clearAllData = async () => {
-//   try {
-//     await AsyncStorage.clear();
-//     console.log('✅ AsyncStorage cleared');
-//   } catch (e) {
-//     console.error('❌ Failed to clear AsyncStorage:', e);
-//   }
+  // try {
+  //   await AsyncStorage.clear();
+  //   console.log('✅ AsyncStorage cleared');
+  // } catch (e) {
+  //   console.error('❌ Failed to clear AsyncStorage:', e);
+  // }
 };
 
   return (
     <View>
       {/* main rectangle */}
-      <TouchableOpacity onPress={() => clearAllData()} style={[styles.container, {
-        backgroundColor: isDark ? "#313131" : "#F6F6F6",
-        borderWidth: 0.3,
-        borderColor: "#717171",
-        borderRadius: 10,
-        overflow: 'hidden' // Added for clipping overlay
-      }]}>
+      <TouchableOpacity 
+        style={[styles.container, {
+          backgroundColor: isDark ? "#313131" : "#F6F6F6",
+          borderWidth: 0.3,
+          borderColor: "#717171",
+          borderRadius: 10,
+          overflow: 'hidden' 
+        }]}
+      >
         {/* small circle and name */}
         <View style={{ flexDirection: 'row', gap: 5 }}>
           <View style={{
@@ -75,42 +83,51 @@ const ScheduledWalkRectangle = ({ slot, progress = 0 }) => {
           top: 0,
           left: 0,
           right: 0,
-          height: `${progress * 60}`, // Dynamic height based on final height of 60
+          height: `${progress * 60}`, 
           backgroundColor: slot.themeColor,
           opacity: 0.5,
-          borderBottomLeftRadius: 0, // Only round bottom corners
+          borderBottomLeftRadius: 0,
           borderBottomRightRadius: 0
-        }, ]} />
+        }]} />
       </TouchableOpacity>
 
-      {/* number of people joined */}
-      <View style={{
-        flexDirection: 'row',
-        marginTop: 5,
-        alignItems: 'center',
-        marginLeft: 30
-      }}>
-        {prof_pic.slice(0, 3).map((pic, index) => (
-          <Image
-            key={index}
-            source={pic}
-            style={{
-              width: 25,
-              height: 25,
-              borderRadius: 12.5,
-              marginLeft: index === 0 ? 0 : -10,
-              borderWidth: 1,
-              borderColor: '#fff'
-            }}
-          />
-        ))}
-        <Text style={{
-          fontSize: 11,
-          fontWeight: '700',
-          marginLeft: 5,
-          color: colors.secondary
-        }}>+ {Math.max(0, (prof_pic.length - 3))}</Text>
-      </View>
+      {/* Render friends only if there are any */}
+      {invitedFriendsCount > 0 && (
+        <View style={{
+          flexDirection: 'row',
+          marginTop: 5,
+          alignItems: 'center',
+          marginLeft: 30
+        }}>
+          {/* Render profile pictures - show 1, 2, or 3 based on count */}
+          {Array.from({ length: visibleFriendsCount }).map((_, index) => (
+            <Image
+              key={index}
+              source={prof_pic[index]}
+              style={{
+                width: 25,
+                height: 25,
+                borderRadius: 12.5,
+                marginLeft: index === 0 ? 0 : -10,
+                borderWidth: 1,
+                borderColor: '#fff'
+              }}
+            />
+          ))}
+          
+          {/* Show +count only when more than 3 friends */}
+          {invitedFriendsCount > 3 && (
+            <Text style={{
+              fontSize: 11,
+              fontWeight: '700',
+              marginLeft: 5,
+              color: colors.secondary
+            }}>
+              + {invitedFriendsCount - 3}
+            </Text>
+          )}
+        </View>
+      )}
     </View>
   );
 };

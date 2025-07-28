@@ -41,6 +41,7 @@ const AddScheduledWalk = ({ setIsAddScheduledWalkVisible }) => {
   const [fromLocation, setFromLocation] = useState('');
   const [toLocation, setToLocation] = useState('');
   const [scheduleName, setScheduleName] = useState('');
+  const [invitedFriendsCount, setInvitedFriendsCount] = useState(0);
   
   
   const animatedHeight = useRef(new Animated.Value(50)).current;
@@ -81,7 +82,8 @@ const AddScheduledWalk = ({ setIsAddScheduledWalkVisible }) => {
       to: toLocation,
       scheduleName: scheduleName,
       themeColor: randomColor,
-      id: Date.now().toString() 
+      id: Date.now().toString(), 
+      invitedFriendsCount: invitedFriendsCount
     };
 
     // Add to context (which will update storage and state)
@@ -378,7 +380,14 @@ const AddScheduledWalk = ({ setIsAddScheduledWalkVisible }) => {
                   {/* invite friends */}
         <View style = {{ marginBottom: 20, flexDirection: 'column', marginLeft: 30,}}>
           <Text style={{ color: colors.text ,  marginTop: 10, fontSize: 10 }} >Invite friends</Text>
-          <TouchableOpacity
+            <TouchableOpacity
+              onPress={() => {
+                setInvitedFriendsCount(prev => {
+                  const updatedCount = prev + 1;
+                  // console.log("Invited Friends:", updatedCount);
+                  return updatedCount;
+                });
+              }}
             style={{
               width: 35,
               height: 35,
