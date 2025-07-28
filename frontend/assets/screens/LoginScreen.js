@@ -1,406 +1,177 @@
-import React, { useState, useEffect, useRef } from 'react';
+// screens/LoginScreen.js
+import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  SafeAreaView,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-  ActivityIndicator,
-  Vibration,
-  Animated,
-  Keyboard,
+  View, Text, TextInput, StyleSheet,
+  TouchableOpacity, Dimensions, ImageBackground,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import Icon from 'react-native-vector-icons/Feather';
-import FontAwesome from 'react-native-vector-icons/FontAwesome';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Helper function for password strength
-const getPasswordStrength = (password) => {
-  if (password.length === 0) return { label: '', color: 'transparent' };
-  if (password.length < 6) return { label: 'Weak', color: 'red' };
-  if (password.match(/[A-Z]/) && password.match(/[0-9]/) && password.length >= 8)
-    return { label: 'Strong', color: 'green' };
-  return { label: 'Medium', color: 'orange' };
-};
+const backgroundImage = require('../../assets/background.jpg');
 
-export default function LoginScreen() {
-  const router = useRouter();
+const { width, height } = Dimensions.get('window');
 
-  // Form state
-  const [emailOrPhone, setEmailOrPhone] = useState('');
+const Login = ({ setIsLoggedIn, navigation }) => {
+  const [emailPrefix, setEmailPrefix] = useState('');
   const [password, setPassword] = useState('');
-  const [hidePassword, setHidePassword] = useState(true);
-  const [rememberMe, setRememberMe] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-  // Error messages
-  const [emailError, setEmailError] = useState('');
-  const [passwordError, setPasswordError] = useState('');
-
-  // Animation refs for glow effect
-  const emailAnim = useRef(new Animated.Value(0)).current;
-  const passwordAnim = useRef(new Animated.Value(0)).current;
-
-  // Password strength
-  const passwordStrength = getPasswordStrength(password);
-
-  // Auto-focus email input on mount
-  const emailInputRef = useRef(null);
-  useEffect(() => {
-    const keyboardShowListener = Keyboard.addListener('keyboardDidShow', () => {
-      // Could do extra management here if needed
-    });
-
-    emailInputRef.current?.focus();
-
-    return () => keyboardShowListener.remove();
-  }, []);
-
-  // Glow animation trigger
-  const animateGlow = (animValue, isFocused) => {
-    Animated.timing(animValue, {
-      toValue: isFocused ? 1 : 0,
-      duration: 400,
-      useNativeDriver: false,
-    }).start();
-  };
-
-  // Validation logic
-  const validateForm = () => {
-    let valid = true;
-    if (!emailOrPhone.trim()) {
-      setEmailError('Email or phone is required');
-      valid = false;
+  const handleLogin = async () => {
+    if (emailPrefix.trim() && password.trim()) {
+      await AsyncStorage.setItem('isLoggedIn', 'true');
+      setIsLoggedIn(true);
     } else {
-      setEmailError('');
+      alert('Please enter email and password.');
     }
-    if (!password) {
-      setPasswordError('Password is required');
-      valid = false;
-    } else if (password.length < 6) {
-      setPasswordError('Password must be at least 6 characters');
-      valid = false;
-    } else {
-      setPasswordError('');
-    }
-    return valid;
-  };
-
-  const handleLogin = () => {
-    if (!validateForm()) {
-      Vibration.vibrate(50);
-      return;
-    }
-
-    setLoading(true);
-
-    // Simulate async login delay
-    setTimeout(() => {
-      setLoading(false);
-      router.push('/home');
-    }, 1500);
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ flex: 1 }}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContainer}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.container}>
-            <Text style={styles.title}>Sign In</Text>
+    <ImageBackground
+      source={backgroundImage}
+      style={styles.background}
+      resizeMode="cover"
+    >
+      <View style={styles.overlay}>
+        <Text style={styles.title}>Hello,{"\n"}Welcome Back</Text>
 
-            <Animated.View
-              style={[
-                styles.input,
-                {
-                  borderColor: emailAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: ['#ccc', '#3B82F6'],
-                  }),
-                  shadowColor: '#3B82F6',
-                  shadowOpacity: emailAnim,
-                  shadowRadius: emailAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, 8],
-                  }),
-                },
-              ]}
-            >
-              <TextInput
-                ref={emailInputRef}
-                placeholder="Email or Phone"
-                value={emailOrPhone}
-                onChangeText={setEmailOrPhone}
-                placeholderTextColor="#888"
-                style={styles.textInput}
-                onFocus={() => {
-                  animateGlow(emailAnim, true);
-                  Vibration.vibrate(10);
-                }}
-                onBlur={() => animateGlow(emailAnim, false)}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                returnKeyType="next"
-                onSubmitEditing={() => passwordInputRef.current?.focus()}
-              />
-            </Animated.View>
-            {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
-
-            <Animated.View
-              style={[
-                styles.passwordContainer,
-                {
-                  borderColor: passwordAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: ['#ccc', '#3B82F6'],
-                  }),
-                  shadowColor: '#3B82F6',
-                  shadowOpacity: passwordAnim,
-                  shadowRadius: passwordAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, 8],
-                  }),
-                },
-              ]}
-            >
-              <TextInput
-                ref={passwordInputRef}
-                placeholder="Password"
-                secureTextEntry={hidePassword}
-                value={password}
-                onChangeText={setPassword}
-                placeholderTextColor="#888"
-                style={[styles.textInput, { flex: 1 }]}
-                onFocus={() => {
-                  animateGlow(passwordAnim, true);
-                  Vibration.vibrate(10);
-                }}
-                onBlur={() => animateGlow(passwordAnim, false)}
-                returnKeyType="done"
-                onSubmitEditing={handleLogin}
-              />
-              <TouchableOpacity
-                onPress={() => setHidePassword(!hidePassword)}
-                style={{ paddingHorizontal: 6 }}
-                accessible={true}
-                accessibilityLabel={hidePassword ? "Show password" : "Hide password"}
-              >
-                <Icon
-                  name={hidePassword ? 'eye-off' : 'eye'}
-                  size={22}
-                  color="#3B82F6"
-                />
-              </TouchableOpacity>
-            </Animated.View>
-            {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
-
-            {/* Password strength meter */}
-            {password.length > 0 && (
-              <View style={styles.passwordStrengthContainer}>
-                <View
-                  style={[
-                    styles.passwordStrengthBar,
-                    { backgroundColor: passwordStrength.color },
-                  ]}
-                />
-                <Text style={[styles.passwordStrengthLabel, { color: passwordStrength.color }]}>
-                  {passwordStrength.label}
-                </Text>
-              </View>
-            )}
-
-            <View style={styles.rememberMeContainer}>
-              <TouchableOpacity
-                style={[styles.checkbox, rememberMe && styles.checkboxChecked]}
-                onPress={() => setRememberMe(!rememberMe)}
-                accessible={true}
-                accessibilityLabel="Remember me checkbox"
-              >
-                {rememberMe && <Icon name="check" size={16} color="#fff" />}
-              </TouchableOpacity>
-              <Text style={styles.rememberMeText}>Remember me</Text>
-            </View>
-
-            <TouchableOpacity
-              style={[styles.signInButton, loading && styles.signInButtonDisabled]}
-              onPress={handleLogin}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={styles.signInButtonText}>Sign In</Text>
-              )}
-            </TouchableOpacity>
-
-            <View style={styles.socialIcons}>
-              <TouchableOpacity style={styles.iconButton}>
-                <FontAwesome name="google" size={24} color="#DB4437" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.iconButton}>
-                <FontAwesome name="facebook" size={24} color="#1877F2" />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.signupText}>
-              Don’t have an Account?{' '}
-              <Text
-                style={styles.signUpLink}
-                onPress={() => router.push('/signup')}
-              >
-                Sign Up
-              </Text>
-            </Text>
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Student E-mail</Text>
+          <View style={styles.inputWrapper}>
+            <TextInput
+              placeholder="e.g. 123456"
+              placeholderTextColor="#ccc"
+              style={styles.input}
+              value={emailPrefix}
+              onChangeText={setEmailPrefix}
+            />
+            <Text style={styles.domain}>@student.uj.ac.za</Text>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
-  );
-}
+        </View>
 
-// Create a ref for password input here (to focus from email)
-const passwordInputRef = React.createRef();
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Password</Text>
+          <View style={styles.inputWrapper}>
+            <TextInput
+              placeholder="Enter password"
+              placeholderTextColor="#ccc"
+              style={styles.input}
+              secureTextEntry={!showPassword}
+              value={password}
+              onChangeText={setPassword}
+            />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+              <Ionicons
+                name={showPassword ? 'eye-off' : 'eye'}
+                size={20}
+                color="#ccc"
+                style={{ marginLeft: 8 }}
+              />
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.forgot}>Forgot Password?</Text>
+        </View>
+
+        <TouchableOpacity onPress={handleLogin}>
+          <LinearGradient
+            colors={['#fa6a6a', '#9e2d2d']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.loginBtn}
+          >
+            <Text style={styles.loginText}>Sign In</Text>
+            <Ionicons name="arrow-forward" size={20} color="#fff" />
+          </LinearGradient>
+        </TouchableOpacity>
+
+        {/* ✅ Sign Up Link with Navigation */}
+        <Text style={styles.signup}>
+          Don't have an Account?{' '}
+          <Text
+            style={styles.signupLink}
+            onPress={() => navigation.navigate('signup')}
+          >
+            Sign Up
+          </Text>
+        </Text>
+      </View>
+    </ImageBackground>
+  );
+};
+
+export default Login;
 
 const styles = StyleSheet.create({
-  safeArea: {
+  background: {
     flex: 1,
-    backgroundColor: '#fff',
+    width: width,
+    height: height,
   },
-  scrollContainer: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: 24,
-  },
-  container: {
+  overlay: {
     flex: 1,
+    paddingHorizontal: 24,
     justifyContent: 'center',
   },
   title: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 24,
-    textAlign: 'center',
+    color: '#fff',
+    fontSize: 30,
+    fontWeight: '600',
+    marginBottom: 40,
   },
-  input: {
-    borderWidth: 1,
-    borderRadius: 10,
+  label: {
+    color: '#fff',
+    marginBottom: 6,
+    fontSize: 14,
+  },
+  inputContainer: {
+    marginBottom: 20,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 30,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    marginBottom: 4,
-    borderColor: '#ccc',
-    backgroundColor: '#fff',
-  },
-  passwordContainer: {
-    flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    marginBottom: 4,
-    borderColor: '#ccc',
-    backgroundColor: '#fff',
+    borderColor: '#fff',
   },
-  textInput: {
-    fontSize: 16,
-    color: '#111827',
-  },
-  forgotBtn: {
-    alignItems: 'flex-end',
-    marginBottom: 24,
-  },
-  forgotText: {
-    color: '#3B82F6',
-    fontWeight: '500',
-  },
-  signInButton: {
-    backgroundColor: '#3B82F6',
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  signInButtonDisabled: {
-    backgroundColor: '#9BB7FF',
-  },
-  signInButtonText: {
+  input: {
+    flex: 1,
     color: '#fff',
-    fontSize: 18,
+    fontSize: 16,
+  },
+  domain: {
+    color: '#ccc',
+    fontSize: 14,
+  },
+  forgot: {
+    marginTop: 6,
+    color: '#ccc',
+    fontSize: 12,
+    alignSelf: 'flex-end',
+  },
+  loginBtn: {
+    flexDirection: 'row',
+    paddingVertical: 14,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 10,
+    gap: 10,
+  },
+  loginText: {
+    color: '#fff',
+    fontSize: 16,
     fontWeight: '600',
   },
-  socialIcons: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginBottom: 24,
+  signup: {
+    marginTop: 30,
+    textAlign: 'center',
+    color: '#fff',
   },
-  iconButton: {
-    marginHorizontal: 16,
-    backgroundColor: '#f1f1f1',
-    padding: 12,
-    borderRadius: 50,
-},
-signupText: {
-textAlign: 'center',
-color: '#444',
-fontSize: 14,
-},
-signUpLink: {
-color: '#3B82F6',
-fontWeight: '600',
-},
-errorText: {
-color: 'red',
-marginBottom: 12,
-marginLeft: 8,
-},
-rememberMeContainer: {
-flexDirection: 'row',
-alignItems: 'center',
-marginBottom: 24,
-},
-checkbox: {
-height: 22,
-width: 22,
-borderRadius: 4,
-borderWidth: 1.5,
-borderColor: '#3B82F6',
-marginRight: 8,
-justifyContent: 'center',
-alignItems: 'center',
-},
-checkboxChecked: {
-backgroundColor: '#3B82F6',
-},
-rememberMeText: {
-fontSize: 16,
-color: '#111827',
-},
-passwordStrengthContainer: {
-flexDirection: 'row',
-alignItems: 'center',
-marginBottom: 12,
-paddingHorizontal: 8,
-},
-passwordStrengthBar: {
-height: 6,
-flex: 1,
-borderRadius: 4,
-marginRight: 8,
-},
-passwordStrengthLabel: {
-fontWeight: '600',
-fontSize: 14,
-width: 70,
-textAlign: 'right',
-},
+  signupLink: {
+    color: '#ffbaba',
+    fontWeight: 'bold',
+  },
 });

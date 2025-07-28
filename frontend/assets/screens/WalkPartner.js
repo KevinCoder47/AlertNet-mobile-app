@@ -5,8 +5,11 @@ import WalkPartnerSearchBar from '../componets/WalkPartnerSearchBar'
 import SavedLocation from '../componets/SavedLocation'
 import TimeSlots from './TimeSlots'
 import AddScheduledWalk from '../componets/AddScheduledWalk'; 
-import MapView, { PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
+import MapWithDetails from './MapWithDetails'
+import axios from 'axios';
+import Constants from 'expo-constants';
+import WalkStartPoint from '../componets/WalkStartPoint'
 
 const { width, height } = Dimensions.get('window')
 
@@ -15,104 +18,13 @@ const WalkPartner = ({ setIsWalkPartner }) => {
   const [isAddScheduledWalkVisible, setIsAddScheduledWalkVisible] = useState(false);
   const [isTapWhere, setISTapWhere] = useState(false);
   const [userLocation, setUserLocation] = useState(null);
+  const [locationName, setLocationName] = useState('');
+  const apiKey = Constants.expoConfig?.extra?.GOOGLE_MAPS_API_KEY;
+  const [isDestinationDone, setIsDestinationDone] = useState(false)
+  const [isStartPointDone, setIsStartPointDone] = useState(false)
+  
 
-  // Map styles
-  const MAP_STYLES = {
-    light: [
-      {
-        "elementType": "geometry",
-        "stylers": [{ "color": "#f5f5f5" }]
-      },
-      {
-        "elementType": "labels.icon",
-        "stylers": [{ "visibility": "off" }]
-      },
-      {
-        "elementType": "labels.text.fill",
-        "stylers": [{ "color": "#616161" }]
-      },
-      {
-        "elementType": "labels.text.stroke",
-        "stylers": [{ "color": "#f5f5f5" }]
-      },
-      {
-        "featureType": "poi",
-        "elementType": "labels.text",
-        "stylers": [{ "visibility": "off" }]
-      },
-      {
-        "featureType": "poi.business",
-        "stylers": [{ "visibility": "off" }]
-      },
-      {
-        "featureType": "poi.government",
-        "stylers": [{ "visibility": "off" }]
-      },
-      {
-        "featureType": "poi.medical",
-        "stylers": [{ "visibility": "on" }]
-      },
-      {
-        "featureType": "poi.police",
-        "stylers": [{ "visibility": "on" }]
-      },
-      {
-        "featureType": "poi.attraction",
-        "stylers": [{ "visibility": "off" }]
-      },
-      {
-        "featureType": "poi.school",
-        "stylers": [{ "visibility": "on" }]
-      },
-      {
-        "featureType": "road",
-        "elementType": "geometry",
-        "stylers": [{ "color": "#ffffff" }]
-      },
-      {
-        "featureType": "road.highway",
-        "elementType": "geometry",
-        "stylers": [{ "color": "#dadada" }]
-      },
-      {
-        "featureType": "road.arterial",
-        "elementType": "labels.text.fill",
-        "stylers": [{ "color": "#757575" }]
-      },
-      {
-        "featureType": "road.local",
-        "elementType": "labels.text.fill",
-        "stylers": [{ "color": "#9e9e9e" }]
-      },
-      {
-        "featureType": "transit.station",
-        "stylers": [{ "visibility": "on" }]
-      },
-      {
-        "featureType": "water",
-        "elementType": "geometry",
-        "stylers": [{ "color": "#a8c3d6" }]
-      },
-      {
-        "featureType": "poi.park",
-        "elementType": "geometry",
-        "stylers": [{ "color": "#e0f0e0" }, { "visibility": "on" }]
-      },
-    ],
-    dark: [
-      { elementType: "geometry", stylers: [{ color: "#212121" }] },
-      { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
-      { elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
-      { elementType: "labels.text.stroke", stylers: [{ color: "#212121" }] },
-      { featureType: "administrative", elementType: "geometry", stylers: [{ color: "#757575" }] },
-      { featureType: "poi", stylers: [{ visibility: "off" }] },
-      { featureType: "road", elementType: "geometry", stylers: [{ color: "#383838" }] },
-      { featureType: "road.arterial", elementType: "geometry", stylers: [{ color: "#4a4a4a" }] },
-      { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#616161" }] },
-      { featureType: "transit", stylers: [{ visibility: "off" }] },
-      { featureType: "water", elementType: "geometry", stylers: [{ color: "#000000" }] }
-    ]
-  };
+
 
   //location shortcut variables
   const savedLocations = {
@@ -166,16 +78,52 @@ const WalkPartner = ({ setIsWalkPartner }) => {
     ]).start();
   }, []);
 
+// FIX 1: Create reusable function for reverse geocoding
+  const reverseGeocode = async (coords) => {
+    try {
+      const response = await axios.get('https://maps.googleapis.com/maps/api/geocode/json', {
+        params: {
+          latlng: `${coords.latitude},${coords.longitude}`,
+          key: apiKey
+        }
+      });
+
+      if (response.data.status === 'OK') {
+        const results = response.data.results;
+        if (results.length > 0) {
+          return results[0].formatted_address;
+        }
+      } else {
+        console.warn('Geocoding error:', response.data.status);
+      }
+    } catch (error) {
+      console.error('Failed to reverse geocode with Google Maps:', error);
+    }
+    return "Unknown location";
+  };
+
   // Get user location for map center
   useEffect(() => {
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === 'granted') {
         const location = await Location.getCurrentPositionAsync({});
-        setUserLocation(location.coords);
+        const coords = location.coords;
+        setUserLocation(coords);
+        
+        // FIX 2: Use the reusable geocode function
+        const address = await reverseGeocode(coords);
+        setLocationName(address);
       }
     })();
   }, []);
+
+  // FIX 3: Handle location selection from map
+  const handleLocationSelect = async (selectedCoords) => {
+    setUserLocation(selectedCoords);
+    const address = await reverseGeocode(selectedCoords);
+    setLocationName(address);
+  };
 
   return (
     <Animated.View 
@@ -206,47 +154,36 @@ const WalkPartner = ({ setIsWalkPartner }) => {
         </View>
       )}
 
-      {/* Search bar - always visible */}
-      <View style={{ 
-        marginTop: isTapWhere ? height * 0 : 20,
+      {/* Search bar */}
+      {!isDestinationDone && (
+              <View style={{ 
+        marginTop: isTapWhere ? height * 0.13 : 20,
         zIndex: 100,
         position: isTapWhere ? 'absolute' : 'relative',
         top: isTapWhere ? 0 : undefined,
         left: 0,
         right: 0,
         paddingHorizontal: 20,
-        
       }}>
         <WalkPartnerSearchBar 
           isTapWhere={isTapWhere} 
           setISTapWhere={setISTapWhere}
+          locationName={locationName}
+          setIsDestinationDone={setIsDestinationDone}
+          setIsStartPointDone={setIsStartPointDone}
           onBackPress={isTapWhere ? () => setISTapWhere(false) : undefined}
         />
       </View>
+      )}
 
       {/* Map view when isTapWhere is true */}
       {isTapWhere && (
-        <View style={styles.fullMapContainer}>
-          <MapView
-            style={styles.fullMap}
-            provider={PROVIDER_GOOGLE}
-            customMapStyle={isDark ? MAP_STYLES.dark : MAP_STYLES.light}
-            initialRegion={
-              userLocation ? {
-                latitude: userLocation.latitude,
-                longitude: userLocation.longitude,
-                latitudeDelta: 0.0922,
-                longitudeDelta: 0.0421,
-              } : undefined
-            }
-            showsUserLocation={false}
-            showsMyLocationButton={false}
-            showsCompass={false}
-            showsBuildings={false}
-            showsTraffic={false}
-            showsIndoors={false}
-            toolbarEnabled={false}
-          />
+        <MapWithDetails isTapWhere={isTapWhere} userLocation={userLocation} setUserLocation={setUserLocation}/>
+      )}
+
+      {isDestinationDone && (
+        <View style = {styles.floatingView}>
+          <WalkStartPoint />
         </View>
       )}
 
@@ -320,15 +257,10 @@ const styles = StyleSheet.create({
     fontFamily: "Helvetica",
     fontWeight: 700
   },
-  fullMapContainer: {
-    flex: 1,
+  floatingView: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  fullMap: {
-    ...StyleSheet.absoluteFillObject,
-  },
+    bottom: 20,
+    alignSelf: 'center'
+  }
+
 })

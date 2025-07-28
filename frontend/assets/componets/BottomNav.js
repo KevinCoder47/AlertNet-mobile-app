@@ -4,6 +4,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import SOSBtn from './SOSBtn';
 import { useMapContext } from '../contexts/MapContext';
 import Helpline from './Helpline';
+import PeopleBar from './PeopleBar';
 
 const { width, height } = Dimensions.get('window');
 const BottomNav = ({ isNotHome, setIsNotHome, isWalkPartner, setIsWalkPartner,setIsSOS }) => {
@@ -31,7 +32,7 @@ const BottomNav = ({ isNotHome, setIsNotHome, isWalkPartner, setIsWalkPartner,se
     }
 
     const togglePeople = () => {
-        setIsPeople(true);
+        setIsPeople(!isPeople);
         setIsHome(false);
         setIsWalkPartner(false);
         setIsHelpLine(false);
@@ -79,6 +80,11 @@ const BottomNav = ({ isNotHome, setIsNotHome, isWalkPartner, setIsWalkPartner,se
                     {isHelpLine ? <View style = {{marginHorizontal: -45,}}>
                         <Helpline />
                     </View> : <></> }
+
+                    {/* PeopleBar popup modal */}
+                    {isPeople ? <View style={{ marginHorizontal: -45, }}>
+                        <PeopleBar />
+                    </View> : null}
 
           </View>
 
