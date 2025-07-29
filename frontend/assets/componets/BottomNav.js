@@ -4,6 +4,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import SOSBtn from './SOSBtn';
 import { useMapContext } from '../contexts/MapContext';
 import Helpline from './Helpline';
+import PeopleBar from './PeopleBar';
 
 const { width, height } = Dimensions.get('window');
 const BottomNav = ({ isNotHome, setIsNotHome, isWalkPartner, setIsWalkPartner,setIsSOS }) => {
@@ -31,7 +32,7 @@ const BottomNav = ({ isNotHome, setIsNotHome, isWalkPartner, setIsWalkPartner,se
     }
 
     const togglePeople = () => {
-        setIsPeople(true);
+        setIsPeople(!isPeople);
         setIsHome(false);
         setIsWalkPartner(false);
         setIsHelpLine(false);
@@ -39,7 +40,7 @@ const BottomNav = ({ isNotHome, setIsNotHome, isWalkPartner, setIsWalkPartner,se
     }
 
     const toggleHelpLine = () => {
-        setIsHelpLine(true);
+        setIsHelpLine(!isHelpLine);
         setIsHome(false);
         setIsWalkPartner(false);
         setIsPeople(false);
@@ -52,7 +53,7 @@ const BottomNav = ({ isNotHome, setIsNotHome, isWalkPartner, setIsWalkPartner,se
                   <View style={styles.container}>
           
           {/* Navigation tabs */}
-          <View style={[styles.navContainer, { backgroundColor: "#1C1C1E" }]}>
+          <View style={[styles.navContainer, { backgroundColor: "#1C1C1E",  }]}>
               
               {/* Home button or full map default */}
               <TouchableOpacity style = {{maxWidth: 45, marginLeft: 20}} onPress={toggleHome}>
@@ -76,7 +77,14 @@ const BottomNav = ({ isNotHome, setIsNotHome, isWalkPartner, setIsWalkPartner,se
                     
                     {/* HelpLine popup modal  */}
                     {/* if isHelpLine == true: */}
-                    {isHelpLine ? <Helpline /> : <></> }
+                    {isHelpLine ? <View style = {{marginHorizontal: -45,}}>
+                        <Helpline />
+                    </View> : <></> }
+
+                    {/* PeopleBar popup modal */}
+                    {isPeople ? <View style={{ marginHorizontal: -45, }}>
+                        <PeopleBar />
+                    </View> : null}
 
           </View>
 

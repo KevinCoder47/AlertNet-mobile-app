@@ -8,18 +8,17 @@ import {
   TouchableOpacity,
   View,
   ScrollView,
+  StatusBar,
 } from 'react-native';
 
 export default function SOS({ setIsSOS, setIsQrCode, setIsSafetyResources }) {
-  console.log("SOS component rendered");
-
   const [activityLog, setActivityLog] = useState([
     { time: '21:45', message: 'Your friends have been notified' },
     { time: '21:47', message: 'Mpilo is on the way to you' },
     { time: '21:48', message: 'APB Security is on the way to you.' },
   ]);
 
-  const scrollViewRef = useRef(null); // For auto-scroll
+  const scrollViewRef = useRef(null);
 
   const handleSafePress = () => {
     const now = new Date();
@@ -30,15 +29,12 @@ export default function SOS({ setIsSOS, setIsQrCode, setIsSafetyResources }) {
 
     setActivityLog((prevLog) => {
       const updatedLog = [...prevLog, { time, message: 'You marked yourself as Safe' }];
-      return updatedLog.slice(-10); // Keep only latest 10 entries
+      return updatedLog.slice(-10); // Keep last 10 entries
     });
 
-    // Only auto-scroll if there are 4 or fewer notifications
-    if (activityLog.length < 4) {
-      setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true });
-      }, 100);
-    }
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
 
     alert('Marked as Safe');
   };
@@ -50,12 +46,13 @@ export default function SOS({ setIsSOS, setIsQrCode, setIsSafetyResources }) {
         style={{ flex: 1 }}
         resizeMode="cover"
       >
-        <ExpoStatusBar style="auto" translucent backgroundColor="transparent" />
+        {/* StatusBar Fix */}
+        <ExpoStatusBar style="light" translucent />
+        <View style={{ height: StatusBar.currentHeight, backgroundColor: '#0C0B0E' }} />
 
         {/* Top Header */}
         <View
           style={{
-            marginTop: 50,
             paddingHorizontal: 20,
             flexDirection: 'row',
             alignItems: 'center',
@@ -66,9 +63,9 @@ export default function SOS({ setIsSOS, setIsQrCode, setIsSafetyResources }) {
             onPress={() => setIsSOS(false)}
             style={{
               padding: 10,
-              borderWidth: 0.4, // Add white border
+              borderWidth: 0.4,
               borderColor: 'white',
-              borderRadius: 10, // Circular border for button
+              borderRadius: 10,
             }}
           >
             <Ionicons name="arrow-back" size={23} color="white" />
@@ -135,8 +132,8 @@ export default function SOS({ setIsSOS, setIsQrCode, setIsSafetyResources }) {
 
           <TouchableOpacity
             onPress={() => {
-              setIsSOS(false); // Hide SOS
-              setIsQrCode(true); // Show QrCode
+              setIsSOS(false);
+              setIsQrCode(true);
             }}
           >
             <Image

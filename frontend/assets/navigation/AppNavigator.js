@@ -1,27 +1,65 @@
-import { StyleSheet, View } from 'react-native';
-import React, { useState, useEffect } from 'react';
+// AppNavigator.js
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+
+import AnimatedSplash from '../screens/AnimatedSplash';
+import Login from '../screens/LoginScreen';
+import Signup from '../screens/signup'; // ✅ Import signup
 import Home from '../screens/Home';
-import AnimatedSplash from '../screens/AnimatedSplash'; 
+
+const Stack = createNativeStackNavigator();
 
 const AppNavigator = () => {
-  const [showSplash, setShowSplash] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    setShowSplash(true);
+    const checkLoginStatus = async () => {
+      const status = await AsyncStorage.getItem('isLoggedIn');
+      setIsLoggedIn(status === 'true');
+      setIsLoading(false);
+    };
+    checkLoginStatus();
+  }, []);
+
+  useEffect(() => {
     const timeout = setTimeout(() => {
       setShowSplash(false);
     }, 5300);
+
     return () => clearTimeout(timeout);
   }, []);
 
+  if (showSplash) return <AnimatedSplash />;
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
   return (
-    <View style={{ flex: 1 }}>
-      {showSplash && <AnimatedSplash />}
-      {!showSplash && <Home />}
-    </View>
+    <NavigationContainer>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        {!isLoggedIn ? (
+          <>
+            <Stack.Screen name="LoginScreen">
+              {(props) => <Login {...props} setIsLoggedIn={setIsLoggedIn} />}
+            </Stack.Screen>
+            <Stack.Screen name="signup" component={Signup} />
+          </>
+        ) : (
+          <Stack.Screen name="Home" component={Home} />
+        )}
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 };
 
 export default AppNavigator;
-
-const styles = StyleSheet.create({});
