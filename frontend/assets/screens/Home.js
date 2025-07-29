@@ -12,7 +12,7 @@ import SafetyResources from '../screens/SafetyResource_Screens/SafetyResources';
 import TestSOS from './SafetyResource_Screens/TestSOS';
 import LiveLocation from './SafetyResource_Screens/LiveLocation';
 import VoiceTrigger from './SafetyResource_Screens/VoiceTrigger';
-
+import Unsafe from './SafetyResource_Screens/Unsafe'
 const { width, height } = Dimensions.get('window');
 
 const Home = () => {
@@ -25,6 +25,7 @@ const Home = () => {
   const [isTestSOS, setIsTestSOS] = useState(false);
   const [isLiveLocation, setIsLiveLocation] = useState(false);
   const [isVoiceTrigger, setIsVoiceTrigger] = useState(false);
+  const [isUnsafePage,setIsUnsafePage] = useState(false);
 
   // Conditional rendering based on state flags
   if (isWalkPartner) {
@@ -80,6 +81,17 @@ const Home = () => {
         setIsTestSOS={setIsTestSOS}
         setIsLiveLocation={setIsLiveLocation}  // <-- Pass here!
         setIsVoiceTrigger={setIsVoiceTrigger}
+        setIsUnsafePage={setIsUnsafePage}
+      />
+    );
+  }
+
+  if (isUnsafePage) {
+    return (
+      <Unsafe
+        setIsUnsafePage = {setIsUnsafePage}
+        setIsSafetyResources={setIsSafetyResources}
+        setIsSOS={setIsSOS}
       />
     );
   }
