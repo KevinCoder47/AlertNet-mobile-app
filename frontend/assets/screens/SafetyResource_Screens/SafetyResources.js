@@ -11,7 +11,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
-  AntDesign,
   Entypo,
   Feather,
   FontAwesome5,
@@ -20,10 +19,17 @@ import {
   Octicons,
 } from "@expo/vector-icons";
 
-export default function SafetyResources({ setIsSafetyResources, setIsSOS, setIsTestSOS }) {
+export default function SafetyResources({
+  setIsSafetyResources,
+  setIsSOS,
+  setIsTestSOS,
+  setIsLiveLocation,
+  setIsVoiceTrigger,
+  setIsUnsafePage,
+}) {
   const pan = useRef(new Animated.ValueXY()).current;
 
-  // Setup PanResponder to detect horizontal swipe right
+  // PanResponder for horizontal swipe right gesture to go back
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, gestureState) =>
@@ -35,11 +41,9 @@ export default function SafetyResources({ setIsSafetyResources, setIsSOS, setIsT
       },
       onPanResponderRelease: (_, gestureState) => {
         if (gestureState.dx > 100) {
-          // Trigger "go back"
           setIsSafetyResources(false);
           setIsSOS(true);
         } else {
-          // Snap back to zero position
           Animated.spring(pan, {
             toValue: { x: 0, y: 0 },
             useNativeDriver: true,
@@ -51,161 +55,302 @@ export default function SafetyResources({ setIsSafetyResources, setIsSOS, setIsT
 
   const SectionHeader = ({ title }) => <Text style={styles.sectionHeader}>{title}</Text>;
 
-  const MenuItem = ({ icon, text, onPress }) => (
-    <TouchableOpacity style={styles.menuItem} onPress={onPress}>
-      {icon}
-      <Text style={styles.menuText}>{text}</Text>
+  const MenuItem = ({ icon, text, onPress, showArrow = true }) => (
+    <TouchableOpacity style={styles.menuItem} onPress={onPress} activeOpacity={0.7}>
+      <View style={styles.menuItemContent}>
+        <View style={styles.menuItemLeft}>
+          <View style={styles.iconContainer}>
+            {icon}
+          </View>
+          <Text style={styles.menuText}>{text}</Text>
+        </View>
+        {showArrow && (
+          <MaterialIcons name="chevron-right" size={20} color="#ccc" />
+        )}
+      </View>
     </TouchableOpacity>
   );
 
   return (
-    <Animated.View
-      {...panResponder.panHandlers}
-      style={{
-        flex: 1,
-        backgroundColor: "#000", // Black backdrop
-        justifyContent: "flex-end",
-        alignItems: "flex-end",
-      }}
-    >
+    <SafeAreaView style={styles.safeAreaContainer}>
       <Animated.View
+        {...panResponder.panHandlers}
         style={[
-          styles.slidingPanel,
           {
-            transform: [{ translateX: pan.x }],
+            flex: 1,
+            backgroundColor: "#000",
+            justifyContent: "flex-end",
+            alignItems: "flex-end",
           },
         ]}
       >
-        {/* Everything inside your white panel */}
-        <SafeAreaView style={{ flex: 1 }}>
-          <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 50 }}>
+        <Animated.View
+          style={[
+            styles.slidingPanel,
+            {
+              transform: [{ translateX: pan.x }],
+            },
+          ]}
+        >
+          <View style={{ flex: 1 }}>
+            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
             <View>
-              <Text style={styles.heading}>Safety</Text>
-              <Text style={styles.heading}>Resources</Text>
+              {/* Header */}
+              <View style={styles.header}>
+                <View>
+                  <Text style={styles.heading}>Safety</Text>
+                  <Text style={styles.heading}>Resources</Text>
+                </View>
+                <TouchableOpacity style={styles.helpIcon} activeOpacity={0.7}>
+                  <View style={styles.helpIconCircle}>
+                    <Text style={styles.questionMark}>?</Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
 
-              <TouchableOpacity style={styles.helpIcon}>
-                <Octicons name="question" size={30} color="black" />
-              </TouchableOpacity>
-
+              {/* Search Bar */}
               <View style={styles.searchContainer}>
+                <Feather name="search" size={16} color="#999" style={styles.searchIcon} />
                 <TextInput
                   style={styles.searchInput}
                   placeholder="Search something..."
-                  placeholderTextColor="#888"
+                  placeholderTextColor="#999"
                 />
               </View>
 
-              {/* Your sections */}
+              {/* How to Use the App Section */}
               <SectionHeader title="How to Use the App" />
-              <MenuItem
-                icon={<MaterialIcons name="sos" size={20} color="black" />}
-                text="Test SOS"
-                onPress={() => {
-                  setIsSafetyResources(false);
-                  setIsTestSOS(true);
-                }}
-              />
-              <MenuItem icon={<Entypo name="location" size={20} color="black" />} text="How to share Live Location" />
-              <MenuItem icon={<Ionicons name="mic-outline" size={20} color="black" />} text="Activate Voice Recognition (Panic Word)" />
+              <View style={styles.menuSection}>
+                <MenuItem
+                  icon={<MaterialIcons name="sos" size={18} color="#fff" />}
+                  text="Test SOS"
+                  onPress={() => {
+                    setIsSafetyResources(false);
+                    setIsTestSOS(true);
+                  }}
+                />
+                <View style={styles.separator} />
+                <MenuItem
+                  icon={<Ionicons name="mic-outline" size={18} color="#fff" />}
+                  text="Activate Voice Recognition (Panic Word)"
+                  onPress={() => {
+                    console.log("Voice Trigger Clicked")
+                    setIsSafetyResources(false);
+                    setIsVoiceTrigger(true);
+                  }}
+                />
+              </View>
 
+              {/* Safety Instructions Section */}
               <SectionHeader title="Safety Instructions" />
-              <MenuItem icon={<Ionicons name="alert-circle-outline" size={20} color="black" />} text="What to do when feeling unsafe" />
-              <MenuItem icon={<FontAwesome5 name="walking" size={20} color="black" />} text="Tips for walking alone" />
-              <MenuItem icon={<Feather name="map-pin" size={20} color="black" />} text="Finding safe zones" />
+              <View style={styles.menuSection}>
+                <MenuItem
+                  icon={<Ionicons name="alert-circle-outline" size={18} color="#fff" />}
+                  text="What to do when feeling unsafe"
+                  onPress={() => {
+                    setIsSafetyResources(false);
+                    setIsUnsafePage(true);
+                  }}
+                />
+                <View style={styles.separator} />
+                <MenuItem 
+                  icon={<FontAwesome5 name="walking" size={18} color="#fff" />} 
+                  text="Tips for walking alone" 
+                />
+                <View style={styles.separator} />
+                <MenuItem 
+                  icon={<Feather name="map-pin" size={18} color="#fff" />} 
+                  text="Finding safe zones" 
+                />
+              </View>
 
+              {/* Account Section */}
+              <SectionHeader title="Account" />
+              <View style={styles.menuSection}>
+                <MenuItem 
+                  icon={<MaterialIcons name="subscriptions" size={18} color="#fff" />} 
+                  text="Subscription" 
+                />
+                <View style={styles.separator} />
+                <MenuItem 
+                  icon={<MaterialIcons name="language" size={18} color="#fff" />} 
+                  text="Language" 
+                />
+              </View>
+
+              {/* Info & Support Section */}
               <SectionHeader title="Info & Support" />
-              <MenuItem icon={<Entypo name="video" size={20} color="black" />} text="YouTube safety videos" />
-              <MenuItem icon={<Entypo name="phone" size={20} color="black" />} text="Emergency contact" />
-              <MenuItem icon={<MaterialIcons name="support-agent" size={20} color="black" />} text="Helpline numbers" />
+              <View style={styles.menuSection}>
+                <MenuItem 
+                  icon={<Entypo name="video" size={18} color="#fff" />} 
+                  text="YouTube safety videos" 
+                />
+                <View style={styles.separator} />
+                <MenuItem 
+                  icon={<MaterialIcons name="support-agent" size={18} color="#fff" />} 
+                  text="Emergency contact" 
+                />
+              </View>
 
+              {/* History Section */}
               <SectionHeader title="History" />
-              <MenuItem icon={<FontAwesome5 name="history" size={20} color="black" />} text="Previous walks" />
+              <View style={styles.menuSection}>
+                <MenuItem 
+                  icon={<FontAwesome5 name="walking" size={18} color="#fff" />} 
+                  text="Previous walks" 
+                />
+              </View>
 
+              {/* Download Section */}
               <SectionHeader title="Download" />
-              <MenuItem icon={<Feather name="download" size={20} color="black" />} text="Offline maps" />
+              <View style={styles.menuSection}>
+                <MenuItem 
+                  icon={<Feather name="download" size={18} color="#fff" />} 
+                  text="Offline maps" 
+                />
+              </View>
 
-              <TouchableOpacity style={styles.logoutBtn}>
+              {/* Logout */}
+              <TouchableOpacity style={styles.logoutBtn} activeOpacity={0.7}>
                 <Text style={styles.logoutText}>Log out</Text>
-                <MaterialIcons name="logout" size={20} color="red" />
+                <MaterialIcons name="logout" size={18} color="red" />
               </TouchableOpacity>
             </View>
-          </ScrollView>
-        </SafeAreaView>
+                      </ScrollView>
+          </View>
+        </Animated.View>
       </Animated.View>
-    </Animated.View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeAreaContainer: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "#000",
   },
-  backButton: {
-    position: "absolute",
-    top: 10,
-    left: 10,
-    zIndex: 10,
+  scrollContent: {
+    padding: 20,
+    paddingTop: 40,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 20,
   },
   heading: {
-    fontSize: 25,
+    fontSize: 24,
     fontWeight: "bold",
-    paddingLeft: 0,
     fontFamily: "Helvetica",
+    color: "#000",
+    lineHeight: 28,
   },
   helpIcon: {
-    position: "absolute",
-    top: 10,
-    right: 10,
+    marginTop: 5,
+  },
+  helpIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: "#000",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fff",
+  },
+  questionMark: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#000",
   },
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    backgroundColor: "#f5f5f5",
-    marginTop: 20,
-    marginBottom: 10,
+    borderColor: "#e0e0e0",
+    borderRadius: 25,
+    paddingHorizontal: 15,
+    backgroundColor: "#f8f8f8",
+    marginBottom: 25,
+    height: 45,
+  },
+  searchIcon: {
+    marginRight: 10,
   },
   searchInput: {
     flex: 1,
-    height: 40,
-    fontSize: 16,
+    fontSize: 14,
     color: "#000",
   },
   sectionHeader: {
-    fontWeight: "bold",
-    fontSize: 16,
-    marginTop: 25,
+    fontWeight: "600",
+    fontSize: 13,
     marginBottom: 10,
-    color: "#555",
+    color: "#666",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  menuSection: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   menuItem: {
+    paddingVertical: 15,
+    paddingHorizontal: 15,
+  },
+  menuItemContent: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 10,
-    gap: 15,
+    justifyContent: "space-between",
+  },
+  menuItemLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  iconContainer: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#000",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
   },
   menuText: {
-    fontSize: 16,
+    fontSize: 15,
     color: "#000",
+    flex: 1,
+  },
+  separator: {
+    height: 1,
+    backgroundColor: "#f0f0f0",
+    marginLeft: 55,
   },
   logoutBtn: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 30,
-    gap: 10,
+    justifyContent: "center",
+    marginTop: 20,
+    marginBottom: 20,
+    gap: 8,
   },
   logoutText: {
-    fontSize: 16,
+    fontSize: 15,
     color: "red",
+    fontWeight: "500",
   },
   slidingPanel: {
     width: "90%",
     height: "100%",
-    backgroundColor: "#fff",
+    backgroundColor: "#f9f9f9",
     borderTopLeftRadius: 20,
     borderBottomLeftRadius: 20,
     shadowColor: "#000",

@@ -20,6 +20,11 @@ export default {
       },
       supportsTablet: true,
       bundleIdentifier: 'alertnet.co.za',
+      // ADDED: This key is required by iOS to explain why you need location access.
+      infoPlist: {
+        NSLocationWhenInUseUsageDescription:
+          'This app uses your location for the SOS feature and to verify functionality during tests.',
+      },
     },
     android: {
       config: {
@@ -36,7 +41,18 @@ export default {
     web: {
       favicon: './assets/favicon.png',
     },
-    plugins: ['expo-font', 'expo-router'],
+    // MODIFIED: Added the expo-location plugin here.
+    plugins: [
+      'expo-font',
+      'expo-router',
+      [
+        'expo-location',
+        {
+          locationWhenInUsePermission:
+            'This app uses your location for the SOS feature and to verify functionality during tests.',
+        },
+      ],
+    ],
     extra: {
       eas: {
         projectId: '88c49cde-fb05-4f7a-b0b6-91528eceac23',
