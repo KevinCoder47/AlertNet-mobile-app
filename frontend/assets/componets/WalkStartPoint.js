@@ -21,9 +21,7 @@ const WalkStartPoint = () => {
               name="chevron-back-outline" 
               size={20}
               color={isDark ? "#D6D6D6" : "#606061ff"} 
-            //   style={{ transform: [{ rotate: '45deg' }] }} 
               />
-              {/* <Text style = {{fontSize: 15, color: colors.text}}>Back</Text> */}
           </View>
 
           {/* meet up point 3d, name , and time */}
