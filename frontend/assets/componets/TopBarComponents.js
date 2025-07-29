@@ -5,7 +5,7 @@ import TopBarSearch from './TopBarSearch'
 import { useTheme } from '../contexts/ColorContext'
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
-const TopBarComponents = ({isNotHome}) => {
+const TopBarComponents = ({isNotHome, setIsUserProfile}) => {
   const [userName, setUserName] = useState("Mpilo");
   const [location, setLocation] = useState("School, AuklandPark, Johannesburg");
   const { colors, isDark } = useTheme();
@@ -17,7 +17,7 @@ const TopBarComponents = ({isNotHome}) => {
   useEffect(() => {
     Animated.timing(searchBarHeight, {
       toValue: isNotHome ? 0 : 60, 
-      duration: 350, // Animation duration in ms
+      duration: 350, 
       useNativeDriver: false 
     }).start();
   }, [isNotHome]);
@@ -25,12 +25,18 @@ const TopBarComponents = ({isNotHome}) => {
   return (
     <SafeView style={styles.container}>
       <View style={styles.horizontalView}>
+
         {/* user profile pic */}
-        <TouchableOpacity>
+        <TouchableOpacity
+                    onPress={() => {
+              setIsUserProfile(true)
+              console.log("Profile pressed");
+            }}>
           <ImageBackground
             source={require('../images/user-profile.jpg')}
             style={styles.profilePic}
             imageStyle={styles.profilePicImage}
+
           >
           </ImageBackground>
         </TouchableOpacity>

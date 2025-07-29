@@ -1,18 +1,18 @@
 import React from 'react';
-import { View, Text, StyleSheet,TouchableOpacity } from 'react-native'
+import { View, Text, StyleSheet,TouchableOpacity, Image } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useNavigation } from '@react-navigation/native'; 
 
 //testing 
 
-const MyProfile = () => {
+const MyProfile = ({setIsUserProfile}) => {
 
   const navigation = useNavigation();
 
   return (
     <View style={styles.container}>
     
-    <TouchableOpacity onPress={() => navigation.navigate(Home.js)}>
+    <TouchableOpacity onPress={() => setIsUserProfile(false)} style = {{marginTop: 40}}>
     <Ionicons name="chevron-back" size={28} color="#FFFFFF" />
     </TouchableOpacity>
 
@@ -64,14 +64,14 @@ const MyProfile = () => {
        <TouchableOpacity style={styles.value}> <Text style={styles.buttonText}>View</Text> </TouchableOpacity>
       </View>
       
-      <View style={style.row}>
-        <Text style={style.label}>Privacy & Policy</Text>
-        <TouchableOpacity style={styles.value}> <Text style={styles.button.Tex}>View</Text></TouchableOpacity>
+      <View style={styles.row}>
+        <Text style={styles.label}>Privacy & Policy</Text>
+        <TouchableOpacity style={styles.value}> <Text style={styles.buttonText}>View</Text></TouchableOpacity>
       </View>
 
-      <View style={style.row}>
-        <Text style={style.label}>Permission</Text>s
-        <TouchableOpacity style={styles.value}> <Text style={styles.button.Tex}>Change</Text></TouchableOpacity>
+      <View style={styles.row}>
+        <Text style={styles.label}>Permission</Text>s
+        <TouchableOpacity style={styles.value}> <Text style={styles.buttonText}>Change</Text></TouchableOpacity>
       </View>
        
       const [isLocationOn, setIsLocationOn] = useState(false);
@@ -82,12 +82,12 @@ const MyProfile = () => {
       <Text style={[styles.label, { marginLeft: 8 }]}>Share Live Location</Text>
       </View>
 
-      <Switch
+      {/* <Switch
       value={isLocationOn}
       onValueChange={setIsLocationOn}
       thumbColor={isLocationOn ? '#00FF00' : '#FFFFFF'}
       trackColor={{ false: '#777', true: '#44ff44' }}
-      />
+      /> */}
 </View>
      <TouchableOpacity style={styles.editButton} onPress={() => {}}>
      <Text style={styles.editButtonText}>Edit</Text>
@@ -103,6 +103,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'black',
     padding: 20,
+
   },
   topSection: {
   alignItems: 'center',
