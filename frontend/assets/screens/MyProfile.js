@@ -137,6 +137,7 @@ headerText: {
   fontSize: 20,
   fontWeight: 'bold',
   marginTop: 5,
+  marginBottom: 5,
 },
 
   infoCard: {
@@ -151,13 +152,14 @@ headerText: {
     marginBottom: 15,
   },
   label: {
+   color: '#FFFFFF',
+   fontSize: 15,
+   ontWeight: 'bold',
+  },
+
+  value: {
     color: '#AAAAAA',
     fontSize: 14,
-  },
-  value: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
   },
   buttonText: {
     color: '#FFFFFF',
