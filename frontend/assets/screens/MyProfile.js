@@ -1,18 +1,26 @@
 import React from 'react';
 import { View, Text, StyleSheet,TouchableOpacity } from 'react-native'
-import { Ionicons } from '@expo/vector-icons'; 
+import { Ionicons } from '@expo/vector-icons'
+import { useNavigation } from '@react-navigation/native'; 
 
-
+//testing 
 
 const MyProfile = () => {
+
+  const navigation = useNavigation();
+
   return (
     <View style={styles.container}>
+    
+    <TouchableOpacity onPress={() => navigation.navigate(Home.js)}>
+    <Ionicons name="chevron-back" size={28} color="#FFFFFF" />
+    </TouchableOpacity>
 
     <View style={styles.topSection}>
     
      <Text style={styles.headerText}>My Profile</Text>
  
-    <View style={styles.imageWrapper}>
+    <View style={styles.imageWrapper}>n
     <Image
       source={{ uri: 'https://via.placeholder.com/100' }} 
       style={styles.profileImage}
@@ -62,14 +70,14 @@ const MyProfile = () => {
       </View>
 
       <View style={style.row}>
-        <Text style={style.label}>Permission</Text>
+        <Text style={style.label}>Permission</Text>s
         <TouchableOpacity style={styles.value}> <Text style={styles.button.Tex}>Change</Text></TouchableOpacity>
       </View>
        
       const [isLocationOn, setIsLocationOn] = useState(false);
 
       <View style={styles.row}>
-      <View style={styles.leftSide}>ss
+      <View style={styles.leftSide}>
       <Ionicons name="location-outline" size={20} color="#FFFFFF" />
       <Text style={[styles.label, { marginLeft: 8 }]}>Share Live Location</Text>
       </View>
@@ -83,8 +91,7 @@ const MyProfile = () => {
 </View>
      <TouchableOpacity style={styles.editButton} onPress={() => {}}>
      <Text style={styles.editButtonText}>Edit</Text>
-     </TouchableOpacity>
-</View>
+     </TouchableOpacity></View>
     </View>
   );
 };
