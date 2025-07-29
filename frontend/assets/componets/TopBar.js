@@ -5,9 +5,10 @@ import React, { useState, useEffect, useRef } from 'react'
 import TopBarComponents from './TopBarComponents';
 import { useTheme } from '../contexts/ColorContext';
 
+
 const { width, height } = Dimensions.get('window');
 
-const TopBar = ({isNotHome}) => {
+const TopBar = ({isNotHome, setIsUserProfile}) => {
   const { colors } = useTheme();
   
   const wrapperHeight = useRef(new Animated.Value(isNotHome ? 120 : 190)).current;
@@ -56,7 +57,7 @@ const TopBar = ({isNotHome}) => {
 
   return (
     <Animated.View style={[styles.wrapper, darkModeStyles.wrapper, { height: wrapperHeight }]}>
-      <TopBarComponents isNotHome={isNotHome} />
+      <TopBarComponents isNotHome={isNotHome} setIsUserProfile={setIsUserProfile}/>
       {Platform.OS === 'ios' ? (
         <>
           <View style={[styles.topBarOpacity, darkModeStyles.topBarOpacity, { height: opacityHeight }]} />

@@ -4,6 +4,7 @@ import Map from '../componets/Map';
 import TopBar from '../componets/TopBar';
 import BottomNav from '../componets/BottomNav';
 import { MapProvider } from '../contexts/MapContext';
+import MyProfile from '../screens/MyProfile';
 
 import WalkPartner from './WalkPartner';
 import SOSPage from './SOS';
@@ -25,12 +26,18 @@ const Home = () => {
   const [isTestSOS, setIsTestSOS] = useState(false);
   const [isLiveLocation, setIsLiveLocation] = useState(false);
   const [isVoiceTrigger, setIsVoiceTrigger] = useState(false);
-  const [isUnsafePage,setIsUnsafePage] = useState(false);
+  const [isUnsafePage, setIsUnsafePage] = useState(false);
+  const [isUserProfile, setIsUserProfile] = useState(false);
 
   // Conditional rendering based on state flags
   if (isWalkPartner) {
     return <WalkPartner setIsWalkPartner={setIsWalkPartner} />;
   }
+
+  if (isUserProfile) {
+    return <MyProfile setIsUserProfile={setIsUserProfile} />;
+  }
+
 
   if (isSOS) {
     return (
@@ -104,7 +111,7 @@ const Home = () => {
     <MapProvider>
       <View style={styles.container}>
         <Map />
-        <TopBar />
+        <TopBar setIsUserProfile={setIsUserProfile}/>
         <BottomNav
           isNotHome={isNotHome}
           setIsNotHome={setIsNotHome}
