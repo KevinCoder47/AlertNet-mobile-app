@@ -57,6 +57,7 @@ export default function SOS({ setIsSOS, setIsQrCode, setIsSafetyResources }) {
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'space-between',
+            marginTop: 50
           }}
         >
           <TouchableOpacity
