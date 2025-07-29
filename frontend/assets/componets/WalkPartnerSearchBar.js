@@ -16,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 const { width, height } = Dimensions.get("window");
 
-const WalkPartnerSearchBar = ({ isTapWhere, setISTapWhere,locationName,setIsDestinationDone,setIsStartPointDone }) => {
+const WalkPartnerSearchBar = ({ isTapWhere, setISTapWhere,locationName,setIsDestinationDone,setIsStartPoint }) => {
   const { colors, isDark } = useTheme();
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
@@ -75,6 +75,8 @@ const WalkPartnerSearchBar = ({ isTapWhere, setISTapWhere,locationName,setIsDest
     } else {
       setDropoffLocation(selectedDescription);
       setIsDestinationDone(true);
+      setIsStartPoint(true);
+    
     }
     setQuery(selectedDescription); // Update the visible query
     setSuggestions([]);
