@@ -10,6 +10,7 @@ import MapWithDetails from './MapWithDetails'
 import axios from 'axios';
 import Constants from 'expo-constants';
 import WalkStartPoint from '../componets/WalkStartPoint'
+import PartnerSearch from '../componets/Loaders/PartnerSearch'
 
 const { width, height } = Dimensions.get('window')
 
@@ -22,6 +23,8 @@ const WalkPartner = ({ setIsWalkPartner }) => {
   const apiKey = Constants.expoConfig?.extra?.GOOGLE_MAPS_API_KEY;
   const [isDestinationDone, setIsDestinationDone] = useState(false)
   const [isStartPointDone, setIsStartPointDone] = useState(false)
+  const [isStartPoint, setIsStartPoint] = useState(false);
+  const [isSearchPartner, setIsSearchPartner] = useState(false);
   
 
 
@@ -170,7 +173,8 @@ const WalkPartner = ({ setIsWalkPartner }) => {
           setISTapWhere={setISTapWhere}
           locationName={locationName}
           setIsDestinationDone={setIsDestinationDone}
-          setIsStartPointDone={setIsStartPointDone}
+            setIsStartPointDone={setIsStartPointDone}
+          setIsStartPoint={setIsStartPoint}
           onBackPress={isTapWhere ? () => setISTapWhere(false) : undefined}
         />
       </View>
@@ -181,9 +185,15 @@ const WalkPartner = ({ setIsWalkPartner }) => {
         <MapWithDetails isTapWhere={isTapWhere} userLocation={userLocation} setUserLocation={setUserLocation}/>
       )}
 
-      {isDestinationDone && (
-        <View style = {styles.floatingView}>
-          <WalkStartPoint />
+      {(isDestinationDone && isStartPoint) && (
+        <View style={styles.floatingView}>
+          <WalkStartPoint setIsDestinationDone={setIsDestinationDone} setIsSearchPartner={setIsSearchPartner} setIsStartPoint={setIsStartPoint} />
+        </View>
+      )}
+
+      {isSearchPartner && (
+        <View style={styles.floatingView}>
+          <PartnerSearch />
         </View>
       )}
 

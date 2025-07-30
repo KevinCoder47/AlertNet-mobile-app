@@ -48,8 +48,8 @@
     "react-native-web": "^0.20.0",
     "react-native-webview": "13.13.5",
     "react-native-wheel-picker-expo": "^0.5.4",
-    "react-native-youtube-iframe": "^2.4.1",
-    "react-redux": "^9.2.0"
+    "react-redux": "^9.2.0",
+    "lottie-react-native": "7.2.2"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

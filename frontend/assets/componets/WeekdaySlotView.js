@@ -3,7 +3,12 @@ import React, {useState} from 'react'
 import WeekDayTab from '../componets/WeekDayTab'
 
 const WeekdaySlotView = ({isFullScreen, setIsFullScreen}) => {
-    const [activeIndex, setActiveIndex] = useState(0);
+    const getCurrentWeekdayIndex = () => {
+      const today = new Date();
+      const day = today.getDay(); // 0 (Sun) - 6 (Sat)
+      return (day + 6) % 7; // Adjust to 0 (Mon) - 6 (Sun)
+    };
+    const [activeIndex, setActiveIndex] = useState(getCurrentWeekdayIndex());
     const baseSlots = [8, 4, 13, 5, 3, 0, 1];
     const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
