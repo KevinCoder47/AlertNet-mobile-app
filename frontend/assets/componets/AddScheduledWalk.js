@@ -217,6 +217,8 @@ const AddScheduledWalk = ({ setIsAddScheduledWalkVisible }) => {
                 />
               ))}
             </View>
+
+            {/* comment */}
             
             {/* To Dot */}
             <View style={{
