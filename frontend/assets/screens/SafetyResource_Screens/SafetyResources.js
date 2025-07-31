@@ -32,7 +32,8 @@ export default function SafetyResources({
   setIsLanguagePage,
   setIsSafetyVideos,
   setIsOfflineMap, // ADD THIS,
-  setIsWalkingAloneTips
+  setIsWalkingAloneTips,
+  setIsSubscriptionScreen
 }) {
   const pan = useRef(new Animated.ValueXY()).current;
 
@@ -181,6 +182,10 @@ export default function SafetyResources({
                 <MenuItem 
                   icon={<MaterialIcons name="subscriptions" size={18} color="#fff" />} 
                   text="Subscription" 
+                  onPress={() => {
+                    setIsSafetyResources(false)
+                    setIsSubscriptionScreen(true)
+                  }}
                 />
                 <View style={styles.separator} />
                 <MenuItem 

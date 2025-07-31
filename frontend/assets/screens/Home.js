@@ -14,12 +14,13 @@ import TestSOS from './SafetyResource_Screens/TestSOS';
 import LiveLocation from './SafetyResource_Screens/LiveLocation';
 import VoiceTrigger from './SafetyResource_Screens/VoiceTrigger';
 import Unsafe from './SafetyResource_Screens/Unsafe';
-import PreviousWalks from './SafetyResource_Screens/previousWalks'
-import EmergencyContacts from './SafetyResource_Screens/emergencyContacts'
-import LanguagePage from './SafetyResource_Screens/LanguagePage'
-import SafetyVideos from './SafetyResource_Screens/safetyVideos'
-import OfflineMap from './SafetyResource_Screens/offlineMap'
-import WalkingAloneTips from './SafetyResource_Screens/walkingAlone'; // 1. IMPORT THE TIPS COMPONENT
+import PreviousWalks from './SafetyResource_Screens/previousWalks';
+import EmergencyContacts from './SafetyResource_Screens/emergencyContacts';
+import LanguagePage from './SafetyResource_Screens/LanguagePage';
+import SafetyVideos from './SafetyResource_Screens/safetyVideos';
+import OfflineMap from './SafetyResource_Screens/offlineMap';
+import WalkingAloneTips from './SafetyResource_Screens/walkingAlone';
+import Subscription from './SafetyResource_Screens/Subscription'; // ✅ Don't forget this import
 
 const { width, height } = Dimensions.get('window');
 
@@ -35,12 +36,12 @@ const Home = () => {
   const [isUnsafePage, setIsUnsafePage] = useState(false);
   const [isUserProfile, setIsUserProfile] = useState(false);
   const [isPreviousWalks, setIsPreviousWalks] = useState(false);
-  const [isEmergencyContacts,setIsEmergencyContacts] = useState(false);
+  const [isEmergencyContacts, setIsEmergencyContacts] = useState(false);
   const [isLanguagePage, setIsLanguagePage] = useState(false);
   const [isSafetyVideos, setIsSafetyVideos] = useState(false);
   const [isOfflineMap, setIsOfflineMap] = useState(false);
-  const [isSubscription, setIsSubscription] = useState(false); 
-  const [isWalkingAloneTips ,setIsWalkingAloneTips] = useState(false)
+  const [isSubscriptionScreen, setIsSubscriptionScreen] = useState(false);
+  const [isWalkingAloneTips, setIsWalkingAloneTips] = useState(false);
 
   if (isWalkPartner) {
     return <WalkPartner setIsWalkPartner={setIsWalkPartner} />;
@@ -100,13 +101,13 @@ const Home = () => {
         setIsLiveLocation={setIsLiveLocation}
         setIsVoiceTrigger={setIsVoiceTrigger}
         setIsUnsafePage={setIsUnsafePage}
-        setIsPreviousWalks={setIsPreviousWalks} 
-        setIsEmergencyContacts = {setIsEmergencyContacts}
-        setIsLanguagePage = {setIsLanguagePage}
-        setIsSafetyVideos = {setIsSafetyVideos}
-        setIsOfflineMap = {setIsOfflineMap}
-        setIsSubscription = {setIsSubscription} 
-        setIsWalkingAloneTips = {setIsWalkingAloneTips}
+        setIsPreviousWalks={setIsPreviousWalks}
+        setIsEmergencyContacts={setIsEmergencyContacts}
+        setIsLanguagePage={setIsLanguagePage}
+        setIsSafetyVideos={setIsSafetyVideos}
+        setIsOfflineMap={setIsOfflineMap}
+        setIsSubscriptionScreen={setIsSubscriptionScreen} // ✅ Pass this down
+        setIsWalkingAloneTips={setIsWalkingAloneTips}
       />
     );
   }
@@ -133,28 +134,28 @@ const Home = () => {
   if (isEmergencyContacts) {
     return (
       <EmergencyContacts
-        setIsEmergencyContacts = {setIsEmergencyContacts}
-        setIsSafetyResources = {setIsSafetyResources}
+        setIsEmergencyContacts={setIsEmergencyContacts}
+        setIsSafetyResources={setIsSafetyResources}
       />
-    )
+    );
   }
 
-  if (isLanguagePage){
+  if (isLanguagePage) {
     return (
       <LanguagePage
-        setIsLanguagePage = {setIsLanguagePage}
-        setIsSafetyResources = {setIsSafetyResources}
+        setIsLanguagePage={setIsLanguagePage}
+        setIsSafetyResources={setIsSafetyResources}
       />
-    )
+    );
   }
-  
+
   if (isSafetyVideos) {
     return (
       <SafetyVideos
-        setIsSafetyVideos = {setIsSafetyVideos}
-        setIsSafetyResources = {setIsSafetyResources}
+        setIsSafetyVideos={setIsSafetyVideos}
+        setIsSafetyResources={setIsSafetyResources}
       />
-    )
+    );
   }
 
   if (isOfflineMap) {
@@ -165,24 +166,23 @@ const Home = () => {
       />
     );
   }
-  
-  if (isSubscription) {
+
+  if (isSubscriptionScreen) {
     return (
       <Subscription
-        setIsSubscription={setIsSubscription}
+        setIsSubscriptionScreen={setIsSubscriptionScreen}
         setIsSafetyResources={setIsSafetyResources}
       />
     );
   }
 
-  // 2. ADD THIS BLOCK TO RENDER THE TIPS SCREEN
   if (isWalkingAloneTips) {
-      return (
-          <WalkingAloneTips
-              setIsWalkingAloneTips={setIsWalkingAloneTips}
-              setIsSafetyResources={setIsSafetyResources}
-          />
-      );
+    return (
+      <WalkingAloneTips
+        setIsWalkingAloneTips={setIsWalkingAloneTips}
+        setIsSafetyResources={setIsSafetyResources}
+      />
+    );
   }
 
   return (
@@ -206,6 +206,6 @@ export default Home;
 
 const styles = StyleSheet.create({
   container: {
-    // flex: 1, // uncomment if needed
+    // flex: 1,
   },
 });
