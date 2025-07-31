@@ -1,9 +1,10 @@
 import { StyleSheet, View, Dimensions } from 'react-native';
-import React, { use, useState } from 'react';
+import React, { useState } from 'react';
 import Map from '../componets/Map';
 import TopBar from '../componets/TopBar';
 import BottomNav from '../componets/BottomNav';
 import { MapProvider } from '../contexts/MapContext';
+import MyProfile from '../screens/MyProfile';
 
 import WalkPartner from './WalkPartner';
 import SOSPage from './SOS';
@@ -12,11 +13,17 @@ import SafetyResources from '../screens/SafetyResource_Screens/SafetyResources';
 import TestSOS from './SafetyResource_Screens/TestSOS';
 import LiveLocation from './SafetyResource_Screens/LiveLocation';
 import VoiceTrigger from './SafetyResource_Screens/VoiceTrigger';
-import Unsafe from './SafetyResource_Screens/Unsafe'
+import Unsafe from './SafetyResource_Screens/Unsafe';
+import PreviousWalks from './SafetyResource_Screens/previousWalks'
+import EmergencyContacts from './SafetyResource_Screens/emergencyContacts'
+import LanguagePage from './SafetyResource_Screens/LanguagePage'
+import SafetyVideos from './SafetyResource_Screens/safetyVideos'
+import OfflineMap from './SafetyResource_Screens/offlineMap'
+import WalkingAloneTips from './SafetyResource_Screens/walkingAlone'; // 1. IMPORT THE TIPS COMPONENT
+
 const { width, height } = Dimensions.get('window');
 
 const Home = () => {
-  // Main state toggles for screens
   const [isNotHome, setIsNotHome] = useState(false);
   const [isSOS, setIsSOS] = useState(false);
   const [isWalkPartner, setIsWalkPartner] = useState(false);
@@ -25,11 +32,22 @@ const Home = () => {
   const [isTestSOS, setIsTestSOS] = useState(false);
   const [isLiveLocation, setIsLiveLocation] = useState(false);
   const [isVoiceTrigger, setIsVoiceTrigger] = useState(false);
-  const [isUnsafePage,setIsUnsafePage] = useState(false);
+  const [isUnsafePage, setIsUnsafePage] = useState(false);
+  const [isUserProfile, setIsUserProfile] = useState(false);
+  const [isPreviousWalks, setIsPreviousWalks] = useState(false);
+  const [isEmergencyContacts,setIsEmergencyContacts] = useState(false);
+  const [isLanguagePage, setIsLanguagePage] = useState(false);
+  const [isSafetyVideos, setIsSafetyVideos] = useState(false);
+  const [isOfflineMap, setIsOfflineMap] = useState(false);
+  const [isSubscription, setIsSubscription] = useState(false); 
+  const [isWalkingAloneTips ,setIsWalkingAloneTips] = useState(false)
 
-  // Conditional rendering based on state flags
   if (isWalkPartner) {
     return <WalkPartner setIsWalkPartner={setIsWalkPartner} />;
+  }
+
+  if (isUserProfile) {
+    return <MyProfile setIsUserProfile={setIsUserProfile} />;
   }
 
   if (isSOS) {
@@ -64,13 +82,13 @@ const Home = () => {
     );
   }
 
-  if (isVoiceTrigger){
-    return(
+  if (isVoiceTrigger) {
+    return (
       <VoiceTrigger
         setIsVoiceTrigger={setIsVoiceTrigger}
         setIsSafetyResources={setIsSafetyResources}
       />
-    )
+    );
   }
 
   if (isSafetyResources) {
@@ -79,9 +97,16 @@ const Home = () => {
         setIsSafetyResources={setIsSafetyResources}
         setIsSOS={setIsSOS}
         setIsTestSOS={setIsTestSOS}
-        setIsLiveLocation={setIsLiveLocation}  // <-- Pass here!
+        setIsLiveLocation={setIsLiveLocation}
         setIsVoiceTrigger={setIsVoiceTrigger}
         setIsUnsafePage={setIsUnsafePage}
+        setIsPreviousWalks={setIsPreviousWalks} 
+        setIsEmergencyContacts = {setIsEmergencyContacts}
+        setIsLanguagePage = {setIsLanguagePage}
+        setIsSafetyVideos = {setIsSafetyVideos}
+        setIsOfflineMap = {setIsOfflineMap}
+        setIsSubscription = {setIsSubscription} 
+        setIsWalkingAloneTips = {setIsWalkingAloneTips}
       />
     );
   }
@@ -89,22 +114,82 @@ const Home = () => {
   if (isUnsafePage) {
     return (
       <Unsafe
-        setIsUnsafePage = {setIsUnsafePage}
+        setIsUnsafePage={setIsUnsafePage}
         setIsSafetyResources={setIsSafetyResources}
         setIsSOS={setIsSOS}
       />
     );
   }
 
+  if (isPreviousWalks) {
+    return (
+      <PreviousWalks
+        setIsPreviousWalks={setIsPreviousWalks}
+        setIsSafetyResources={setIsSafetyResources}
+      />
+    );
+  }
 
+  if (isEmergencyContacts) {
+    return (
+      <EmergencyContacts
+        setIsEmergencyContacts = {setIsEmergencyContacts}
+        setIsSafetyResources = {setIsSafetyResources}
+      />
+    )
+  }
+
+  if (isLanguagePage){
+    return (
+      <LanguagePage
+        setIsLanguagePage = {setIsLanguagePage}
+        setIsSafetyResources = {setIsSafetyResources}
+      />
+    )
+  }
   
+  if (isSafetyVideos) {
+    return (
+      <SafetyVideos
+        setIsSafetyVideos = {setIsSafetyVideos}
+        setIsSafetyResources = {setIsSafetyResources}
+      />
+    )
+  }
 
-  // Default home screen layout
+  if (isOfflineMap) {
+    return (
+      <OfflineMap
+        setIsOfflineMap={setIsOfflineMap}
+        setIsSafetyResources={setIsSafetyResources}
+      />
+    );
+  }
+  
+  if (isSubscription) {
+    return (
+      <Subscription
+        setIsSubscription={setIsSubscription}
+        setIsSafetyResources={setIsSafetyResources}
+      />
+    );
+  }
+
+  // 2. ADD THIS BLOCK TO RENDER THE TIPS SCREEN
+  if (isWalkingAloneTips) {
+      return (
+          <WalkingAloneTips
+              setIsWalkingAloneTips={setIsWalkingAloneTips}
+              setIsSafetyResources={setIsSafetyResources}
+          />
+      );
+  }
+
   return (
     <MapProvider>
       <View style={styles.container}>
         <Map />
-        <TopBar />
+        <TopBar setIsUserProfile={setIsUserProfile} />
         <BottomNav
           isNotHome={isNotHome}
           setIsNotHome={setIsNotHome}
@@ -121,7 +206,6 @@ export default Home;
 
 const styles = StyleSheet.create({
   container: {
-    // add flex: 1 if needed for full screen sizing
-    // flex: 1,
+    // flex: 1, // uncomment if needed
   },
 });

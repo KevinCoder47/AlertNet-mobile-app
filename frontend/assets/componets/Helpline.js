@@ -5,8 +5,6 @@ import React, { useState } from 'react'
 const {width, height} = Dimensions.get('window')
 
 
-
-
 const Helpline = () => {
 
   // calling the colors 
@@ -20,8 +18,16 @@ const Helpline = () => {
       <Text style={[styles.subtitle,]} >Stay calm - you not alone , help is available.</Text>
       </View>
 
-      {/* view for all the buttons */}
-      <View>
+
+
+     { /*view for all the buttons */}
+      <View style= {{
+  flexDirection: 'row', 
+  flexWrap: 'wrap', 
+  justifyContent: 'space-between', 
+  paddingHorizontal: 10 
+
+      }}>
 
         {/* police button  */}
         <TouchableOpacity style={[styles.button, {width: 140, height: 60, backgroundColor: '#2c2c2cff'}]}>
@@ -38,8 +44,64 @@ const Helpline = () => {
             </View>
           </View>
         </TouchableOpacity>
+
+        {/*Campus security */}
+        <TouchableOpacity style={[styles.button, {width: 150, height: 60, backgroundColor: '#2c2c2cff'}]}>
+         
+          {/* icon and security detaisl */}
+          <View style = {styles.iconAndDetails}>
+            {/* image for icon  */}
+            <Image source={require('../icons/sheild.png')} style={styles.icon} />
+
+            {/* details view */}
+            <View style = {{}}>
+              <Text style = {[styles.buttonText, {fontWeight: '700'}]}>Campus Security</Text>
+              <Text style = {[styles.buttonText, {fontWeight: '400'}]}>011 559 2885</Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+
+
+        {/* Ambulance button */}
+        <TouchableOpacity style={[styles.button, {width: 140, height: 60, backgroundColor: '#2c2c2cff'}]}>
+         
+          {/* icon and ambulance details*/}
+          <View style = {styles.iconAndDetails}>
+            {/* image for icon  */}
+            <Image source={require('../icons/ambulance.png')} style={styles.icon} />
+
+            {/* details view */}
+            <View style = {{}}>
+              <Text style = {[styles.buttonText, {fontWeight: '700'}]}>AMBULANCE</Text>
+              <Text style = {[styles.buttonText, {fontWeight: '400'}]}>10177</Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+
         
+
+         {/* Add emergency contacts*/}
+        <TouchableOpacity style={[styles.button, {width: 140, height: 60, backgroundColor: '#2c2c2cff'}]}
+        >
+         
+          {/* icon and emergency contacts details*/}
+          <View style = {styles.iconAndDetails}>
+            {/* image for icon  */}
+            <Image source={require('../icons/plus sign.png')} style={styles.icon} />
+
+            {/* details view */}
+            <View style = {{}}>
+              <Text style = {[styles.buttonText, {fontWeight: '700'}]}>Add contact</Text>
+              <Text style = {[styles.buttonText, {fontWeight: '400'}]}></Text>
+            </View>
+          </View>
+        </TouchableOpacity>
       </View>
+
+      
+      
+
+    
       </View>
 
     
@@ -83,6 +145,7 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: "#717171",
     margin: 10,
+    width: 45
   },
   icon: {
     width: 28,
@@ -94,12 +157,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 'auto',
     marginBottom: 'auto',
-    gap: 15
+    gap: 6,
   },
   buttonText: {
     color: 'white'
   }
+  
 
 
-  }
-)
+
+
+}
+);
+

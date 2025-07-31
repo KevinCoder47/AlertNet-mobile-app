@@ -12,10 +12,11 @@ import {
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../contexts/ColorContext';
 import { GOOGLE_MAPS_API_KEY } from '@env';
+import { Ionicons } from '@expo/vector-icons';
 
 const { width, height } = Dimensions.get("window");
 
-const WalkPartnerSearchBar = ({ isTapWhere, setISTapWhere,locationName,setIsDestinationDone,setIsStartPointDone }) => {
+const WalkPartnerSearchBar = ({ isTapWhere, setISTapWhere,locationName,setIsDestinationDone,setIsStartPoint,setIsStartPointDone }) => {
   const { colors, isDark } = useTheme();
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
@@ -74,6 +75,8 @@ const WalkPartnerSearchBar = ({ isTapWhere, setISTapWhere,locationName,setIsDest
     } else {
       setDropoffLocation(selectedDescription);
       setIsDestinationDone(true);
+      setIsStartPoint(true);
+    
     }
     setQuery(selectedDescription); // Update the visible query
     setSuggestions([]);
@@ -183,10 +186,12 @@ const WalkPartnerSearchBar = ({ isTapWhere, setISTapWhere,locationName,setIsDest
                 style={[styles.suggestionItem, { borderBottomColor: colors.border }]}
                 onPress={() => handlePlaceSelect(item)}
               >
-                <Image 
-                  source={require('../icons/right.png')} 
-                  style={[styles.suggestionIcon, { tintColor: colors.altText }]} 
-                />
+            <Ionicons 
+              name="location" 
+              size={10}
+                  color={isDark ? "#D6D6D6" : "#606061ff"} 
+              style={{paddingRight: 10}}
+            />
                 <Text 
                   style={[styles.suggestionText, { color: colors.text }]}
                   numberOfLines={1}

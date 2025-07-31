@@ -19,6 +19,7 @@ import {
   Octicons,
 } from "@expo/vector-icons";
 
+// 1. Add setIsOfflineMap to the props here
 export default function SafetyResources({
   setIsSafetyResources,
   setIsSOS,
@@ -26,6 +27,12 @@ export default function SafetyResources({
   setIsLiveLocation,
   setIsVoiceTrigger,
   setIsUnsafePage,
+  setIsPreviousWalks, 
+  setIsEmergencyContacts,
+  setIsLanguagePage,
+  setIsSafetyVideos,
+  setIsOfflineMap, // ADD THIS,
+  setIsWalkingAloneTips
 }) {
   const pan = useRef(new Animated.ValueXY()).current;
 
@@ -156,6 +163,10 @@ export default function SafetyResources({
                 <MenuItem 
                   icon={<FontAwesome5 name="walking" size={18} color="#fff" />} 
                   text="Tips for walking alone" 
+                  onPress={() => {
+                    setIsSafetyResources(false)
+                    setIsWalkingAloneTips(true)
+                  }}
                 />
                 <View style={styles.separator} />
                 <MenuItem 
@@ -175,6 +186,10 @@ export default function SafetyResources({
                 <MenuItem 
                   icon={<MaterialIcons name="language" size={18} color="#fff" />} 
                   text="Language" 
+                  onPress={() => {
+                    setIsSafetyResources(false)
+                    setIsLanguagePage(true)
+                  }}
                 />
               </View>
 
@@ -184,11 +199,19 @@ export default function SafetyResources({
                 <MenuItem 
                   icon={<Entypo name="video" size={18} color="#fff" />} 
                   text="YouTube safety videos" 
+                  onPress={() => {
+                    setIsSafetyResources(false)
+                    setIsSafetyVideos(true)
+                  }}
                 />
                 <View style={styles.separator} />
                 <MenuItem 
                   icon={<MaterialIcons name="support-agent" size={18} color="#fff" />} 
-                  text="Emergency contact" 
+                  text="Emergency contact"
+                  onPress={() => {
+                    setIsSafetyResources(false);
+                    setIsEmergencyContacts(true);
+                  }} 
                 />
               </View>
 
@@ -197,16 +220,25 @@ export default function SafetyResources({
               <View style={styles.menuSection}>
                 <MenuItem 
                   icon={<FontAwesome5 name="walking" size={18} color="#fff" />} 
-                  text="Previous walks" 
+                  text="Previous walks"
+                  onPress={() => {
+                    setIsSafetyResources(false);
+                    setIsPreviousWalks(true);
+                  }}
                 />
               </View>
 
               {/* Download Section */}
               <SectionHeader title="Download" />
               <View style={styles.menuSection}>
+                {/* 2. Add the onPress handler to this MenuItem */}
                 <MenuItem 
                   icon={<Feather name="download" size={18} color="#fff" />} 
                   text="Offline maps" 
+                  onPress={() => {
+                    setIsSafetyResources(false);
+                    setIsOfflineMap(true);
+                  }}
                 />
               </View>
 
