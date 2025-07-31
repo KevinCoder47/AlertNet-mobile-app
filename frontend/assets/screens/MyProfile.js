@@ -1,13 +1,21 @@
-import React from 'react';
-import { View, Text, StyleSheet,TouchableOpacity, Image } from 'react-native'
+import React, {useState} from 'react';
+import { View, Text, StyleSheet,TouchableOpacity, Image,TextInput } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useNavigation } from '@react-navigation/native'; 
+import { useTheme } from '../contexts/ColorContext';
 
 //testing 
 
 const MyProfile = ({setIsUserProfile}) => {
 
   const navigation = useNavigation();
+  const [isLocationOn, setIsLocationOn] = useState(false);
+  const [userFullName,setUserFullName] = useState('Musa Buthelezi')
+  const { colors } = useTheme();
+
+  const [isEditing, setIsEditing] = useState(false);
+  const dark = false
+
 
   return (
     <View style={styles.container}>
@@ -18,9 +26,9 @@ const MyProfile = ({setIsUserProfile}) => {
 
     <View style={styles.topSection}>
     
-     <Text style={styles.headerText}>My Profile</Text>
+        <Text style={styles.headerText}>My Profile</Text>
  
-    <View style={styles.imageWrapper}>n
+    <View style={styles.imageWrapper}>
     <Image
       source={{ uri: 'https://via.placeholder.com/100' }} 
       style={styles.profileImage}
@@ -35,9 +43,17 @@ const MyProfile = ({setIsUserProfile}) => {
 
       <View style={styles.infoCard}>
       <View style={styles.row}>
-        <Text style={styles.label}>FullName</Text>
-        <Text style={styles.value}>Mpilonhle Radebe</Text>
-      </View>
+          <Text style={styles.label}>FullName</Text>
+          
+          {/* user Full name */}
+          <TextInput
+            value={userFullName}
+            onChangeText={setUserFullName}
+            editable = {isEditing}
+            style={[styles.value, { color: colors.text, }]} />
+
+        </View>
+
 
       <View style={styles.row}>
         <Text style={styles.label}>UserName</Text>
@@ -61,20 +77,24 @@ const MyProfile = ({setIsUserProfile}) => {
 
       <View style={styles.row}>
        <Text style={styles.label}>Terms and Conditions</Text>
-       <TouchableOpacity style={styles.value}> <Text style={styles.buttonText}>View</Text> </TouchableOpacity>
+          <TouchableOpacity style={styles.value}>
+            <Text style={styles.buttonText}>View</Text>
+          </TouchableOpacity>
       </View>
       
       <View style={styles.row}>
         <Text style={styles.label}>Privacy & Policy</Text>
-        <TouchableOpacity style={styles.value}> <Text style={styles.buttonText}>View</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.value}>
+            <Text style={styles.buttonText}>View</Text>
+          </TouchableOpacity>
       </View>
 
       <View style={styles.row}>
-        <Text style={styles.label}>Permission</Text>s
+        <Text style={styles.label}>Permission</Text>
         <TouchableOpacity style={styles.value}> <Text style={styles.buttonText}>Change</Text></TouchableOpacity>
       </View>
        
-      const [isLocationOn, setIsLocationOn] = useState(false);
+      
 
       <View style={styles.row}>
       <View style={styles.leftSide}>
@@ -82,15 +102,15 @@ const MyProfile = ({setIsUserProfile}) => {
       <Text style={[styles.label, { marginLeft: 8 }]}>Share Live Location</Text>
       </View>
 
-      {/* <Switch
-      value={isLocationOn}
-      onValueChange={setIsLocationOn}
-      thumbColor={isLocationOn ? '#00FF00' : '#FFFFFF'}
-      trackColor={{ false: '#777', true: '#44ff44' }}
-      /> */}
-</View>
-     <TouchableOpacity style={styles.editButton} onPress={() => {}}>
-     <Text style={styles.editButtonText}>Edit</Text>
+
+        </View>
+        
+        {/* edit button */}
+     <TouchableOpacity style={styles.editButton} onPress={() => {setIsEditing(!isEditing)}}>  initially isEditing = false, new = true, new-new = fasle
+          {/* <Text style={styles.editButtonText}>Edit</Text> */}
+          {/* <Text style={styles.editButtonText}>Save</Text> */}
+          {isEditing ? <Text style={styles.editButtonText}>Save</Text> : <Text style={styles.editButtonText}>Edit</Text>}
+
      </TouchableOpacity></View>
     </View>
   );
@@ -137,7 +157,7 @@ headerText: {
   fontSize: 20,
   fontWeight: 'bold',
   marginTop: 5,
-  marginBottom: 5,
+  marginBottom: 20,
 },
 
   infoCard: {
@@ -145,6 +165,7 @@ headerText: {
     borderRadius: 15,
     padding: 20,
     marginTop: 20,
+    gap: 10,
   },
   row: {
     flexDirection: 'row',
@@ -152,14 +173,15 @@ headerText: {
     marginBottom: 15,
   },
   label: {
-   color: '#FFFFFF',
-   fontSize: 15,
-   ontWeight: 'bold',
-  },
-
-  value: {
     color: '#AAAAAA',
     fontSize: 14,
+  },
+
+
+  value: {
+     color: '#FFFFFF',
+   fontSize: 13,
+   fontWeight: 'bold',
   },
   buttonText: {
     color: '#FFFFFF',
@@ -185,7 +207,3 @@ editButtonText: {
   fontWeight: 'bold',
 }
 });
-
-
-
-

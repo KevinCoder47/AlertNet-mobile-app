@@ -11,5 +11,5 @@ module.exports = {
         },
       },
     },
-    assets: ['./src/assets/fonts/'], // Custom font path
+    assets: ['./assets/fonts'], // Custom font path
   };
