@@ -3,14 +3,13 @@ import { StyleSheet, View, Text, Button } from 'react-native';
 import { ThemeProvider, useTheme } from './assets/contexts/ColorContext';
 import AppNavigator from './assets/navigation/AppNavigator';
 import { ScheduledSlotsProvider } from './assets/contexts/ScheduledSlotsContext';
-import OnBoarding from './assets/screens/OnBoarding';
+
 
 export default function App() {
   return (
     <ScheduledSlotsProvider>
       <ThemeProvider>
         <AppNavigator />
-        {/* <OnBoarding /> */}
       </ThemeProvider>
     </ScheduledSlotsProvider>
   );

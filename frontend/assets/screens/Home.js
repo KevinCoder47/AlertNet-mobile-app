@@ -24,7 +24,7 @@ import Subscription from './SafetyResource_Screens/Subscription'; // ✅ Don't f
 
 const { width, height } = Dimensions.get('window');
 
-const Home = () => {
+const Home = ({handleLogout}) => {
   const [isNotHome, setIsNotHome] = useState(false);
   const [isSOS, setIsSOS] = useState(false);
   const [isWalkPartner, setIsWalkPartner] = useState(false);
@@ -101,13 +101,14 @@ const Home = () => {
         setIsLiveLocation={setIsLiveLocation}
         setIsVoiceTrigger={setIsVoiceTrigger}
         setIsUnsafePage={setIsUnsafePage}
-        setIsPreviousWalks={setIsPreviousWalks}
-        setIsEmergencyContacts={setIsEmergencyContacts}
-        setIsLanguagePage={setIsLanguagePage}
-        setIsSafetyVideos={setIsSafetyVideos}
-        setIsOfflineMap={setIsOfflineMap}
-        setIsSubscriptionScreen={setIsSubscriptionScreen} // ✅ Pass this down
+        setIsPreviousWalks={setIsPreviousWalks} 
+        setIsEmergencyContacts = {setIsEmergencyContacts}
+        setIsLanguagePage = {setIsLanguagePage}
+        setIsSafetyVideos = {setIsSafetyVideos}
+        setIsOfflineMap = {setIsOfflineMap}
+        setIsSubscription = {setIsSubscription} 
         setIsWalkingAloneTips={setIsWalkingAloneTips}
+        handleLogout = {handleLogout}
       />
     );
   }

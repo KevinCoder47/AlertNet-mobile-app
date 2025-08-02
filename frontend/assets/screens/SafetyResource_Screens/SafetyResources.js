@@ -33,7 +33,7 @@ export default function SafetyResources({
   setIsSafetyVideos,
   setIsOfflineMap, // ADD THIS,
   setIsWalkingAloneTips,
-  setIsSubscriptionScreen
+  handleLogout
 }) {
   const pan = useRef(new Animated.ValueXY()).current;
 
@@ -248,7 +248,9 @@ export default function SafetyResources({
               </View>
 
               {/* Logout */}
-              <TouchableOpacity style={styles.logoutBtn} activeOpacity={0.7}>
+                <TouchableOpacity style={styles.logoutBtn} activeOpacity={0.7}
+                onPress={handleLogout}
+                >
                 <Text style={styles.logoutText}>Log out</Text>
                 <MaterialIcons name="logout" size={18} color="red" />
               </TouchableOpacity>

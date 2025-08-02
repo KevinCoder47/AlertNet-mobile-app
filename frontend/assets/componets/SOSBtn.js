@@ -1,14 +1,27 @@
 import { StyleSheet, Text, View, TouchableOpacity, Dimensions } from 'react-native'
-import React from 'react'
+import React, {useState} from 'react'
 
 const { width, height } = Dimensions.get('window');
-const SOSBtn = ({onPress}) => {
+const SOSBtn = ({ onPress, isSOSPreview, setIsSOSPreview }) => {
+    const [isTest, setIsTest] = useState(false);
+    
+    // only for onboarding display
+    const previewTest = () => {
+        if (isSOSPreview) {
+           setIsTest(true)
+        }
+        else {
+            onPress();
+        }
+    }
+
   return (
       <TouchableOpacity
       style={styles.container}
       onPress={() => {
         console.log('SOS Button Pressed');
-        onPress();
+          // onPress();
+          previewTest()
       }}
     >
           <View style={styles.innerCircle1}>
