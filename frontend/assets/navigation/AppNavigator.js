@@ -76,6 +76,7 @@ const handleLogout = () => {
             await AsyncStorage.removeItem('isLoggedIn');
             await AsyncStorage.multiRemove(['userToken', 'userData']);
             setIsLoggedIn(false);
+            setShowOnboarding(true);
           } catch (error) {
             console.error('Logout failed:', error);
             Alert.alert('Logout Error', 'Failed to log out. Please try again.');

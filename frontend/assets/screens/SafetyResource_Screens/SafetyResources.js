@@ -33,7 +33,8 @@ export default function SafetyResources({
   setIsSafetyVideos,
   setIsOfflineMap, // ADD THIS,
   setIsWalkingAloneTips,
-  handleLogout
+  handleLogout,
+  setIsSubscriptionScreen, 
 }) {
   const pan = useRef(new Animated.ValueXY()).current;
 

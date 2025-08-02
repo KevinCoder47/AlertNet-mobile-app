@@ -42,6 +42,7 @@ const Home = ({handleLogout}) => {
   const [isOfflineMap, setIsOfflineMap] = useState(false);
   const [isSubscriptionScreen, setIsSubscriptionScreen] = useState(false);
   const [isWalkingAloneTips, setIsWalkingAloneTips] = useState(false);
+  const [isSubscription, setIsSubscription] = useState(false);
 
   if (isWalkPartner) {
     return <WalkPartner setIsWalkPartner={setIsWalkPartner} />;
@@ -108,7 +109,8 @@ const Home = ({handleLogout}) => {
         setIsOfflineMap = {setIsOfflineMap}
         setIsSubscription = {setIsSubscription} 
         setIsWalkingAloneTips={setIsWalkingAloneTips}
-        handleLogout = {handleLogout}
+        handleLogout={handleLogout}
+        setIsSubscriptionScreen = {setIsSubscriptionScreen}
       />
     );
   }
