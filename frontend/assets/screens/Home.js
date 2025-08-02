@@ -23,7 +23,7 @@ import WalkingAloneTips from './SafetyResource_Screens/walkingAlone'; // 1. IMPO
 
 const { width, height } = Dimensions.get('window');
 
-const Home = () => {
+const Home = ({handleLogout}) => {
   const [isNotHome, setIsNotHome] = useState(false);
   const [isSOS, setIsSOS] = useState(false);
   const [isWalkPartner, setIsWalkPartner] = useState(false);
@@ -106,7 +106,8 @@ const Home = () => {
         setIsSafetyVideos = {setIsSafetyVideos}
         setIsOfflineMap = {setIsOfflineMap}
         setIsSubscription = {setIsSubscription} 
-        setIsWalkingAloneTips = {setIsWalkingAloneTips}
+        setIsWalkingAloneTips={setIsWalkingAloneTips}
+        handleLogout = {handleLogout}
       />
     );
   }
