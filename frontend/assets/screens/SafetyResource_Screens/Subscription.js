@@ -10,7 +10,7 @@ import {
   FlatList,
   Dimensions,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
+import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/Feather';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -24,7 +24,7 @@ const plans = [
   { id: 'plus', name: 'Plus' },
 ];
 
-const SubscriptionScreen = () => {
+const SubscriptionScreen = ({setIsSubscriptionScreen, setIsSafetyResources}) => {
   const [trialEnabled, setTrialEnabled] = useState(true);
   const [selectedPlan, setSelectedPlan] = useState('monthly');
   const [activeIndex, setActiveIndex] = useState(1);
@@ -59,9 +59,12 @@ const SubscriptionScreen = () => {
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.topSection}>
           <View style={styles.header}>
-            <TouchableOpacity>
-              <Icon name="arrow-left" size={24} color="#000" />
-            </TouchableOpacity>
+            <TouchableOpacity onPress={() => {setIsSubscriptionScreen(false)
+            setIsSafetyResources(true)
+            }}>
+            <Icon name="arrow-left" size={24} color="#000" />
+          </TouchableOpacity>
+
             <TouchableOpacity>
               <Icon name="menu" size={24} color="#000" />
             </TouchableOpacity>
