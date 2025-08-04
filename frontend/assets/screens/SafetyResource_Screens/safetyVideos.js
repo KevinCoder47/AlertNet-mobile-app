@@ -9,11 +9,9 @@ import {
   Linking,
   Alert,
   Image,
-  ActivityIndicator, // Import ActivityIndicator for a loading spinner
+  ActivityIndicator,
 } from 'react-native';
-
-// --- IMPORTANT: Paste your YouTube API Key here ---
-const YOUTUBE_API_KEY = 'AIzaSyCe98TpaYgAWEeZhNFBd-6Sg7U3Ig4XnDU'; 
+import { YOUTUBE_API_KEY } from '@env';
 
 // --- The initial data is now much simpler. We only need the videoId and category. ---
 const initialVideoData = [
@@ -28,25 +26,37 @@ const initialVideoData = [
 const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
 const SafetyVideos = ({ setIsSafetyVideos, setIsSafetyResources }) => {
-  // State to hold the full video details once fetched
   const [fetchedVideos, setFetchedVideos] = useState([]);
-  // State to manage the loading status
   const [isLoading, setIsLoading] = useState(true);
 
+  // --- CORRECTED useEffect ---
+  // We only need one useEffect hook here.
   useEffect(() => {
+    console.log('My YouTube API Key is:', YOUTUBE_API_KEY); // For debugging
+
+    if (!YOUTUBE_API_KEY) {
+      Alert.alert(
+        'Configuration Error',
+        'YouTube API Key not found. Please check your .env setup and restart the app.'
+      );
+      setIsLoading(false);
+      return;
+    }
+
     const fetchVideoDetails = async () => {
-      // Create a comma-separated string of all video IDs for an efficient, single API call
       const videoIds = initialVideoData.map(v => v.videoId).join(',');
-      
-      // Construct the API URL. We ask for 'snippet' (title, channel) and 'statistics' (view count)
       const apiUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id=${videoIds}&key=${YOUTUBE_API_KEY}`;
 
       try {
         const response = await fetch(apiUrl);
         const data = await response.json();
 
+        if (data.error) {
+          Alert.alert('YouTube API Error', data.error.message);
+          return;
+        }
+
         if (data.items) {
-          // Map the API response back to our original structure
           const detailedVideos = initialVideoData.map(initialVideo => {
             const apiDetails = data.items.find(item => item.id === initialVideo.videoId);
             if (apiDetails) {
@@ -55,21 +65,24 @@ const SafetyVideos = ({ setIsSafetyVideos, setIsSafetyResources }) => {
                 video: {
                   title: apiDetails.snippet.title,
                   channel: apiDetails.snippet.channelTitle,
-                  // Format view count to be more readable
-                  views: `${Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(apiDetails.statistics.viewCount)} views`,
+                  views: `${Intl.NumberFormat('en-US', {
+                    notation: 'compact',
+                    maximumFractionDigits: 1,
+                  }).format(apiDetails.statistics.viewCount)} views`,
                   videoId: initialVideo.videoId,
                 },
               };
             }
-            return initialVideo; // Fallback in case a video isn't found
-          });
+            return null; // Return null if a video is not found
+          }).filter(Boolean); // Filter out any null values
+
           setFetchedVideos(detailedVideos);
         }
       } catch (error) {
         console.error("Failed to fetch video details:", error);
         Alert.alert("Error", "Could not load video details. Please check your connection.");
       } finally {
-        setIsLoading(false); // Stop loading, whether successful or not
+        setIsLoading(false);
       }
     };
 
@@ -77,6 +90,7 @@ const SafetyVideos = ({ setIsSafetyVideos, setIsSafetyResources }) => {
   }, []); // The empty array [] ensures this effect runs only once when the component mounts
 
   const handleVideoSelect = async (videoId) => {
+    if (!videoId) return; // Prevent crash if videoId is missing
     const youtubeURL = `https://www.youtube.com/watch?v=${videoId}`;
     const supported = await Linking.canOpenURL(youtubeURL);
     if (supported) {
@@ -97,12 +111,10 @@ const SafetyVideos = ({ setIsSafetyVideos, setIsSafetyResources }) => {
 
       <View style={styles.mainContent}>
         {isLoading ? (
-          // Show a loading spinner in the center while fetching data
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#d9534f" />
           </View>
         ) : (
-          // Once loaded, show the video list
           <>
             <ScrollView
               contentContainerStyle={styles.scrollContainer}
@@ -111,19 +123,22 @@ const SafetyVideos = ({ setIsSafetyVideos, setIsSafetyResources }) => {
               {fetchedVideos.map((item, index) => (
                 <View key={index} style={styles.categoryContainer}>
                   <Text style={styles.categoryTitle}>{item.category}</Text>
-                  <TouchableOpacity onPress={() => handleVideoSelect(item.video.videoId)}>
-                    <View style={styles.videoCard}>
-                      <Image
-                        source={{ uri: `https://img.youtube.com/vi/${item.video.videoId}/hqdefault.jpg` }}
-                        style={styles.thumbnail}
-                      />
-                      <View style={styles.videoInfo}>
-                        <Text style={styles.videoTitle}>{item.video.title}</Text>
-                        <Text style={styles.videoChannel}>{item.video.channel}</Text>
-                        <Text style={styles.videoViews}>{item.video.views}</Text>
+                  {/* It's good practice to check if item.video exists before rendering */}
+                  {item.video && (
+                    <TouchableOpacity onPress={() => handleVideoSelect(item.video.videoId)}>
+                      <View style={styles.videoCard}>
+                        <Image
+                          source={{ uri: `https://img.youtube.com/vi/${item.video.videoId}/hqdefault.jpg` }}
+                          style={styles.thumbnail}
+                        />
+                        <View style={styles.videoInfo}>
+                          <Text style={styles.videoTitle} numberOfLines={2}>{item.video.title}</Text>
+                          <Text style={styles.videoChannel}>{item.video.channel}</Text>
+                          <Text style={styles.videoViews}>{item.video.views}</Text>
+                        </View>
                       </View>
-                    </View>
-                  </TouchableOpacity>
+                    </TouchableOpacity>
+                  )}
                 </View>
               ))}
             </ScrollView>
