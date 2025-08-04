@@ -15,15 +15,17 @@ export default {
       backgroundColor: '#ffffff',
     },
     ios: {
+      // MODIFIED: Removed LSApplicationQueriesSchemes from here.
       config: {
         googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY,
       },
       supportsTablet: true,
       bundleIdentifier: 'alertnet.co.za',
-      // ADDED: This key is required by iOS to explain why you need location access.
+      // MODIFIED: Added LSApplicationQueriesSchemes to the correct location inside infoPlist.
       infoPlist: {
         NSLocationWhenInUseUsageDescription:
           'This app uses your location for the SOS feature and to verify functionality during tests.',
+        LSApplicationQueriesSchemes: ['youtube', 'https'],
       },
     },
     android: {
@@ -37,11 +39,28 @@ export default {
         backgroundColor: '#ffffff',
       },
       package: 'alertnet.co.za',
+      // ADDED: This entire 'queries' block is new.
+      // It's required for Android 11+ to open external links.
+      queries: {
+        intent: [
+          {
+            action: 'android.intent.action.VIEW',
+            data: {
+              scheme: 'https',
+            },
+          },
+          {
+            action: 'android.intent.action.VIEW',
+            data: {
+              scheme: 'vnd.youtube',
+            },
+          },
+        ],
+      },
     },
     web: {
       favicon: './assets/favicon.png',
     },
-    // MODIFIED: Added the expo-location plugin here.
     plugins: [
       'expo-font',
       'expo-router',
