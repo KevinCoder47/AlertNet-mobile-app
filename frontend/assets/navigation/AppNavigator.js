@@ -16,24 +16,18 @@ const Stack = createNativeStackNavigator();
 const AppNavigator = () => {
   const [showSplash, setShowSplash] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [onboardingComplete, setOnboardingComplete] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     const checkInitialStatus = async () => {
       try {
-        // Check both login status and onboarding completion
-        const [loginStatus, onboardingDone] = await Promise.all([
-          AsyncStorage.getItem('isLoggedIn'),
-          AsyncStorage.getItem('onboardingDone')
-        ]);
+        // Check login status only
+        const loginStatus = await AsyncStorage.getItem('isLoggedIn');
 
         setIsLoggedIn(loginStatus === 'true');
-        setShowOnboarding(onboardingDone !== 'true');
       } catch (error) {
         console.error('Error reading storage:', error);
-        // Fallback to showing onboarding if there's an error
-        setShowOnboarding(true);
       } finally {
         setIsLoading(false);
       }
@@ -50,43 +44,34 @@ const AppNavigator = () => {
     return () => clearTimeout(timeout);
   }, []);
 
-  const handleOnboardingComplete = async () => {
-    try {
-      await AsyncStorage.setItem('onboardingDone', 'true');
-      setShowOnboarding(false);
-    } catch (error) {
-      console.error('Error saving onboarding status:', error);
-    }
-  };
-
   // LOG OUT FUNCTION
-const handleLogout = () => {
-  Alert.alert(
-    'Logout Confirmation',
-    'Are you sure you want to log out?',
-    [
-      {
-        text: 'Cancel',
-        style: 'cancel',
-      },
-      {
-        text: 'Log Out',
-        onPress: async () => {
-          try {
-            await AsyncStorage.removeItem('isLoggedIn');
-            await AsyncStorage.multiRemove(['userToken', 'userData']);
-            setIsLoggedIn(false);
-            setShowOnboarding(true);
-          } catch (error) {
-            console.error('Logout failed:', error);
-            Alert.alert('Logout Error', 'Failed to log out. Please try again.');
-          }
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout Confirmation',
+      'Are you sure you want to log out?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
         },
-        style: 'destructive',
-      },
-    ]
-  );
-};
+        {
+          text: 'Log Out',
+          onPress: async () => {
+            try {
+              await AsyncStorage.removeItem('isLoggedIn');
+              await AsyncStorage.multiRemove(['userToken', 'userData']);
+              setIsLoggedIn(false);
+              setOnboardingComplete(false);
+            } catch (error) {
+              console.error('Logout failed:', error);
+              Alert.alert('Logout Error', 'Failed to log out. Please try again.');
+            }
+          },
+          style: 'destructive',
+        },
+      ]
+    );
+  };
 
   if (showSplash) return <AnimatedSplash />;
 
@@ -101,26 +86,29 @@ const handleLogout = () => {
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {isLoggedIn ? (
-          <Stack.Screen name="Home">
-            {(props) => <Home {...props} handleLogout={handleLogout} />}
-          </Stack.Screen>
-        ) : showOnboarding ? (
+        {!isLoggedIn && !onboardingComplete ? (
           <Stack.Screen name="OnBoarding">
             {(props) => (
               <OnBoarding
                 {...props}
-                onComplete={handleOnboardingComplete}
+                setOnboardingComplete={setOnboardingComplete}
+                setIsLoggedIn = {setIsLoggedIn}
               />
             )}
           </Stack.Screen>
-        ) : (
+        ) : !isLoggedIn ? (
           <>
             <Stack.Screen name="LoginScreen">
               {(props) => <Login {...props} setIsLoggedIn={setIsLoggedIn} />}
             </Stack.Screen>
-            <Stack.Screen name="signup" component={Signup} />
+            <Stack.Screen name="signup">
+              {(props) => <Signup {...props} setIsLoggedIn={setIsLoggedIn} />}
+            </Stack.Screen>
           </>
+        ) : (
+          <Stack.Screen name="Home">
+            {(props) => <Home {...props} handleLogout={handleLogout} />}
+          </Stack.Screen>
         )}
       </Stack.Navigator>
     </NavigationContainer>

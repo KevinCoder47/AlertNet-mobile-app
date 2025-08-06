@@ -7,7 +7,7 @@ import GetStarted from './GetStarted';
 const { width: SCREEN_WIDTH, height } = Dimensions.get('window');
 
 // SOS Button Component
-const SOSBtn = ({ isSOSPreview, onPress }) => {
+const SOSBtn = ({ isSOSPreview, onPress, }) => {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
@@ -91,7 +91,7 @@ const GroupItem = ({ name }) => (
   </View>
 );
 
-const FeatureDisplayScreen = ({onComplete}) => {
+const FeatureDisplayScreen = ({onComplete, setOnboardingComplete, setIsLoggedIn}) => {
   const [fontsLoaded] = useFonts({
     'Poppins Bold': require('../../fonts/Poppins/Poppins-Bold.ttf'),
     'Poppins Medium': require('../../fonts/Poppins/Poppins-Medium.ttf'),
@@ -381,7 +381,10 @@ const FeatureDisplayScreen = ({onComplete}) => {
       id: 'getStarted',
       title: '',
       tagline: '',
-      content: <GetStarted onComplete={onComplete} />,
+      content: <GetStarted
+        onComplete={onComplete}
+        setOnboardingComplete={setOnboardingComplete}
+         />,
     }
   ];
 

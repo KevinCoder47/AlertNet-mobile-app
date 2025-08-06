@@ -1,0 +1,19 @@
+{
+  "functions": {
+    "source": "functions",
+    "codebase": "default",
+    "runtimeOptions": {
+      "env": {
+        "RESEND_EMAILS_API_KEY": "re_byskPbJb_9KRwfPAcbij5X9Pi67FamFbi"
+      }
+    },
+    "ignore": [
+      "node_modules",
+      ".git",
+      "firebase-debug.log",
+      "firebase-debug.*.log",
+      "*.local"
+    ],
+    "predeploy": []
+  }
+}

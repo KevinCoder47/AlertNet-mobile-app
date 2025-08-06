@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 const { width, height } = Dimensions.get('window');
 
-const GetStarted = ({onComplete}) => {
+const GetStarted = ({onComplete,setOnboardingComplete,}) => {
 
       const [fontsLoaded] = useFonts({
         'Poppins Bold': require('../../fonts/Poppins/Poppins-Bold.ttf'),
@@ -36,7 +36,12 @@ const GetStarted = ({onComplete}) => {
           }}>
               {/* get started button */}
               <TouchableOpacity
-                  onPress={onComplete}
+                  onPress={ () =>{
+                      onComplete
+                      setOnboardingComplete(true)
+                    //   navigation.navigate('LoginScreen')
+                  }
+                  }
                   style={{
               width: width * 0.9,
               height: 80,
