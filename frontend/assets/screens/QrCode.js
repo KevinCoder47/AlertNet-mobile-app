@@ -1,4 +1,4 @@
-import { ImageBackground, Text, View, Image, StyleSheet, TouchableOpacity } from "react-native";
+import { ImageBackground, Text, View, Image, StyleSheet, TouchableOpacity, Linking, Platform } from "react-native";
 import AntDesign from '@expo/vector-icons/AntDesign';
 import { Feather } from '@expo/vector-icons';
 
@@ -8,17 +8,37 @@ export default function QrCode({ setIsQrCode, setIsSOS }) {
       id: 1,
       name: "Lebron James",
       distance: "5KM Away",
-      phone: "067 878 9765",
+      phone: "0678789765",
       image: require("../images/Lebron_James.jpg"),
     },
     {
       id: 2,
       name: "Josh Naidoo",
       distance: "30 km Away",
-      phone: "072 654 2234",
+      phone: "0726542234",
       image: require("../images/josh_Naidoo.jpg"),
     },
   ];
+
+  const handleCall = (phoneNumber) => {
+    let dialerURL;
+
+    if (Platform.OS === 'android') {
+      dialerURL = `tel:${phoneNumber}`;
+    } else {
+      dialerURL = `telprompt:${phoneNumber}`;
+    }
+
+    Linking.canOpenURL(dialerURL)
+      .then(supported => {
+        if (!supported) {
+          console.error("Phone number is not available");
+        } else {
+          return Linking.openURL(dialerURL);
+        }
+      })
+      .catch(err => console.error(err));
+  };
 
   return (
     <ImageBackground
@@ -61,7 +81,10 @@ export default function QrCode({ setIsQrCode, setIsSOS }) {
                 <Text style={styles.subText}>{contact.distance}</Text>
                 <Text style={styles.subText}>{contact.phone}</Text>
               </View>
-              <TouchableOpacity style={styles.callButton}>
+              <TouchableOpacity
+                style={styles.callButton}
+                onPress={() => handleCall(contact.phone)}
+              >
                 <Feather name="phone" size={20} color="#fff" />
               </TouchableOpacity>
             </View>

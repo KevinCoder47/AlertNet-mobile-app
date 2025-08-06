@@ -4,6 +4,7 @@ import Map from '../componets/Map';
 import TopBar from '../componets/TopBar';
 import BottomNav from '../componets/BottomNav';
 import { MapProvider } from '../contexts/MapContext';
+import { LanguageProvider } from './SafetyResource_Screens/LanguagePage'; // Import the LanguageProvider
 import MyProfile from '../screens/MyProfile';
 
 import WalkPartner from './WalkPartner';
@@ -20,11 +21,21 @@ import LanguagePage from './SafetyResource_Screens/LanguagePage';
 import SafetyVideos from './SafetyResource_Screens/safetyVideos';
 import OfflineMap from './SafetyResource_Screens/offlineMap';
 import WalkingAloneTips from './SafetyResource_Screens/walkingAlone';
-import Subscription from './SafetyResource_Screens/Subscription'; // ✅ Don't forget this import
+import Subscription from './SafetyResource_Screens/Subscription';
 
 const { width, height } = Dimensions.get('window');
 
+// Main Home Component (now wrapped with LanguageProvider)
 const Home = ({handleLogout}) => {
+  return (
+    <LanguageProvider>
+      <HomeContent handleLogout={handleLogout} />
+    </LanguageProvider>
+  );
+};
+
+// Separated the main logic into HomeContent component
+const HomeContent = ({handleLogout}) => {
   const [isNotHome, setIsNotHome] = useState(false);
   const [isSOS, setIsSOS] = useState(false);
   const [isWalkPartner, setIsWalkPartner] = useState(false);
