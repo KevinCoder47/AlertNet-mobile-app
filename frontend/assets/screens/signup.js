@@ -337,7 +337,8 @@ async function sendVerificationEmail(email, code) {
               setIsEmailVerified={setIsEmailVerified}
               isEmailVerified={isEmailVerified}
               setIsVerifying={setIsVerifying}
-              setIsLoggedIn = {setIsLoggedIn}
+              setIsLoggedIn={setIsLoggedIn}
+              confirmationCode = {confirmationCode}
             />
             
   </View>

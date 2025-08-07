@@ -6,7 +6,12 @@ import GeneralLoader from '../componets/Loaders/GeneralLoarder';
 
 const {width, height} = Dimensions.get('window')
 
-const VerifyEmailScreen = ({navigation,setShowEmailVerify,setIsEmailVerified,isEmailVerified,setIsVerifying,setIsLoggedIn}) => {
+const VerifyEmailScreen = ({
+  navigation, setShowEmailVerify,
+  setIsEmailVerified, isEmailVerified,
+  setIsVerifying, setIsLoggedIn,
+  confirmationCode
+}) => {
   const inputRefs = useRef([]);
   const [verificationCode, setVerificationCode] = useState(['', '', '', '']);
 
@@ -18,7 +23,7 @@ const VerifyEmailScreen = ({navigation,setShowEmailVerify,setIsEmailVerified,isE
 const handlePress = async () => {
   if (!isEmailVerified) {
     const enteredCode = verificationCode.join('');
-    const correctCode = "1234"; // Replace with real logic
+    const correctCode = confirmationCode;
 
     setIsVerifying(true);
     setTimeout(() => {
@@ -31,7 +36,12 @@ const handlePress = async () => {
     }, 1500); // Simulate delay
   } else {
     // navigation.replace("Home");
-try {
+    try {
+      // save everything 
+      //have one function to save everything to firbase
+
+
+      //then save to async storage
   await AsyncStorage.setItem('isLoggedIn', 'true');
   setIsLoggedIn(true);
 } catch (error) {

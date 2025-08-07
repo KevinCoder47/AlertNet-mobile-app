@@ -107,7 +107,8 @@ const AppNavigator = () => {
           </>
         ) : (
           <Stack.Screen name="Home">
-            {(props) => <Home {...props} handleLogout={handleLogout} />}
+                {(props) => <Home {...props} handleLogout={handleLogout} />
+                }
           </Stack.Screen>
         )}
       </Stack.Navigator>
