@@ -5,10 +5,10 @@ import LaunchScreen from '../componets/onboarding components/LaunchScreen'
 import AnimatedSplash from './AnimatedSplash'
 import FeatureDisplayScreen from '../componets/onboarding components/FeatureDisplayScreen'
 
-const OnBoarding = ({onComplete}) => {
+const OnBoarding = ({onComplete, setOnboardingComplete,setIsLoggedIn}) => {
   const { colors, isDark } = useTheme()
   const [isLaunchDone, setIsLaunchDone] = useState(false)
-  const [showSplash, setShowSplash] = useState(true);
+  const [showSplash, setShowSplash] = useState(false);
   const [showFeatureScreen, setShowFeatureScreen] = useState(false);
 
   useEffect(() => {
@@ -26,7 +26,11 @@ const OnBoarding = ({onComplete}) => {
       ) : !showFeatureScreen ? (
         <LaunchScreen setShowFeatureScreen={setShowFeatureScreen} />
       ) : (
-            <FeatureDisplayScreen onComplete={onComplete} />
+            <FeatureDisplayScreen
+              onComplete={onComplete}
+              setOnboardingComplete={setOnboardingComplete}
+              setIsLoggedIn = {setIsLoggedIn}
+            />
       )}
     </View>
   )

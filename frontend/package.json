@@ -12,6 +12,8 @@
     "@expo/metro-runtime": "~5.0.4",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-native-community/blur": "^4.4.1",
+    "@react-native-firebase/app": "^22.4.0",
+    "@react-native-firebase/auth": "^22.4.0",
     "@react-native-picker/picker": "^2.11.1",
     "@react-native-vector-icons/fontawesome": "^12.0.0",
     "@react-navigation/bottom-tabs": "^7.3.13",
@@ -20,6 +22,7 @@
     "@react-navigation/stack": "^7.4.2",
     "@reduxjs/toolkit": "^2.8.1",
     "axios": "^1.11.0",
+    "cors": "^2.8.5",
     "expo": "^53.0.20",
     "expo-av": "~15.1.7",
     "expo-blur": "~14.1.5",
@@ -50,7 +53,8 @@
     "react-native-webview": "13.13.5",
     "react-native-wheel-picker-expo": "^0.5.4",
     "react-native-youtube-iframe": "^2.4.1",
-    "react-redux": "^9.2.0"
+    "react-redux": "^9.2.0",
+    "resend": "^4.7.0"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
