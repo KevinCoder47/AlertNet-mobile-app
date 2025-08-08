@@ -13,6 +13,7 @@ import SearchBar from './SearchBar';
 import FriendsList from './FriendsList';
 import CommunityList from './CommunityList';
 import FeedList from './FeedList';
+import PhoneOverlay from './PhoneOverlay'; // Import your overlay component
 
 const { height, width } = Dimensions.get('window');
 
@@ -21,6 +22,7 @@ const PeoplePanel = ({ onCollapse }) => {
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState('Friends');
   const [lastUpdated, setLastUpdated] = useState(new Date());
+  const [isPhoneOverlayVisible, setPhoneOverlayVisible] = useState(false); // state for overlay
 
   const formatTime = (date) =>
     date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -36,64 +38,82 @@ const PeoplePanel = ({ onCollapse }) => {
     setLastUpdated(new Date());
   };
 
+  const openPhoneOverlay = () => {
+    setPhoneOverlayVisible(true);
+  };
+
+  const closePhoneOverlay = () => {
+    setPhoneOverlayVisible(false);
+  };
+
   return (
-    <BlurView intensity={70} tint={isDark ? 'dark' : 'light'} style={styles.panel}>
-      <View style={styles.glassOverlay} />
+    <>
+      <BlurView intensity={70} tint={isDark ? 'dark' : 'light'} style={styles.panel}>
+        <View style={styles.glassOverlay} />
 
-      <TouchableOpacity onPress={handleCollapse} style={styles.dragHandleContainer}>
-        <View style={styles.dragHandle} />
-      </TouchableOpacity>
+        <TouchableOpacity onPress={handleCollapse} style={styles.dragHandleContainer}>
+          <View style={styles.dragHandle} />
+        </TouchableOpacity>
 
-      <View style={styles.header}>
-        <Text style={styles.headerText}>People</Text>
-        <Text style={styles.lastUpdatedText}>Last updated: {formatTime(lastUpdated)}</Text>
-      </View>
+        <View style={styles.header}>
+          <Text style={styles.headerText}>People</Text>
+          <Text style={styles.lastUpdatedText}>Last updated: {formatTime(lastUpdated)}</Text>
+        </View>
 
-      <SearchBar value={search} onChange={setSearch} />
+        <SearchBar value={search} onChange={setSearch} />
 
-      <View style={styles.tabRow}>
-        {['Friends', 'Community', 'Feed'].map((item) => (
-          <TouchableOpacity
-            key={item}
-            onPress={() => setTab(item)}
-            style={[
-              styles.tabButton,
-              tab === item && {
-                borderBottomColor: '#ff8c00',
-                borderBottomWidth: 2,
-              },
-            ]}
-          >
-            <Text
+        <View style={styles.tabRow}>
+          {['Friends', 'Community', 'Feed'].map((item) => (
+            <TouchableOpacity
+              key={item}
+              onPress={() => setTab(item)}
               style={[
-                styles.tabText,
-                { color: isDark ? '#fff' : '#222' },
-                tab === item && { fontWeight: 'bold', color: '#ff8c00' },
+                styles.tabButton,
+                tab === item && {
+                  borderBottomColor: '#ff8c00',
+                  borderBottomWidth: 2,
+                },
               ]}
             >
-              {item}
-            </Text>
+              <Text
+                style={[
+                  styles.tabText,
+                  { color: isDark ? '#fff' : '#222' },
+                  tab === item && { fontWeight: 'bold', color: '#ff8c00' },
+                ]}
+              >
+                {item}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <View style={styles.content}>
+          {tab === 'Friends' && (
+            <FriendsList searchQuery={search} onRefreshComplete={handleRefresh} />
+          )}
+          {tab === 'Community' && <CommunityList onRefreshComplete={handleRefresh} />}
+          {tab === 'Feed' && <FeedList onRefreshComplete={handleRefresh} />}
+        </View>
+
+        {tab !== 'Feed' && (
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => {
+              if (tab === 'Friends') {
+                openPhoneOverlay();
+              }
+              // Community add button does nothing
+            }}
+          >
+            <Text style={styles.addButtonText}>+ add</Text>
           </TouchableOpacity>
-        ))}
-      </View>
-
-      <View style={styles.content}>
-        {tab === 'Friends' && (
-          <FriendsList searchQuery={search} onRefreshComplete={handleRefresh} />
         )}
-        {tab === 'Community' && <CommunityList onRefreshComplete={handleRefresh} />}
-        {tab === 'Feed' && <FeedList onRefreshComplete={handleRefresh} />}
-      </View>
+      </BlurView>
 
-      {tab !== 'Feed' && (
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => console.log('Add button pressed')}
-        >
-          <Text style={styles.addButtonText}>+ add</Text>
-        </TouchableOpacity>
-      )}
-    </BlurView>
+      {/* PhoneOverlay modal */}
+      <PhoneOverlay visible={isPhoneOverlayVisible} onClose={closePhoneOverlay} />
+    </>
   );
 };
 
@@ -179,6 +199,9 @@ const getStyles = (isDark) =>
   });
 
 export default PeoplePanel;
+
+
+
 
 
 

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,8 @@ import {
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
+
+import PhoneOverlay from './PhoneOverlay'; // <-- import your PhoneOverlay component
 
 const { width, height } = Dimensions.get('window');
 
@@ -94,6 +96,9 @@ const PeopleBar = ({ onExpand }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(new Date());
 
+  // New: state to show/hide PhoneOverlay
+  const [phoneOverlayVisible, setPhoneOverlayVisible] = useState(false);
+
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const styles = getStyles(isDark);
@@ -110,83 +115,114 @@ const PeopleBar = ({ onExpand }) => {
     date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   return (
-    <BlurView
-      intensity={70}
-      tint={isDark ? 'dark' : 'light'}
-      style={styles.container}
-    >
-      <View style={styles.glassOverlay} />
-
-      <TouchableOpacity onPress={onExpand} activeOpacity={0.7} style={styles.dragHandleContainer}>
-        <View style={styles.dragHandle} />
-      </TouchableOpacity>
-
-      <View style={styles.header}>
-        <Text style={styles.headerText}>People</Text>
-        <Text style={styles.lastUpdatedText}>Last updated: {formatTime(lastUpdated)}</Text>
-      </View>
-
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        style={styles.list}
-        contentContainerStyle={styles.listContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
+    <>
+      <BlurView
+        intensity={70}
+        tint={isDark ? 'dark' : 'light'}
+        style={styles.container}
       >
-        {peopleData.map((person, index) => {
-          const batteryIcon = getBatteryIconName(person.battery);
-          const batteryLevel = parseInt(person.battery);
-          const batteryColor = batteryLevel < 20 ? '#ff6b6b' : '#51e651';
-          const batteryTextColor =
-            isDark || batteryColor === '#ff6b6b' ? batteryColor : '#2e7d32';
-          const statusColor = person.status === 'Online' ? '#51e651' : '#a0a0a0';
-          const isLast = index === peopleData.length - 1;
+        <View style={styles.glassOverlay} />
 
-          return (
-            <TouchableOpacity
-              key={person.id}
-              style={[styles.personContainer, isLast ? { borderBottomWidth: 0 } : null]}
-            >
-              <View style={styles.avatarSection}>
-                <Image source={person.avatar} style={styles.avatar} />
-                <View
-                  style={[
-                    styles.statusDot,
-                    {
-                      backgroundColor: statusColor,
-                      borderColor: '#fff',
-                    },
-                  ]}
+        <TouchableOpacity
+          onPress={onExpand}
+          activeOpacity={0.7}
+          style={styles.dragHandleContainer}
+        >
+          <View style={styles.dragHandle} />
+        </TouchableOpacity>
+
+        <View style={styles.header}>
+          <Text style={styles.headerText}>People</Text>
+          <Text style={styles.lastUpdatedText}>
+            Last updated: {formatTime(lastUpdated)}
+          </Text>
+        </View>
+
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          style={styles.list}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        >
+          {peopleData.map((person, index) => {
+            const batteryIcon = getBatteryIconName(person.battery);
+            const batteryLevel = parseInt(person.battery);
+            const batteryColor = batteryLevel < 20 ? '#ff6b6b' : '#51e651';
+            const batteryTextColor =
+              isDark || batteryColor === '#ff6b6b' ? batteryColor : '#2e7d32';
+            const statusColor = person.status === 'Online' ? '#51e651' : '#a0a0a0';
+            const isLast = index === peopleData.length - 1;
+
+            return (
+              <TouchableOpacity
+                key={person.id}
+                style={[
+                  styles.personContainer,
+                  isLast ? { borderBottomWidth: 0 } : null,
+                ]}
+              >
+                <View style={styles.avatarSection}>
+                  <Image source={person.avatar} style={styles.avatar} />
+                  <View
+                    style={[
+                      styles.statusDot,
+                      {
+                        backgroundColor: statusColor,
+                        borderColor: '#fff',
+                      },
+                    ]}
+                  />
+
+                  <View style={styles.batteryBelowAvatar}>
+                    <Ionicons name={batteryIcon} size={12} color={batteryTextColor} />
+                    <Text style={[styles.batteryTextUnder, { color: batteryTextColor }]}>
+                      {' '}
+                      {person.battery}{' '}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.infoSection}>
+                  <Text style={styles.personName}>{person.name}</Text>
+                  <Text style={styles.personLocation}>{person.location}</Text>
+
+                  <View style={styles.statusRow}>
+                    <Text style={[styles.personStatus, { color: statusColor }]}>
+                      {' '}
+                      {person.status}{' '}
+                    </Text>
+                    <Text style={styles.divider}>•</Text>
+                    <Text style={styles.personDistance}>{person.distance}</Text>
+                  </View>
+                </View>
+
+                <Ionicons
+                  name="chevron-forward"
+                  size={18}
+                  color={isDark ? '#ccc' : '#555'}
+                  style={styles.profileArrow}
                 />
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
 
-                <View style={styles.batteryBelowAvatar}>
-                  <Ionicons name={batteryIcon} size={12} color={batteryTextColor} />
-                  <Text style={[styles.batteryTextUnder, { color: batteryTextColor }]}> {person.battery} </Text>
-                </View>
-              </View>
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={() => setPhoneOverlayVisible(true)} // show PhoneOverlay directly
+        >
+          <Text style={styles.addButtonText}>+ add</Text>
+        </TouchableOpacity>
+      </BlurView>
 
-              <View style={styles.infoSection}>
-                <Text style={styles.personName}>{person.name}</Text>
-                <Text style={styles.personLocation}>{person.location}</Text>
-
-                <View style={styles.statusRow}>
-                  <Text style={[styles.personStatus, { color: statusColor }]}> {person.status} </Text>
-                  <Text style={styles.divider}>•</Text>
-                  <Text style={styles.personDistance}>{person.distance}</Text>
-                </View>
-              </View>
-
-              <Ionicons name="chevron-forward" size={18} color={isDark ? '#ccc' : '#555'} style={styles.profileArrow} />
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-
-      <TouchableOpacity style={styles.addButton} onPress={() => console.log('Add button pressed')}>
-        <Text style={styles.addButtonText}>+ add</Text>
-      </TouchableOpacity>
-    </BlurView>
+      {/* PhoneOverlay component */}
+      <PhoneOverlay
+        visible={phoneOverlayVisible}
+        onClose={() => setPhoneOverlayVisible(false)}
+      />
+    </>
   );
 };
 
