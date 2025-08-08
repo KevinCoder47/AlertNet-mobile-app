@@ -7,7 +7,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Resend } from 'resend';
+
 
 const backgroundImage = require('../../assets/images/launch-background.jpg');
 
@@ -17,7 +17,7 @@ const Login = ({ setIsLoggedIn, navigation }) => {
   const [emailPrefix, setEmailPrefix] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const resend = new Resend('re_byskPbJb_9KRwfPAcbij5X9Pi67FamFbi');
+
 
 
 // (async function () {

@@ -34,7 +34,9 @@ export default function SafetyResources({
   setIsOfflineMap, // ADD THIS,
   setIsWalkingAloneTips,
   handleLogout,
-  setIsSubscriptionScreen, 
+  setIsSubscriptionScreen,
+  setIsSafetyZones,
+  previousScreen = "sos"
 }) {
   const pan = useRef(new Animated.ValueXY()).current;
   const [searchQuery, setSearchQuery] = useState("");
@@ -52,7 +54,9 @@ export default function SafetyResources({
       onPanResponderRelease: (_, gestureState) => {
         if (gestureState.dx > 100) {
           setIsSafetyResources(false);
-          setIsSOS(true);
+          if (previousScreen === "sos") {
+            setIsSOS(true);
+          }
         } else {
           Animated.spring(pan, {
             toValue: { x: 0, y: 0 },
@@ -114,7 +118,10 @@ export default function SafetyResources({
           icon: <Feather name="map-pin" size={18} color="#fff" />,
           text: "Finding safe zones",
           keywords: ["safe", "zones", "finding", "location", "map", "pin"],
-          onPress: () => {}
+          onPress: () => {
+            setIsSafetyResources(false);
+            setIsSafetyZones(true);
+          }
         }
       ]
     },

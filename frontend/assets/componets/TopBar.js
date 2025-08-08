@@ -8,7 +8,7 @@ import { useTheme } from '../contexts/ColorContext';
 
 const { width, height } = Dimensions.get('window');
 
-const TopBar = ({isNotHome, setIsUserProfile}) => {
+const TopBar = ({isNotHome, setIsUserProfile, setIsSafetyResources}) => {
   const { colors } = useTheme();
   
   const wrapperHeight = useRef(new Animated.Value(isNotHome ? 120 : 190)).current;
@@ -57,7 +57,7 @@ const TopBar = ({isNotHome, setIsUserProfile}) => {
 
   return (
     <Animated.View style={[styles.wrapper, darkModeStyles.wrapper, { height: wrapperHeight }]}>
-      <TopBarComponents isNotHome={isNotHome} setIsUserProfile={setIsUserProfile}/>
+      <TopBarComponents isNotHome={isNotHome} setIsUserProfile={setIsUserProfile} setIsSafetyResources={setIsSafetyResources}/>
       {Platform.OS === 'ios' ? (
         <>
           <View style={[styles.topBarOpacity, darkModeStyles.topBarOpacity, { height: opacityHeight }]} />

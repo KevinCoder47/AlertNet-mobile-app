@@ -22,6 +22,7 @@ import SafetyVideos from './SafetyResource_Screens/safetyVideos';
 import OfflineMap from './SafetyResource_Screens/offlineMap';
 import WalkingAloneTips from './SafetyResource_Screens/walkingAlone';
 import Subscription from './SafetyResource_Screens/Subscription';
+import SafetyZones from './SafetyResource_Screens/safetyZones';
 
 const { width, height } = Dimensions.get('window');
 
@@ -54,6 +55,8 @@ const HomeContent = ({handleLogout}) => {
   const [isSubscriptionScreen, setIsSubscriptionScreen] = useState(false);
   const [isWalkingAloneTips, setIsWalkingAloneTips] = useState(false);
   const [isSubscription, setIsSubscription] = useState(false);
+  const [isSafetyZones, setIsSafetyZones] = useState(false);
+  const [previousScreen, setPreviousScreen] = useState('home');
 
   if (isWalkPartner) {
     return <WalkPartner setIsWalkPartner={setIsWalkPartner} />;
@@ -68,7 +71,7 @@ const HomeContent = ({handleLogout}) => {
       <SOSPage
         setIsSOS={setIsSOS}
         setIsQrCode={setIsQrCode}
-        setIsSafetyResources={setIsSafetyResources}
+        setIsSafetyResources={() => { setPreviousScreen('sos'); setIsSafetyResources(true); }}
       />
     );
   }
@@ -122,6 +125,8 @@ const HomeContent = ({handleLogout}) => {
         setIsWalkingAloneTips={setIsWalkingAloneTips}
         handleLogout={handleLogout}
         setIsSubscriptionScreen = {setIsSubscriptionScreen}
+        setIsSafetyZones={setIsSafetyZones}
+        previousScreen={previousScreen}
       />
     );
   }
@@ -199,11 +204,13 @@ const HomeContent = ({handleLogout}) => {
     );
   }
 
+
+
   return (
     <MapProvider>
       <View style={styles.container}>
         <Map />
-        <TopBar setIsUserProfile={setIsUserProfile} />
+        <TopBar setIsUserProfile={setIsUserProfile} setIsSafetyResources={() => { setPreviousScreen('home'); setIsSafetyResources(true); }} />
         <BottomNav
           isNotHome={isNotHome}
           setIsNotHome={setIsNotHome}
@@ -211,6 +218,14 @@ const HomeContent = ({handleLogout}) => {
           setIsWalkPartner={setIsWalkPartner}
           setIsSOS={setIsSOS}
         />
+        
+        {/* SafetyZones Popup */}
+        {isSafetyZones && (
+          <SafetyZones
+            setIsSafetyZones={setIsSafetyZones}
+            setIsSafetyResources={setIsSafetyResources}
+          />
+        )}
       </View>
     </MapProvider>
   );
