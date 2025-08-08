@@ -1,5 +1,6 @@
-import { StyleSheet, Text, View, TouchableOpacity, Dimensions } from 'react-native'
+import { StyleSheet, Text, View, TouchableOpacity, Dimensions, Alert } from 'react-native'
 import React, {useState} from 'react'
+import SOSService from '../services/SOSService'
 
 const { width, height } = Dimensions.get('window');
 const SOSBtn = ({ onPress, isSOSPreview, setIsSOSPreview }) => {
@@ -18,10 +19,33 @@ const SOSBtn = ({ onPress, isSOSPreview, setIsSOSPreview }) => {
   return (
       <TouchableOpacity
       style={styles.container}
-      onPress={() => {
+      onPress={async () => {
         console.log('SOS Button Pressed');
-          // onPress();
-          previewTest()
+        
+        if (isSOSPreview) {
+          setIsTest(true);
+          return;
+        }
+        
+        // Send emergency notifications
+        const result = await SOSService.sendEmergencyNotifications();
+        
+        if (result.success) {
+          Alert.alert(
+            'Emergency Alert Sent',
+            `Notified ${result.contactsNotified} emergency contacts`,
+            [{ text: 'OK', onPress: () => onPress() }]
+          );
+        } else {
+          Alert.alert(
+            'Emergency Alert Failed',
+            result.error || 'Failed to send notifications',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Continue to SOS', onPress: () => onPress() }
+            ]
+          );
+        }
       }}
     >
           <View style={styles.innerCircle1}>

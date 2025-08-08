@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   useColorScheme,
   Dimensions,
   LayoutAnimation,
+  PanResponder,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import SearchBar from './SearchBar';
@@ -22,7 +23,22 @@ const PeoplePanel = ({ onCollapse }) => {
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState('Friends');
   const [lastUpdated, setLastUpdated] = useState(new Date());
-  const [isPhoneOverlayVisible, setPhoneOverlayVisible] = useState(false); // state for overlay
+  const [isPhoneOverlayVisible, setPhoneOverlayVisible] = useState(false);
+
+  // PanResponder for downward scroll detection
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (evt, gestureState) => {
+        return Math.abs(gestureState.dy) > 10;
+      },
+      onPanResponderMove: (evt, gestureState) => {
+        // Detect downward swipe (positive dy)
+        if (gestureState.dy > 50) {
+          handleCollapse();
+        }
+      },
+    })
+  ).current;
 
   const formatTime = (date) =>
     date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -51,9 +67,10 @@ const PeoplePanel = ({ onCollapse }) => {
       <BlurView intensity={70} tint={isDark ? 'dark' : 'light'} style={styles.panel}>
         <View style={styles.glassOverlay} />
 
-        <TouchableOpacity onPress={handleCollapse} style={styles.dragHandleContainer}>
+        <View {...panResponder.panHandlers} style={styles.dragHandleContainer}>
           <View style={styles.dragHandle} />
-        </TouchableOpacity>
+          <Text style={styles.swipeHint}>Swipe down to collapse</Text>
+        </View>
 
         <View style={styles.header}>
           <Text style={styles.headerText}>People</Text>
@@ -151,6 +168,12 @@ const getStyles = (isDark) =>
       height: 4,
       borderRadius: 2,
       backgroundColor: isDark ? '#e0e0e0' : '#333',
+    },
+    swipeHint: {
+      fontSize: 10,
+      color: isDark ? '#aaa' : '#666',
+      marginTop: 4,
+      textAlign: 'center',
     },
     header: {
       flexDirection: 'row',
