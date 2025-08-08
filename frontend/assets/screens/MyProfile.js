@@ -105,12 +105,9 @@ const MyProfile = ({setIsUserProfile}) => {
 
         </View>
         
-        {/* edit button */}
-     <TouchableOpacity style={styles.editButton} onPress={() => {setIsEditing(!isEditing)}}>  initially isEditing = false, new = true, new-new = fasle
-          {/* <Text style={styles.editButtonText}>Edit</Text> */}
-          {/* <Text style={styles.editButtonText}>Save</Text> */}
+        {/* edit button - initially isEditing = false, new = true, new-new = false */}
+     <TouchableOpacity style={styles.editButton} onPress={() => {setIsEditing(!isEditing)}}>
           {isEditing ? <Text style={styles.editButtonText}>Save</Text> : <Text style={styles.editButtonText}>Edit</Text>}
-
      </TouchableOpacity></View>
     </View>
   );

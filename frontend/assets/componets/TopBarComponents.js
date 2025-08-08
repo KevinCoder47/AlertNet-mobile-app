@@ -5,7 +5,7 @@ import TopBarSearch from './TopBarSearch'
 import { useTheme } from '../contexts/ColorContext'
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
-const TopBarComponents = ({isNotHome, setIsUserProfile}) => {
+const TopBarComponents = ({isNotHome, setIsUserProfile, setIsSafetyResources}) => {
   const [userName, setUserName] = useState("Mpilo");
   const [location, setLocation] = useState("School, AuklandPark, Johannesburg");
   const { colors, isDark } = useTheme();
@@ -62,7 +62,7 @@ const TopBarComponents = ({isNotHome, setIsUserProfile}) => {
           </TouchableOpacity>
           
           {/* More menu */}
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => setIsSafetyResources(true)}>
             <Image source={isDark ? require('../icons/menu-dark.png'): require('../icons/menu-light.png')} style = {{width: 20, height: 20}} />
           </TouchableOpacity>
         </View>

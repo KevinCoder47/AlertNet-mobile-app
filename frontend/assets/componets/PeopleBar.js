@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   Dimensions,
   useColorScheme,
   RefreshControl,
+  PanResponder,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
@@ -95,9 +96,22 @@ const getBatteryIconName = (batteryPercentStr) => {
 const PeopleBar = ({ onExpand }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(new Date());
-
-  // New: state to show/hide PhoneOverlay
   const [phoneOverlayVisible, setPhoneOverlayVisible] = useState(false);
+
+  // PanResponder for upward scroll detection
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (evt, gestureState) => {
+        return Math.abs(gestureState.dy) > 10;
+      },
+      onPanResponderMove: (evt, gestureState) => {
+        // Detect upward swipe (negative dy)
+        if (gestureState.dy < -50) {
+          onExpand();
+        }
+      },
+    })
+  ).current;
 
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -123,13 +137,13 @@ const PeopleBar = ({ onExpand }) => {
       >
         <View style={styles.glassOverlay} />
 
-        <TouchableOpacity
-          onPress={onExpand}
-          activeOpacity={0.7}
+        <View
+          {...panResponder.panHandlers}
           style={styles.dragHandleContainer}
         >
           <View style={styles.dragHandle} />
-        </TouchableOpacity>
+          <Text style={styles.swipeHint}>Swipe up to expand</Text>
+        </View>
 
         <View style={styles.header}>
           <Text style={styles.headerText}>People</Text>
@@ -260,6 +274,12 @@ const getStyles = (isDark) =>
       height: 4,
       backgroundColor: isDark ? '#e0e0e0' : '#333',
       borderRadius: 2,
+    },
+    swipeHint: {
+      fontSize: 10,
+      color: isDark ? '#aaa' : '#666',
+      marginTop: 4,
+      textAlign: 'center',
     },
     header: {
       flexDirection: 'row',
