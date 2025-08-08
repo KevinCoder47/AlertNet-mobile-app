@@ -101,15 +101,24 @@ const PeopleBar = ({ onExpand }) => {
   // PanResponder for upward scroll detection
   const panResponder = useRef(
     PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (evt, gestureState) => {
-        return Math.abs(gestureState.dy) > 10;
+        // Only respond to vertical gestures
+        return Math.abs(gestureState.dy) > Math.abs(gestureState.dx) && Math.abs(gestureState.dy) > 5;
+      },
+      onPanResponderGrant: () => {
+        // Gesture started
       },
       onPanResponderMove: (evt, gestureState) => {
-        // Detect upward swipe (negative dy)
-        if (gestureState.dy < -50) {
+        // Only trigger on significant upward movement
+        if (gestureState.dy < -30 && Math.abs(gestureState.dx) < 50) {
           onExpand();
         }
       },
+      onPanResponderRelease: () => {
+        // Gesture ended
+      },
+      onPanResponderTerminationRequest: () => false,
     })
   ).current;
 
