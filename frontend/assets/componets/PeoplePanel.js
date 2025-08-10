@@ -28,15 +28,24 @@ const PeoplePanel = ({ onCollapse }) => {
   // PanResponder for downward scroll detection
   const panResponder = useRef(
     PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (evt, gestureState) => {
-        return Math.abs(gestureState.dy) > 10;
+        // Only respond to vertical gestures
+        return Math.abs(gestureState.dy) > Math.abs(gestureState.dx) && Math.abs(gestureState.dy) > 5;
+      },
+      onPanResponderGrant: () => {
+        // Gesture started
       },
       onPanResponderMove: (evt, gestureState) => {
-        // Detect downward swipe (positive dy)
-        if (gestureState.dy > 50) {
+        // Only trigger on significant downward movement
+        if (gestureState.dy > 30 && Math.abs(gestureState.dx) < 50) {
           handleCollapse();
         }
       },
+      onPanResponderRelease: () => {
+        // Gesture ended
+      },
+      onPanResponderTerminationRequest: () => false,
     })
   ).current;
 

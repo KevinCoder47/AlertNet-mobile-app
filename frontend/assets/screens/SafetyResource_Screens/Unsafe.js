@@ -18,7 +18,11 @@ export default function Unsafe({ setIsUnsafePage, setIsSafetyResources }) {
           <MaterialIcons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
 
-        <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          style={styles.scrollContainer} 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerTextContainer}>
@@ -148,11 +152,14 @@ const styles = StyleSheet.create({
   scrollContainer: {
     flex: 1,
     paddingHorizontal: 16,
-    paddingTop: 60, // Added more space for the back arrow
+    paddingTop: 60,
+  },
+  scrollContent: {
+    paddingBottom: 80,
   },
   backArrow: {
     position: 'absolute',
-    top: 10,
+    top: 15,
     left: 16,
     zIndex: 10,
     padding: 8,

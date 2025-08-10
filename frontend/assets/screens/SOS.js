@@ -10,6 +10,7 @@ import {
   ScrollView,
   StatusBar,
 } from 'react-native';
+import SafetyResources from './SafetyResource_Screens/SafetyResources';
 
 export default function SOS({ setIsSOS, setIsQrCode, setIsSafetyResources }) {
   const [activityLog, setActivityLog] = useState([
@@ -17,6 +18,30 @@ export default function SOS({ setIsSOS, setIsQrCode, setIsSafetyResources }) {
     { time: '21:47', message: 'Mpilo is on the way to you' },
     { time: '21:48', message: 'APB Security is on the way to you.' },
   ]);
+
+  // Add voice trigger log entry if SOS was triggered by voice
+  React.useEffect(() => {
+    const checkVoiceTrigger = () => {
+      // This would be called when SOS is triggered by voice recognition
+      const now = new Date();
+      const time = now.toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+      
+      // Add voice trigger entry to log
+      setActivityLog(prevLog => {
+        const hasVoiceTrigger = prevLog.some(entry => entry.message.includes('Voice trigger'));
+        if (!hasVoiceTrigger) {
+          return [{ time, message: 'Voice trigger detected - SOS activated' }, ...prevLog];
+        }
+        return prevLog;
+      });
+    };
+    
+    // This would be triggered by the voice recognition service
+    // For now, it's just a placeholder
+  }, []);
 
   const scrollViewRef = useRef(null);
 
@@ -89,7 +114,8 @@ export default function SOS({ setIsSOS, setIsQrCode, setIsSafetyResources }) {
           <TouchableOpacity
             style={{ padding: 10 }}
             onPress={() => {
-              setIsSOS(false);
+              console.log("SOS Menu Button Clicked")
+              setIsSOS(false)
               setIsSafetyResources(true);
             }}
           >
