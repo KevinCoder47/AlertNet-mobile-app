@@ -1,6 +1,7 @@
 import * as Location from 'expo-location';
 import * as SMS from 'expo-sms';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { FirebaseService } from '../../backend/Firebase/FirebaseService';
 
 class SOSService {
   static async getEmergencyContacts() {
@@ -57,30 +58,54 @@ class SOSService {
     }
   }
 
-  static async sendEmergencyNotifications() {
+  static async sendEmergencyNotifications(triggeredBy = 'manual') {
     try {
       const contacts = await this.getEmergencyContacts();
       const location = await this.getCurrentLocation();
       
-      if (contacts.length === 0) {
-        throw new Error('No emergency contacts found');
-      }
-
-      const locationText = location 
-        ? `My location: https://maps.google.com/?q=${location.latitude},${location.longitude}`
-        : 'Location unavailable';
-
-      const message = `🚨 EMERGENCY ALERT 🚨\n\nI need immediate help! Please contact me or emergency services.\n\n${locationText}\n\nSent from AlertNet Safety App`;
-
-      const phoneNumbers = contacts.map(contact => contact.phoneNumber);
+      let totalNotified = 0;
+      let errors = [];
       
-      const isAvailable = await SMS.isAvailableAsync();
-      if (isAvailable) {
-        await SMS.sendSMSAsync(phoneNumbers, message);
-        return { success: true, contactsNotified: contacts.length };
-      } else {
-        throw new Error('SMS not available on this device');
+      // Log the trigger method
+      console.log(`SOS triggered by: ${triggeredBy}`);
+
+      // Send SMS to emergency contacts
+      if (contacts.length > 0) {
+        const locationText = location 
+          ? `My location: https://maps.google.com/?q=${location.latitude},${location.longitude}`
+          : 'Location unavailable';
+
+        const message = `🚨 EMERGENCY ALERT 🚨\n\nI need immediate help! Please contact me or emergency services.\n\n${locationText}\n\nSent from AlertNet Safety App`;
+
+        const phoneNumbers = contacts.map(contact => contact.phoneNumber);
+        
+        const isAvailable = await SMS.isAvailableAsync();
+        if (isAvailable) {
+          await SMS.sendSMSAsync(phoneNumbers, message);
+          totalNotified += contacts.length;
+        } else {
+          errors.push('SMS not available on this device');
+        }
       }
+
+      // Send notifications to Firebase friends
+      const friendsResult = await FirebaseService.sendSOSNotifications(location);
+      if (friendsResult.success) {
+        totalNotified += friendsResult.notificationsSent;
+      } else {
+        errors.push(`Friends notification failed: ${friendsResult.error}`);
+      }
+
+      if (totalNotified === 0) {
+        throw new Error('No contacts or friends found to notify');
+      }
+
+      return { 
+        success: true, 
+        contactsNotified: totalNotified,
+        triggeredBy,
+        errors: errors.length > 0 ? errors : null
+      };
     } catch (error) {
       console.error('Error sending emergency notifications:', error);
       return { success: false, error: error.message };

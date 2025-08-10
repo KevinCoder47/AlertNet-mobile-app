@@ -8,7 +8,7 @@ import PeoplePanel from './PeoplePanel';
 
 const { width, height } = Dimensions.get('window');
 
-const BottomNav = ({ isNotHome, setIsNotHome, isWalkPartner, setIsWalkPartner, setIsSOS }) => {
+const BottomNav = ({ isNotHome, setIsNotHome, isWalkPartner, setIsWalkPartner, setIsSOS, setIsPeopleActive, setIsTopBarManuallyExpanded }) => {
   const [isHome, setIsHome] = useState(true);
   const [isPeople, setIsPeople] = useState(false);
   const [isHelpLine, setIsHelpLine] = useState(false);
@@ -22,6 +22,8 @@ const BottomNav = ({ isNotHome, setIsNotHome, isWalkPartner, setIsWalkPartner, s
     setIsHelpLine(false);
     setIsNotHome(false);
     setIsExpanded(false);
+    setIsPeopleActive(false);
+    setIsTopBarManuallyExpanded(false);
     recenterToUserLocation();
   };
 
@@ -32,6 +34,8 @@ const BottomNav = ({ isNotHome, setIsNotHome, isWalkPartner, setIsWalkPartner, s
     setIsHelpLine(false);
     setIsNotHome(true);
     setIsExpanded(false);
+    setIsPeopleActive(false);
+    setIsTopBarManuallyExpanded(false);
   };
 
   const togglePeople = () => {
@@ -41,6 +45,8 @@ const BottomNav = ({ isNotHome, setIsNotHome, isWalkPartner, setIsWalkPartner, s
     setIsHelpLine(false);
     setIsNotHome(true);
     setIsExpanded(false);
+    setIsPeopleActive(true);
+    setIsTopBarManuallyExpanded(false);
   };
 
   const toggleHelpLine = () => {
@@ -50,6 +56,8 @@ const BottomNav = ({ isNotHome, setIsNotHome, isWalkPartner, setIsWalkPartner, s
     setIsPeople(false);
     setIsNotHome(true);
     setIsExpanded(false);
+    setIsPeopleActive(false);
+    setIsTopBarManuallyExpanded(false);
   };
 
   return (

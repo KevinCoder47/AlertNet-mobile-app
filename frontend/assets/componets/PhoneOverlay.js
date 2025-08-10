@@ -14,6 +14,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { FirebaseService } from '../../backend/Firebase/FirebaseService';
 
 const PhoneOverlay = ({ visible, onClose }) => {
   const [firstName, setFirstName] = useState('');
@@ -67,7 +68,7 @@ const PhoneOverlay = ({ visible, onClose }) => {
     onClose();
   };
 
-  const onSubmit = () => {
+  const onSubmit = async () => {
     if (!firstName.trim()) {
       setError('Please enter first name');
       return;
@@ -81,14 +82,25 @@ const PhoneOverlay = ({ visible, onClose }) => {
       return;
     }
     setError('');
+    setCheckingNumber(true);
 
-    console.log('Adding contact:', { firstName, lastName, phone });
+    const result = await FirebaseService.sendFriendRequest({
+      firstName,
+      lastName,
+      phone
+    });
 
-    setConfirmVisible(true);
-    setFirstName('');
-    setLastName('');
-    setPhone('');
-    setNumberExists(false);
+    setCheckingNumber(false);
+
+    if (result.success) {
+      setConfirmVisible(true);
+      setFirstName('');
+      setLastName('');
+      setPhone('');
+      setNumberExists(false);
+    } else {
+      setError(result.error || 'Failed to send friend request');
+    }
   };
 
   const styles = getStyles(isDark);
