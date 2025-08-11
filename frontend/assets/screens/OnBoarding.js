@@ -1,9 +1,9 @@
 import { StyleSheet, View } from 'react-native'
 import React, { useState,useEffect } from 'react'
 import { useTheme } from '../contexts/ColorContext'
-import LaunchScreen from '../componets/onboarding components/LaunchScreen'
+import LaunchScreen from '../componets/onboardingComponents/LaunchScreen'
 import AnimatedSplash from './AnimatedSplash'
-import FeatureDisplayScreen from '../componets/onboarding components/FeatureDisplayScreen'
+import FeatureDisplayScreen from '../componets/onboardingComponents/FeatureDisplayScreen'
 
 const OnBoarding = ({onComplete, setOnboardingComplete,setIsLoggedIn}) => {
   const { colors, isDark } = useTheme()

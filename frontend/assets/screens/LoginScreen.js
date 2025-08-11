@@ -3,10 +3,13 @@ import React, { useState } from 'react';
 import {
   View, Text, TextInput, StyleSheet,
   TouchableOpacity, Dimensions, ImageBackground,
+  Alert
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import GeneralLoader from '../componets/Loaders/GeneralLoarder';
+import { loginUser } from '../../backend/Firebase/authentication';
 
 
 const backgroundImage = require('../../assets/images/launch-background.jpg');
@@ -14,35 +17,36 @@ const backgroundImage = require('../../assets/images/launch-background.jpg');
 const { width, height } = Dimensions.get('window');
 
 const Login = ({ setIsLoggedIn, navigation }) => {
-  const [emailPrefix, setEmailPrefix] = useState('');
+  const [emailPrefix, setEmailPrefix] = useState(null);
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
 
 
-// (async function () {
-//   const { data, error } = await resend.emails.send({
-//     from: 'Acme <onboarding@resend.dev>',
-//     to: ['mpilonhleradebe@icloud.com'],
-//     subject: 'Hello World',
-//     html: '<strong>It works!</strong>',
-//   });
 
-//   if (error) {
-//     return console.error({ error });
-//   }
 
-//   console.log({ data });
-// })();
+const handleLogin = async () => {
+  if (!emailPrefix.trim() || !password.trim()) {
+    Alert.alert('Error', 'Please enter email and password.');
+    return;
+  }
+  if (loading) return; // prevent multiple taps
 
-  const handleLogin = async () => {
-    if (emailPrefix.trim() && password.trim()) {
-      await AsyncStorage.setItem('isLoggedIn', 'true');
-      setIsLoggedIn(true);
-    } else {
-      alert('Please enter email and password.');
-    }
-  };
+  setLoading(true);
+  try {
+    const email = emailPrefix;
+    const user = await loginUser(email, password);
+    await AsyncStorage.setItem('isLoggedIn', 'true');
+    setIsLoggedIn(true);
+    Alert.alert('Success', `Welcome back, ${user.email}!`);
+    navigation.replace('HomeScreen');
+  } catch (error) {
+    Alert.alert('Login Failed', error.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <ImageBackground source={backgroundImage} style={styles.background}>
@@ -121,7 +125,11 @@ const Login = ({ setIsLoggedIn, navigation }) => {
             Sign Up
           </Text>
         </Text>
+
       </View>
+              {loading && (
+          <GeneralLoader />
+        )}
     </ImageBackground>
   );
 };
