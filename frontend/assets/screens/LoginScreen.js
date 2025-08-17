@@ -37,10 +37,11 @@ const handleLogin = async () => {
   try {
     const email = emailPrefix;
     const user = await loginUser(email, password);
+    
     await AsyncStorage.setItem('isLoggedIn', 'true');
     setIsLoggedIn(true);
     Alert.alert('Success', `Welcome back, ${user.email}!`);
-    navigation.replace('HomeScreen');
+    // navigation.replace('HomeScreen');
   } catch (error) {
     Alert.alert('Login Failed', error.message);
   } finally {

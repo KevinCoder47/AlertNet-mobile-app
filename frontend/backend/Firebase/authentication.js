@@ -1,17 +1,28 @@
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, fetchSignInMethodsForEmail } from 'firebase/auth';
 import { app } from './FirebaseConfig';
 
+
 const auth = getAuth(app);
 
-export const loginUser = async (email, password) => {
+/**
+ * Checks if a user exists with the given email
+ * @param {string} email - Email address to check
+ * @returns {Promise<boolean>} - True if user exists, false otherwise
+ */
+export const checkUserExists = async (email) => {
   try {
-    // Check if email exists
     const methods = await fetchSignInMethodsForEmail(auth, email);
-    if (methods.length === 0) {
-      throw new Error('No user found with this email.');
-    }
+    return methods.length > 0;
+  } catch (error) {
+    console.error('Error checking user existence:', error);
+    throw new Error('Failed to check user existence');
+  }
+};
 
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+export const loginUser = async (email, password) => {
+  const fullmail = `222087503@student.uj.ac.za`
+  try {
+    const userCredential = await signInWithEmailAndPassword(auth, fullmail, password);
     return userCredential.user;
   } catch (error) {
     throw error;

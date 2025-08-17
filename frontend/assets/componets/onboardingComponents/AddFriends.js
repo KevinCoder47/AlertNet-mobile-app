@@ -1,12 +1,10 @@
-import { StyleSheet, Text, View, Dimensions, Image, TouchableOpacity, Platform, Modal, FlatList, Alert } from 'react-native';
+import { StyleSheet, Text, View, Dimensions, Image, TouchableOpacity, Platform, Modal, FlatList, Alert, ActivityIndicator } from 'react-native';
 import React, { useState, useEffect } from 'react';
 import * as Contacts from 'expo-contacts';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { setDoc, doc } from 'firebase/firestore';
-import { db, app } from '../../../backend/Firebase/FirebaseConfig';
-import GeneralLoader from '../Loaders/GeneralLoarder';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { registerUser } from '../../../backend/Firebase/authentication';
+import { handleUserData, createUserDocument } from '../../../services/firestore';
+import { getUsersByPhoneNumbers } from '../../../services/firestore';
 import { getAuth } from 'firebase/auth';
 
 const { width, height } = Dimensions.get('window');
@@ -22,6 +20,11 @@ const PARAGRAPH_LH = Platform.OS === 'android' ? 18 : 20;
 const BUTTON_BOTTOM = Platform.OS === 'android' ? 40 : 60;
 const COUNTER_SIZE = Platform.OS === 'android' ? 13 : 15;
 
+// Helper function to normalize phone numbers
+const normalizePhoneNumber = (phoneNumber) => {
+  return phoneNumber.replace(/\D/g, '').replace(/^0/, '+27');
+};
+
 const ContactPickerModal = ({ 
   visible, 
   onClose, 
@@ -31,14 +34,14 @@ const ContactPickerModal = ({
 }) => {
   const [tempSelected, setTempSelected] = useState(selectedContacts);
 
-  const toggleContact = (contact) => {
-    const isSelected = tempSelected.some(c => c.id === contact.id);
+    const toggleContact = (contact) => {
+    const isSelected = tempSelected.some(c => c.uid === contact.uid); // Compare by UID
     if (isSelected) {
-      setTempSelected(tempSelected.filter(c => c.id !== contact.id));
+        setTempSelected(tempSelected.filter(c => c.uid !== contact.uid));
     } else {
-      setTempSelected([...tempSelected, contact]);
+        setTempSelected([...tempSelected, contact]);
     }
-  };
+    };
 
   const handleConfirm = () => {
     onSelectContacts(tempSelected);
@@ -52,7 +55,7 @@ const ContactPickerModal = ({
           <TouchableOpacity onPress={onClose}>
             <Text style={styles.modalCancel}>Cancel</Text>
           </TouchableOpacity>
-          <Text style={styles.modalTitle}>Select Contacts</Text>
+          <Text style={styles.modalTitle}>Select Alertnet Contacts</Text>
           <TouchableOpacity onPress={handleConfirm}>
             <Text style={styles.modalConfirm}>Done</Text>
           </TouchableOpacity>
@@ -78,11 +81,11 @@ const ContactPickerModal = ({
                 <Text style={styles.contactName}>{item.name}</Text>
               </View>
               
-              <View style={styles.checkbox}>
-                {tempSelected.some(c => c.id === item.id) && (
-                  <View style={styles.checkboxSelected} />
+                <View style={styles.checkbox}>
+                {tempSelected.some(c => c.uid === item.uid) && ( // Check by UID
+                    <View style={styles.checkboxSelected} />
                 )}
-              </View>
+                </View>
             </TouchableOpacity>
           )}
         />
@@ -93,31 +96,42 @@ const ContactPickerModal = ({
 
 const AddFriends = ({ navigation, setIsLoggedIn }) => {
     const [totalContacts, setTotalContacts] = useState(0);
-    const [contactsWithAlertnet] = useState(3);
     const [isLoading, setIsLoading] = useState(false);
     const [permissionGranted, setPermissionGranted] = useState(false);
     const [allContacts, setAllContacts] = useState([]);
     const [selectedContacts, setSelectedContacts] = useState([]);
     const [modalVisible, setModalVisible] = useState(false);
     const [userData, setUserData] = useState(null);
-
+    const [registeredContacts, setRegisteredContacts] = useState([]);
+    const [isCheckingContacts, setIsCheckingContacts] = useState(false);
+    
     // Get user data from AsyncStorage
-useEffect(() => {
-  // Temporary: Clear storage for debugging
-  AsyncStorage.clear().then(() => {
-    console.log('AsyncStorage cleared');
-  });
+    useEffect(() => {
         const fetchUserData = async () => {
             try {
                 const jsonValue = await AsyncStorage.getItem('userData');
                 if (jsonValue) {
                     const data = JSON.parse(jsonValue);
-                    // Map stored data to expected format
                     setUserData({
                         ...data,
                         fullName: `${data.name} ${data.surname}`,
                         phoneNumber: data.phone
                     });
+                    
+                    // Load and migrate previously selected contacts
+                    if (data.friends) {
+                        // Migrate old format to new format
+                        const migratedFriends = data.friends.map(friend => {
+                            // If friend doesn't have uid, use id temporarily
+                            return {
+                                uid: friend.uid || friend.id,
+                                name: friend.name,
+                                email: friend.email,
+                                phoneNumber: friend.phoneNumber
+                            };
+                        });
+                        setSelectedContacts(migratedFriends);
+                    }
                 }
             } catch (e) {
                 console.error('Error reading user data:', e);
@@ -127,37 +141,151 @@ useEffect(() => {
         fetchUserData();
     }, []);
 
-    const requestContactsPermission = async () => {
-        setIsLoading(true);
-        const { status } = await Contacts.requestPermissionsAsync();
+
+//get users by phone number from firestore
+const fetchAndFilterContacts = async () => {
+  setIsLoading(true);
+  const { status } = await Contacts.requestPermissionsAsync();
+  
+  if (status === 'granted') {
+    setPermissionGranted(true);
+    const { data } = await Contacts.getContactsAsync({
+      fields: [
+        Contacts.Fields.Name, 
+        Contacts.Fields.Image,
+        Contacts.Fields.PhoneNumbers
+      ],
+    });
+    
+    setTotalContacts(data.length);
+    setAllContacts(data);
+    
+    // Extract and normalize phone numbers
+    const phoneNumbers = data.flatMap(contact => 
+      (contact.phoneNumbers || []).map(p => 
+        normalizePhoneNumber(p.number)
+      )
+    ).filter(Boolean);
+    
+    if (phoneNumbers.length > 0) {
+      setIsCheckingContacts(true);
+      try {
+        // Find Alertnet users by phone numbers
+        const usersMap = await getUsersByPhoneNumbers(phoneNumbers);
         
-        if (status === 'granted') {
-            setPermissionGranted(true);
-            const { data } = await Contacts.getContactsAsync({
-                fields: [
-                    Contacts.Fields.Name, 
-                    Contacts.Fields.Image,
-                    Contacts.Fields.PhoneNumbers
-                ],
-            });
+        // Map contacts to Alertnet users
+        const verifiedContacts = data.reduce((acc, contact) => {
+          if (!contact.phoneNumbers) return acc;
+          
+          // Try to find a matching phone number
+          for (const phoneObj of contact.phoneNumbers) {
+            const normalizedPhone = normalizePhoneNumber(phoneObj.number);
+            const user = usersMap[normalizedPhone];
             
-            setTotalContacts(data.length);
-            setAllContacts(data);
+                if (user) {
+                acc.push({
+                    ...contact,
+                    alertnetUser: user, // Contains friend's Firebase UID
+                    uid: user.id, // Store friend's Firebase UID here
+                    phoneNumber: normalizedPhone,
+                    name: contact.name || `${user.Name} ${user.Surname}`,
+                    imageAvailable: Boolean(user.ImageURL),
+                    image: user.ImageURL ? { uri: user.ImageURL } : null
+                });
+                break;
+                }
+            }
+            return acc;
+            }, []);
+        
+        setRegisteredContacts(verifiedContacts);
+      } catch (error) {
+        console.error('Failed to find Alertnet users:', error);
+        Alert.alert('Notice', 'No registered contacts found');
+        setRegisteredContacts([]); // Set empty array on error
+      } finally {
+        setIsCheckingContacts(false);
+      }
+    } else {
+      // No phone numbers found
+      setRegisteredContacts([]);
+    }
+  }
+  
+  setIsLoading(false);
+  return status === 'granted';
+};
+
+    // Filter contacts to only include Alertnet users
+    const filterRegisteredContacts = async (contacts) => {
+        const verifiedContacts = [];
+        
+        for (const contact of contacts) {
+            if (!contact.phoneNumbers || contact.phoneNumbers.length === 0) continue;
+            
+            for (const phoneObj of contact.phoneNumbers) {
+                try {
+                    const normalizedPhone = normalizePhoneNumber(phoneObj.number);
+                    const email = `${normalizedPhone}@student.uj.ac.za`;
+                    
+                    // Check if user exists with this email
+                    const userExists = await checkUserExists(email);
+                    
+                    if (userExists) {
+                        verifiedContacts.push({
+                            ...contact,
+                            alertnetEmail: email,
+                            phoneNumber: normalizedPhone
+                        });
+                        break; // Stop checking other numbers for this contact
+                    }
+                } catch (error) {
+                    console.error('Error checking contact:', contact.name, error);
+                }
+            }
         }
         
-        setIsLoading(false);
-        return status === 'granted';
+        return verifiedContacts;
     };
 
+useEffect(() => {
+  const fetchUserData = async () => {
+    try {
+      const jsonValue = await AsyncStorage.getItem('userData');
+      console.log('Stored userData:', jsonValue);  // Debug log
+      
+      if (jsonValue) {
+        const data = JSON.parse(jsonValue);
+        console.log('Parsed userData:', data);  // Debug log
+        
+        setUserData({
+          ...data,
+          fullName: `${data.name} ${data.surname}`,
+          phoneNumber: data.phone
+        });
+        
+        if (data.friends) {
+          setSelectedContacts(data.friends);
+        }
+      }
+    } catch (e) {
+      console.error('Error reading user data:', e);
+    }
+  };
+  
+  fetchUserData();
+}, []);
+
     const handleAllowFullAccess = async () => {
-        const granted = await requestContactsPermission();
+        const granted = await fetchAndFilterContacts();
         if (granted) {
-            setSelectedContacts(allContacts); // Select all contacts
+            // Auto-select all registered contacts
+            setSelectedContacts(registeredContacts);
         }
     };
 
     const handleSelectContacts = async () => {
-        const granted = await requestContactsPermission();
+        const granted = await fetchAndFilterContacts();
         if (granted) {
             setModalVisible(true);
         }
@@ -167,66 +295,83 @@ useEffect(() => {
         setSelectedContacts(contacts);
     };
 
-    // Save user data to Firestore
+// Save user data to Firestore - UPDATED TO CREATE DOCUMENT
     const saveUserToFirestore = async () => {
-        // if (!userData) {
-        //     Alert.alert('Error', 'User data not found');
-        //     return;
-        // }
+        try {
+            setIsLoading(true);
+            
+            const jsonValue = await AsyncStorage.getItem('userData');
+            if (!jsonValue) {
+                throw new Error('User data not found in storage');
+            }
+            
+            const currentUserData = JSON.parse(jsonValue);
+            const userId = currentUserData.userId;
+            
+            if (!userId) {
+                throw new Error('User ID not available');
+            }
 
-        // setIsLoading(true);
-        
-        // try {
-        //     // Register user with Firebase Authentication
-        //     const auth = getAuth(app); // Use the app instance from FirebaseConfig
-        //     const userCredential = await registerUser(userData.email, userData.password);
-        //     const userId = userCredential.user.uid;
-            
-        //     // Prepare friends data with safe access to phone numbers
-        //     const friends = selectedContacts.map(contact => ({
-        //         id: contact.id,
-        //         name: contact.name,
-        //         phoneNumber: contact.phoneNumbers?.[0]?.number || 'No phone number',
-        //     }));
+            // Prepare contacts data with FRIEND'S FIREBASE UID
+            const alertnetContacts = selectedContacts.map(contact => ({
+                uid: contact.alertnetUser?.id || contact.uid, // Use friend's Firebase UID
+                name: contact.name,
+                email: contact.alertnetUser?.Email || contact.email,
+                phoneNumber: contact.phoneNumber
+            }));
 
-        //     // Create user document in Firestore
-        //     const userDoc = {
-        //         uid: userId,
-        //         fullName: userData.fullName,
-        //         phone: userData.phoneNumber,
-        //         email: userData.email,
-        //         friends,
-        //         imageurl: '', // Will be added later
-        //         currentLocation: { lat: 0, lng: 0 },
-        //         createdAt: new Date(),
-        //     };
-
-        //     await setDoc(doc(db, "users", userId), userDoc);
+            // Create user document with friends
+            await createUserDocument(userId, {
+                name: currentUserData.name || '',
+                surname: currentUserData.surname || '',
+                phone: currentUserData.phoneNumber || '',
+                email: currentUserData.email || '',
+                imageUrl: currentUserData.imageUrl || '',
+                gender: currentUserData.gender || '',
+                campus: currentUserData.campus || "",  
+                currentLocation: currentUserData.currentLocation || {  
+                    latitude: -26.2041,  
+                    longitude: 28.0473
+                },
+                residenceAddress: currentUserData.residenceAddress || {  
+                    latitude: 0,
+                    longitude: 0
+                },
+                rating: currentUserData.rating || 0,  
+                walks: currentUserData.walks || 0,
+                friends: alertnetContacts
+            });
             
-        //     // Update AsyncStorage with user ID
-        //     await AsyncStorage.setItem('userData', JSON.stringify({
-        //         ...userData,
-        //         uid: userId
-        //     }));
+            // Update AsyncStorage with new contacts format
+            const updatedUserData = {
+                ...currentUserData,
+                friends: alertnetContacts
+            };
+            await AsyncStorage.setItem('userData', JSON.stringify(updatedUserData));
             
-        //     // Set logged in state
-        //     setIsLoggedIn(true);
+            // Update local state
+            setUserData(updatedUserData);
             
-        //     // Navigate to main app
-        //     await AsyncStorage.setItem('isLoggedIn', 'true');
-            
-        // } catch (error) {
-        //     console.error('Firestore save error:', error);
-        //     Alert.alert('Error', error.message || 'Failed to save user data');
-        // } finally {
-        //     setIsLoading(false);
-        // }
-        await AsyncStorage.setItem('isLoggedIn', 'true');
-        setIsLoggedIn(true);
+            // Mark user as logged in
+            await AsyncStorage.setItem('isLoggedIn', 'true');
+            setIsLoggedIn(true);
+        } catch (error) {
+            console.error('Failed to save contacts:', error);
+            Alert.alert('Error', error.message || 'Failed to save your data');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
-    if (isLoading) {
-        return <GeneralLoader />;
+    if (isLoading || isCheckingContacts) {
+        return (
+            <View style={styles.loaderContainer}>
+                <ActivityIndicator size="large" color="#C84022" />
+                {isCheckingContacts && (
+                    <Text style={styles.loaderText}>Finding Alertnet contacts...</Text>
+                )}
+            </View>
+        );
     }
 
     // Determine contacts to display based on selection method
@@ -236,11 +381,11 @@ useEffect(() => {
     if (selectedContacts.length > 0) {
         displayContacts = selectedContacts.slice(0, 3);
         extraCount = Math.max(0, selectedContacts.length - 3);
-    } else if (permissionGranted && allContacts.length > 0) {
-        displayContacts = allContacts
+    } else if (permissionGranted && registeredContacts.length > 0) {
+        displayContacts = registeredContacts
             .filter(contact => contact.imageAvailable)
             .slice(0, 3);
-        extraCount = Math.max(0, totalContacts - 3);
+        extraCount = Math.max(0, registeredContacts.length - 3);
     }
 
     const placeholderImage = require('../../images/profile-pictures/14.jpg');
@@ -285,7 +430,7 @@ useEffect(() => {
                             <>
                                 You've selected{" "}
                                 <Text style={{ fontWeight: '800' }}>{selectedContacts.length}</Text>
-                                {" "}contacts
+                                {" "}Alertnet contacts
                             </>
                         ) : (
                             <>
@@ -293,7 +438,7 @@ useEffect(() => {
                                 <Text style={{ fontWeight: '800' }}>{totalContacts}</Text>
                                 {" "}contacts in total,{" "}
                                 <Text style={{ fontWeight: '800', color: '#F57527' }}>
-                                    {contactsWithAlertnet}
+                                    {registeredContacts.length}
                                 </Text>
                                 {" "}are on Alertnet
                             </>
@@ -311,24 +456,30 @@ useEffect(() => {
                     fontSize: PARAGRAPH_SIZE, 
                     lineHeight: PARAGRAPH_LH 
                 }]}>
-                    Selecting friends lets you pick the ones
-                    you want to add right now. You can
-                    always add more later. Allowing full
-                    access will add all your contacts active on
-                    the app.
+                    {selectedContacts.length > 0 ? (
+                        "You're only adding contacts who are registered on Alertnet"
+                    ) : (
+                        "We'll only add contacts who are registered on Alertnet"
+                    )}
                 </Text>
             </View>
             
             <View style={[styles.buttonContainer, { marginBottom: BUTTON_BOTTOM }]}>
-                <TouchableOpacity onPress={handleAllowFullAccess}>
+                {/* Allow Full Access Button - Original Style */}
+                <TouchableOpacity 
+                    onPress={handleAllowFullAccess}
+                    disabled={isCheckingContacts}
+                >
                     <Text style={[styles.btnText, { color: '#C84022' }]}>
-                        Allow Full Access
+                        Add all Contacts
                     </Text>
                 </TouchableOpacity>
                 
+                {/* Select Contacts Button - Original Style */}
                 <TouchableOpacity 
                     onPress={handleSelectContacts} 
                     style={styles.selectContacts}
+                    disabled={isCheckingContacts}
                 >
                     <Text style={[styles.btnText, { color: 'white' }]}>
                         Select Contacts
@@ -339,12 +490,12 @@ useEffect(() => {
             <ContactPickerModal
                 visible={modalVisible}
                 onClose={() => setModalVisible(false)}
-                contacts={allContacts}
+                contacts={registeredContacts}
                 selectedContacts={selectedContacts}
                 onSelectContacts={handleContactsSelected}
             />
             
-            {/* Floating Action Button */}
+            {/* Floating Action Button - MODIFIED TO ALLOW EMPTY CONTACTS */}
             <TouchableOpacity
                 onPress={saveUserToFirestore}
                 style={{
@@ -355,8 +506,13 @@ useEffect(() => {
                     backgroundColor: 'transparent',
                 }}
                 activeOpacity={0.7}
+                disabled={isCheckingContacts}  // Only disable when checking
             >
-                <Ionicons name="arrow-forward-circle" size={60} color="#C84022" />
+                <Ionicons 
+                    name="arrow-forward-circle" 
+                    size={60} 
+                    color={isCheckingContacts ? "#CCCCCC" : "#C84022"} 
+                />
             </TouchableOpacity>
         </View>
     );
@@ -371,6 +527,18 @@ const styles = StyleSheet.create({
         height: height,
         alignItems: 'center',
         position: 'absolute',
+        backgroundColor: '#FEF7EE'
+    },
+    loaderContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#FEF7EE'
+    },
+    loaderText: {
+        marginTop: 20,
+        color: '#C84022',
+        fontWeight: '500'
     },
     halfView: {
         width: width,
@@ -410,18 +578,21 @@ const styles = StyleSheet.create({
         fontSize: 11,
         fontWeight: '400',
         marginTop: 30,
-        textAlign: 'center'
+        textAlign: 'center',
+        color: '#333'
     },
     bigText: {
         textAlign: 'center',
         fontWeight: '600',
         marginTop: 40,
         maxWidth: width * 0.8,
+        color: '#222'
     },
     p2: {
         textAlign: 'center',
         maxWidth: width * 0.7,
         marginTop: 20,
+        color: '#555'
     },
     selectContacts: {
         marginBottom: 20,
@@ -431,7 +602,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         borderRadius: 50,
-        color: 'white'
     },
     btnText: {
         fontSize: 15,
@@ -460,13 +630,16 @@ const styles = StyleSheet.create({
     modalTitle: {
         fontWeight: 'bold',
         fontSize: 18,
+        color: '#222'
     },
     modalCancel: {
         color: 'gray',
+        fontSize: 16
     },
     modalConfirm: {
         color: '#C84022',
         fontWeight: 'bold',
+        fontSize: 16
     },
     contactItem: {
         flexDirection: 'row',
@@ -491,6 +664,7 @@ const styles = StyleSheet.create({
     },
     contactName: {
         fontSize: 16,
+        color: '#333'
     },
     checkbox: {
         width: 24,

@@ -1,8 +1,8 @@
-import { StyleSheet, Text, View, Dimensions, TextInput, TouchableOpacity } from 'react-native'
-import React, { useRef, useState, useEffect } from 'react'
+import { StyleSheet, Text, View, Dimensions, TextInput, TouchableOpacity, Alert } from 'react-native'
+import React, { useRef, useState } from 'react'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import GeneralLoader from '../componets/Loaders/GeneralLoarder';
+import { registerUser } from '../../backend/Firebase/authentication';
 
 const {width, height} = Dimensions.get('window')
 
@@ -10,45 +10,50 @@ const VerifyEmailScreen = ({
   navigation, setShowEmailVerify,
   setIsEmailVerified, isEmailVerified,
   setIsVerifying, setIsLoggedIn,
-  confirmationCode
+  confirmationCode, setIsAddProfileImg,
+  password, setUserUid, email
 }) => {
   const inputRefs = useRef([]);
   const [verificationCode, setVerificationCode] = useState(['', '', '', '']);
 
-  useEffect(() => {
-    const code = verificationCode.join('');
-    // console.log('Current code:', code);
-  }, [verificationCode]);
+  const handlePress = async () => {
+    if (!isEmailVerified) {
+      const enteredCode = verificationCode.join('');
+      const correctCode = confirmationCode;
 
-const handlePress = async () => {
-  if (!isEmailVerified) {
-    const enteredCode = verificationCode.join('');
-    const correctCode = confirmationCode;
+      setIsVerifying(true);
+      setTimeout(() => {
+        if (enteredCode === correctCode) {
+          setIsEmailVerified(true);
+        } else {
+          alert("Incorrect verification code");
+        }
+        setIsVerifying(false);
+      }, 1500);
+    } else {
+      try {
+        // Register user with Firebase
+        const user = await registerUser(email, password);
+        
+        // Store the generated UID
+        setUserUid(user.uid);
 
-    setIsVerifying(true);
-    setTimeout(() => {
-      if (enteredCode === correctCode) {
-        setIsEmailVerified(true);
-      } else {
-        alert("Incorrect verification code");
+        const userDataJSON = await AsyncStorage.getItem('userData');
+        const userData = userDataJSON ? JSON.parse(userDataJSON) : {};
+
+        // Add userId to userData
+        userData.userId = user.uid;
+        
+        // Update AsyncStorage with user ID
+        await AsyncStorage.setItem('userData', JSON.stringify(userData));
+        
+        setIsAddProfileImg(true);
+      } catch (error) {
+        console.error('Registration failed:', error);
+        Alert.alert('Registration Error', error.message);
       }
-      setIsVerifying(false);
-    }, 1500); // Simulate delay
-  } else {
-    // navigation.replace("Home");
-    try {
-      // save everything 
-      //have one function to save everything to firbase
-
-
-      //then save to async storage
-  await AsyncStorage.setItem('isLoggedIn', 'true');
-  setIsLoggedIn(true);
-} catch (error) {
-  console.error('Failed to save login state:', error);
-}
-  }
-};
+    }
+  };
 
 
 

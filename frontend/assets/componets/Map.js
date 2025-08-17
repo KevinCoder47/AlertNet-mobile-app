@@ -113,7 +113,7 @@ const MAP_IDS = {
 
 
 
-export default function SafetyMap() {
+export default function SafetyMap({userImage}) {
   const { colors } = useTheme();
   const [location, setLocation] = useState(null);
   const [mapReady, setMapReady] = useState(false);
@@ -290,7 +290,7 @@ const [friends, setFriends] = useState([
             anchor={{ x: 0.5, y: 1 }} 
             pinColor={Platform.OS === 'android' ? "#FF0000" : undefined} // Android-only
           >
-            {Platform.OS === 'ios' && <UserMapMarker />}
+            {Platform.OS === 'ios' && <UserMapMarker userImage={userImage} />}
           </Marker>
 
 

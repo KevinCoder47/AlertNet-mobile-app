@@ -1,4 +1,3 @@
-// screens/signup.js
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, StyleSheet,
@@ -13,11 +12,9 @@ import VerifyEmailScreen from '../componets/VerifyEmailScreen';
 import GeneralLoader from '../componets/Loaders/GeneralLoarder';
 import AddInfo from './AddInfo';
 
+
 const { width, height } = Dimensions.get('window');
 const backgroundImage = require('../../assets/images/launch-background.jpg'); 
-// Current working updat
-// e. I have commented out the backend until we understand what 
-// is happening 
 
 const SignupScreen = ({ navigation,setIsLoggedIn }) => {
   const [fullName, setFullName] = useState('');
@@ -28,45 +25,48 @@ const SignupScreen = ({ navigation,setIsLoggedIn }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
-  const [isEmailVerified, setIsEmailVerified] = useState(true); 
-  const [showEmailVerify, setShowEmailVerify] = useState(true);
+  const [isEmailVerified, setIsEmailVerified] = useState(false); 
+  const [showEmailVerify, setShowEmailVerify] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [loading, setLoading] = useState(false)
   const [emailSent, setEmailSent] = useState(false)
   const [confirmationCode, setConfirmationCode] = useState('');
-  const [isAddProfileImg,setIsAddProfileImg] = useState(false)
+  const [isAddProfileImg, setIsAddProfileImg] = useState(false)
+  const [userUid, setUserUid] = useState();
+  const [email,setEmail] = useState()
 
-  
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const passwordRef = useRef(null);
   const confirmRef = useRef(null);
 
   // Save user data to AsyncStorage
-  const saveUserData = async () => {
-    // Clean phone number (remove non-digit characters)
-    const cleanedPhoneNumber = phoneNumber.replace(/\D/g, '');
-    
-    const userData = {
-      fullName,
-      phoneNumber: `+27${cleanedPhoneNumber}`, // Add country code
-      email: `${emailPrefix}@student.uj.ac.za`,
-      // Add other relevant user data here
-    };
-
-    try {
-      await AsyncStorage.setItem('userData', JSON.stringify(userData));
-      console.log('User data saved successfully');
-    } catch (error) {
-      console.error('Failed to save user data:', error);
-      Alert.alert('Error', 'Failed to save user data');
-    }
+const saveUserData = async () => {
+  const cleanedPhoneNumber = phoneNumber.replace(/\D/g, '');
+  
+  const nameParts = fullName.trim().split(" ");
+  const userData = {
+    // Handle single-name users
+    name: nameParts[0] || "",
+    // Handle multi-part surnames
+    surname: nameParts.slice(1).join(" ") || "", 
+    fullName, 
+    phoneNumber: `+27${cleanedPhoneNumber}`,
+    email: `${emailPrefix}@student.uj.ac.za`,
+    userId: userUid
   };
 
-  // Handle saving data when email is verified
+  try {
+    await AsyncStorage.setItem('userData', JSON.stringify(userData));
+    console.log('User data saved:', userData);
+  } catch (error) {
+    console.error('Save failed:', error);
+  }
+};
+
   useEffect(() => {
     if (isEmailVerified) {
       saveUserData();
-      setIsAddProfileImg(true);
+      
     }
   }, [isEmailVerified]);
 
@@ -162,6 +162,7 @@ async function sendVerificationEmail(email, code) {
     }
 
     try {
+      
       const email = `${emailPrefix}@student.uj.ac.za`;
       // Generate a random 6-digit code
       const code = Math.floor(1000 + Math.random() * 9000).toString();
@@ -373,6 +374,10 @@ async function sendVerificationEmail(email, code) {
               setIsVerifying={setIsVerifying}
               setIsLoggedIn={setIsLoggedIn}
               confirmationCode={confirmationCode}
+              setIsAddProfileImg={setIsAddProfileImg}
+              password={password}
+              email={`${emailPrefix}@student.uj.ac.za`}
+              setUserUid={setUserUid}
             />
             
   </View>
