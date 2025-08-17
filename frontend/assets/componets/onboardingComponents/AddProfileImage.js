@@ -9,61 +9,90 @@ const {width, height} = Dimensions.get('window')
 
 const AddProfileImage = ({ onImageSelected,isImageSaved,setIsImageSaved }) => {
   const [profileImageUri, setProfileImageUri] = useState(null);
-  
 
   useEffect(() => {
     (async () => {
-      // Request media library permissions
+      // Request permissions
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        alert('Sorry, we need camera roll permissions to make this work!');
-      }
+      if (status !== 'granted') alert('Camera roll permissions required!');
       
-      // Load saved image if exists
-      const savedImage = await AsyncStorage.getItem('profileImage');
-      if (savedImage) {
-          setProfileImageUri(savedImage);
-          setIsImageSaved(true)
-        if (onImageSelected) onImageSelected(savedImage);
+      // Load image from userData
+      try {
+        const userDataJSON = await AsyncStorage.getItem('userData');
+        const legacyImage = await AsyncStorage.getItem('profileImage');
+        
+        let imageUri = null;
+        
+        // 1. Check new storage location
+        if (userDataJSON) {
+          const userData = JSON.parse(userDataJSON);
+          if (userData.imageUrl) imageUri = userData.imageUrl;
+        }
+        
+        // 2. Migrate legacy storage if needed
+        if (!imageUri && legacyImage) {
+          imageUri = legacyImage;
+          // Migrate to userData object
+          const userData = userDataJSON ? JSON.parse(userDataJSON) : {};
+          userData.imageUrl = legacyImage;
+          await AsyncStorage.setItem('userData', JSON.stringify(userData));
+          await AsyncStorage.removeItem('profileImage'); // Remove old key
+        }
+        
+        // Update state if image found
+        if (imageUri) {
+          setProfileImageUri(imageUri);
+          setIsImageSaved(true);
+          if (onImageSelected) onImageSelected(imageUri);
+        }
+      } catch (error) {
+        console.error('Error loading image:', error);
       }
     })();
   }, []);
 
-  const pickImage = async () => {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.7,
+const pickImage = async () => {
+  try {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      const uri = result.assets[0].uri;
+      
+      // Generate unique filename
+      const fileExt = uri.split('.').pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      const newPath = `${FileSystem.documentDirectory}${fileName}`;
+
+      // Copy image to permanent storage
+      await FileSystem.copyAsync({
+        from: uri,
+        to: newPath
       });
 
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const uri = result.assets[0].uri;
-        
-        // Generate unique filename
-        const fileExt = uri.split('.').pop();
-        const fileName = `${Date.now()}.${fileExt}`;
-        const newPath = `${FileSystem.documentDirectory}${fileName}`;
-
-        // Copy image to permanent storage
-        await FileSystem.copyAsync({
-          from: uri,
-          to: newPath
-        });
-        
-        // Save to state and AsyncStorage
-        setProfileImageUri(newPath);
-        await AsyncStorage.setItem('profileImage', newPath);
-        setIsImageSaved(true)
-        // Notify parent component if needed
-        if (onImageSelected) onImageSelected(newPath);
-      }
-    } catch (error) {
-      console.error('Error selecting image:', error);
-      alert('Error selecting image. Please try again.');
+      // FIX: Retrieve userData from AsyncStorage first
+      const userDataJSON = await AsyncStorage.getItem('userData');
+      const userData = userDataJSON ? JSON.parse(userDataJSON) : {};
+      
+      // Update userData with new image path
+      userData.imageUrl = newPath;
+      
+      await AsyncStorage.setItem('userData', JSON.stringify(userData));
+      
+      // Update state
+      setProfileImageUri(newPath);
+      setIsImageSaved(true);
+      if (onImageSelected) onImageSelected(newPath);
     }
-  };
+  } catch (error) {
+    console.error('Error selecting image:', error);
+    alert('Error selecting image. Please try again.');
+  }
+};
 
   return (
       <View style={styles.container}>

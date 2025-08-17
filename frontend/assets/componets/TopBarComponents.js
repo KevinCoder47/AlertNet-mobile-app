@@ -4,11 +4,31 @@ import { View as SafeView } from 'react-native'
 import TopBarSearch from './TopBarSearch'
 import { useTheme } from '../contexts/ColorContext'
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
-const TopBarComponents = ({isNotHome, setIsUserProfile, setIsSafetyResources}) => {
-  const [userName, setUserName] = useState("Mpilo");
+const TopBarComponents = ({isNotHome, setIsUserProfile, setIsSafetyResources,profileImageUri}) => {
+  const [userName, setUserName] = useState("Guest");
   const [location, setLocation] = useState("School, AuklandPark, Johannesburg");
   const { colors, isDark } = useTheme();
+  
+const [userData, setUserData] = useState(null);
+
+useEffect(() => {
+  const loadUserData = async () => {
+    try {
+      const jsonValue = await AsyncStorage.getItem('userData');
+      if (jsonValue) {
+        const data = JSON.parse(jsonValue);
+        setUserData(data);
+        setUserName(data.name);
+      }
+    } catch (e) {
+      console.error('Failed to load user data', e);
+    }
+  };
+
+  loadUserData();
+}, []);
   
   // Create animated value for search bar height
   const searchBarHeight = useRef(new Animated.Value(isNotHome ? 0 : 60)).current;
@@ -33,7 +53,7 @@ const TopBarComponents = ({isNotHome, setIsUserProfile, setIsSafetyResources}) =
               console.log("Profile pressed");
             }}>
           <ImageBackground
-            source={require('../images/user-profile.jpg')}
+            source={{ uri: profileImageUri }} 
             style={styles.profilePic}
             imageStyle={styles.profilePicImage}
 
@@ -45,7 +65,9 @@ const TopBarComponents = ({isNotHome, setIsUserProfile, setIsSafetyResources}) =
         <View style={{ gap: 4, marginTop: 0, marginLeft: 10 }}>
           <View style={{ flexDirection: "row" }}>
             <Text style={[styles.text, { fontFamily: "Helvetica Light",color: colors.text }]}>Hello, </Text>
-            <Text style={[styles.text, { fontFamily: "Helvetica Bold", color: colors.text  }]}>{userName}</Text>
+            <Text style={[styles.text, { fontFamily: "Helvetica Bold", color: colors.text }]}>
+              {userName}
+            </Text>
           </View>
           
           {/* location */}
@@ -105,6 +127,6 @@ const styles = StyleSheet.create({
     fontWeight: '500'
   },
   text: {
-    fontSize: 20,
+    fontSize: 16,
   }
 })

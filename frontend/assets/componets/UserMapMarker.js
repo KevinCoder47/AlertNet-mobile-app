@@ -1,7 +1,7 @@
 import { StyleSheet, View, Image, Animated } from 'react-native';
 import React, { useEffect, useRef } from 'react';
 
-const UserMapMarker = ({ profileImage }) => {
+const UserMapMarker = ({ userImage }) => {
   // Animation for subtle pulsing effect
   const pulseAnim = useRef(new Animated.Value(1)).current;
   
@@ -42,9 +42,9 @@ const UserMapMarker = ({ profileImage }) => {
         />
         <View style={styles.outerCircle}>
           <View style={styles.innerCircle}>
-            {profileImage ? (
+            {userImage ? (
               <Image 
-                source={profileImage} 
+                source={{uri: userImage}} 
                 style={styles.profileImage} 
                 resizeMode="cover"
               />

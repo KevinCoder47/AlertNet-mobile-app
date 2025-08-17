@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 const { width, height } = Dimensions.get('window');
 
-const TopBar = ({isNotHome, isPeopleActive, isTopBarManuallyExpanded, setIsTopBarManuallyExpanded, setIsUserProfile, setIsSafetyResources}) => {
+const TopBar = ({isNotHome, isPeopleActive, isTopBarManuallyExpanded, setIsTopBarManuallyExpanded, setIsUserProfile, setIsSafetyResources,profileImageUri}) => {
   const { colors } = useTheme();
   
   const shouldCollapse = isNotHome || (isPeopleActive && !isTopBarManuallyExpanded);
@@ -94,18 +94,13 @@ const TopBar = ({isNotHome, isPeopleActive, isTopBarManuallyExpanded, setIsTopBa
         style={[styles.wrapper, darkModeStyles.wrapper, { height: wrapperHeight }]}
         {...(isPeopleActive ? panResponder.panHandlers : {})}
       >
-        <TopBarComponents isNotHome={shouldCollapse} setIsUserProfile={setIsUserProfile} setIsSafetyResources={setIsSafetyResources}/>
+        <TopBarComponents
+          isNotHome={shouldCollapse}
+          setIsUserProfile={setIsUserProfile}
+          setIsSafetyResources={setIsSafetyResources}
+          profileImageUri = {profileImageUri}
+        />
         
-        {/* Toggle indicator for people's page */}
-        {isPeopleActive && (
-          <View style={styles.toggleIndicator}>
-            <Ionicons 
-              name={shouldCollapse ? "chevron-down" : "chevron-up"} 
-              size={16} 
-              color={colors.isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.6)"} 
-            />
-          </View>
-        )}
         
         {Platform.OS === 'ios' ? (
           <>

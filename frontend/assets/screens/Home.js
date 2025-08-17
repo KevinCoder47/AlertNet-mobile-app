@@ -1,11 +1,11 @@
-import { StyleSheet, View, Dimensions, BackHandler } from 'react-native';
+import { StyleSheet, View, Dimensions } from 'react-native';
 import React, { useState, useEffect } from 'react';
 import Map from '../componets/Map';
 import TopBar from '../componets/TopBar';
 import BottomNav from '../componets/BottomNav';
 import { MapProvider } from '../contexts/MapContext';
-import { LanguageProvider } from './SafetyResource_Screens/LanguagePage'; // Import the LanguageProvider
 import MyProfile from '../screens/MyProfile';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import WalkPartner from './WalkPartner';
 import SOSPage from './SOS';
@@ -22,27 +22,14 @@ import SafetyVideos from './SafetyResource_Screens/safetyVideos';
 import OfflineMap from './SafetyResource_Screens/offlineMap';
 import WalkingAloneTips from './SafetyResource_Screens/walkingAlone';
 import Subscription from './SafetyResource_Screens/Subscription';
-import SafetyZones from './SafetyResource_Screens/safetyZones';
 
 const { width, height } = Dimensions.get('window');
 
-// Main Home Component (now wrapped with LanguageProvider)
 const Home = ({handleLogout}) => {
-  return (
-    <LanguageProvider>
-      <HomeContent handleLogout={handleLogout} />
-    </LanguageProvider>
-  );
-};
-
-// Separated the main logic into HomeContent component
-const HomeContent = ({handleLogout}) => {
   const [isNotHome, setIsNotHome] = useState(false);
   const [isSOS, setIsSOS] = useState(false);
   const [isWalkPartner, setIsWalkPartner] = useState(false);
   const [isQrCode, setIsQrCode] = useState(false);
-  const [isPeopleActive, setIsPeopleActive] = useState(false);
-  const [isTopBarManuallyExpanded, setIsTopBarManuallyExpanded] = useState(false);
   const [isSafetyResources, setIsSafetyResources] = useState(false);
   const [isTestSOS, setIsTestSOS] = useState(false);
   const [isLiveLocation, setIsLiveLocation] = useState(false);
@@ -57,39 +44,35 @@ const HomeContent = ({handleLogout}) => {
   const [isSubscriptionScreen, setIsSubscriptionScreen] = useState(false);
   const [isWalkingAloneTips, setIsWalkingAloneTips] = useState(false);
   const [isSubscription, setIsSubscription] = useState(false);
-  const [isSafetyZones, setIsSafetyZones] = useState(false);
-  const [previousScreen, setPreviousScreen] = useState('home');
+  
+  const [isPeopleActive, setIsPeopleActive] = useState(false);
+  const [isTopBarManuallyExpanded, setIsTopBarManuallyExpanded] = useState(false);
+  
+  // State for profile image
+  const [userImage, setUserImage] = useState(null);
 
-  // Hardware back button handler
+  // Load profile image from AsyncStorage
   useEffect(() => {
-    const handleBackPress = () => {
-      if (isWalkPartner) { setIsWalkPartner(false); return true; }
-      if (isUserProfile) { setIsUserProfile(false); return true; }
-      if (isQrCode) { setIsQrCode(false); setIsSOS(true); return true; }
-      if (isTestSOS) { setIsTestSOS(false); setIsSafetyResources(true); return true; }
-      if (isLiveLocation) { setIsLiveLocation(false); setIsSafetyResources(true); return true; }
-      if (isVoiceTrigger) { setIsVoiceTrigger(false); setIsSafetyResources(true); return true; }
-      if (isUnsafePage) { setIsUnsafePage(false); setIsSafetyResources(true); return true; }
-      if (isPreviousWalks) { setIsPreviousWalks(false); setIsSafetyResources(true); return true; }
-      if (isEmergencyContacts) { setIsEmergencyContacts(false); setIsSafetyResources(true); return true; }
-      if (isLanguagePage) { setIsLanguagePage(false); setIsSafetyResources(true); return true; }
-      if (isSafetyVideos) { setIsSafetyVideos(false); setIsSafetyResources(true); return true; }
-      if (isOfflineMap) { setIsOfflineMap(false); setIsSafetyResources(true); return true; }
-      if (isSubscriptionScreen) { setIsSubscriptionScreen(false); setIsSafetyResources(true); return true; }
-      if (isWalkingAloneTips) { setIsWalkingAloneTips(false); setIsSafetyResources(true); return true; }
-      if (isSafetyZones) { setIsSafetyZones(false); setIsSafetyResources(true); return true; }
-      if (isSafetyResources) {
-        setIsSafetyResources(false);
-        if (previousScreen === 'sos') setIsSOS(true);
-        return true;
+    
+    const loadProfileImage = async () => {
+      try {
+        const userDataJSON = await AsyncStorage.getItem('userData');
+        
+        if (userDataJSON) {
+          const userData = JSON.parse(userDataJSON);
+          console.log(userData.name);
+          if (userData.imageUrl) {
+            setUserImage(userData.imageUrl);
+            
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load profile image', error);
       }
-      if (isSOS) { setIsSOS(false); return true; }
-      return false; // Allow default back behavior (exit app)
     };
 
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
-    return () => backHandler.remove();
-  }, [isWalkPartner, isUserProfile, isSOS, isQrCode, isSafetyResources, isTestSOS, isLiveLocation, isVoiceTrigger, isUnsafePage, isPreviousWalks, isEmergencyContacts, isLanguagePage, isSafetyVideos, isOfflineMap, isSubscriptionScreen, isWalkingAloneTips, isSafetyZones, previousScreen]);
+    loadProfileImage();
+  }, []);
 
   if (isWalkPartner) {
     return <WalkPartner setIsWalkPartner={setIsWalkPartner} />;
@@ -104,7 +87,7 @@ const HomeContent = ({handleLogout}) => {
       <SOSPage
         setIsSOS={setIsSOS}
         setIsQrCode={setIsQrCode}
-        setIsSafetyResources={() => { setPreviousScreen('sos'); setIsSafetyResources(true); }}
+        setIsSafetyResources={setIsSafetyResources}
       />
     );
   }
@@ -141,44 +124,6 @@ const HomeContent = ({handleLogout}) => {
   }
 
   if (isSafetyResources) {
-    console.log("Home: isSafetyResources is true, previousScreen:", previousScreen);
-    let backgroundContent = null;
-    
-    if (previousScreen === 'sos') {
-      backgroundContent = (
-        <SOSPage
-          setIsSOS={setIsSOS}
-          setIsQrCode={setIsQrCode}
-          setIsSafetyResources={() => { setPreviousScreen('sos'); setIsSafetyResources(true); }}
-        />
-      );
-    } else if (previousScreen === 'home') {
-      backgroundContent = (
-        <MapProvider>
-          <View style={styles.container}>
-            <Map />
-            <TopBar 
-              isNotHome={isNotHome} 
-              isPeopleActive={isPeopleActive} 
-              isTopBarManuallyExpanded={isTopBarManuallyExpanded}
-              setIsTopBarManuallyExpanded={setIsTopBarManuallyExpanded}
-              setIsUserProfile={setIsUserProfile} 
-              setIsSafetyResources={() => { setPreviousScreen('home'); setIsSafetyResources(true); }} 
-            />
-            <BottomNav
-              isNotHome={isNotHome}
-              setIsNotHome={setIsNotHome}
-              isWalkPartner={isWalkPartner}
-              setIsWalkPartner={setIsWalkPartner}
-              setIsSOS={setIsSOS}
-              setIsPeopleActive={setIsPeopleActive}
-              setIsTopBarManuallyExpanded={setIsTopBarManuallyExpanded}
-            />
-          </View>
-        </MapProvider>
-      );
-    }
-
     return (
       <SafetyResources
         setIsSafetyResources={setIsSafetyResources}
@@ -196,9 +141,6 @@ const HomeContent = ({handleLogout}) => {
         setIsWalkingAloneTips={setIsWalkingAloneTips}
         handleLogout={handleLogout}
         setIsSubscriptionScreen = {setIsSubscriptionScreen}
-        setIsSafetyZones={setIsSafetyZones}
-        previousScreen={previousScreen}
-        backgroundContent={backgroundContent}
       />
     );
   }
@@ -277,18 +219,18 @@ const HomeContent = ({handleLogout}) => {
   }
 
 
-
   return (
     <MapProvider>
       <View style={styles.container}>
-        <Map />
+        <Map userImage={userImage} />
         <TopBar 
-          isNotHome={isNotHome} 
-          isPeopleActive={isPeopleActive} 
+          setIsUserProfile={setIsUserProfile}
+          isNotHome={isNotHome}
+          isPeopleActive={isPeopleActive}
           isTopBarManuallyExpanded={isTopBarManuallyExpanded}
           setIsTopBarManuallyExpanded={setIsTopBarManuallyExpanded}
-          setIsUserProfile={setIsUserProfile} 
-          setIsSafetyResources={() => { setPreviousScreen('home'); setIsSafetyResources(true); }} 
+          setIsSafetyResources={() => setIsSafetyResources(true)}
+          profileImageUri={userImage}
         />
         <BottomNav
           isNotHome={isNotHome}
@@ -299,14 +241,6 @@ const HomeContent = ({handleLogout}) => {
           setIsPeopleActive={setIsPeopleActive}
           setIsTopBarManuallyExpanded={setIsTopBarManuallyExpanded}
         />
-        
-        {/* SafetyZones Popup */}
-        {isSafetyZones && (
-          <SafetyZones
-            setIsSafetyZones={setIsSafetyZones}
-            setIsSafetyResources={setIsSafetyResources}
-          />
-        )}
       </View>
     </MapProvider>
   );
