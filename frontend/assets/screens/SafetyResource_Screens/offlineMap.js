@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,28 +6,143 @@ import {
   SafeAreaView,
   Image,
   TouchableOpacity,
+  Alert,
+  Modal,
+  Dimensions,
+  PanResponder,
 } from 'react-native';
 import MapView, { PROVIDER_GOOGLE } from 'react-native-maps';
-import Icon from 'react-native-vector-icons/Feather'; // Using Feather icons
+import Icon from 'react-native-vector-icons/Feather';
+import OfflineMapService from '../../services/OfflineMapService';
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 const OfflineMap = ({ setIsOfflineMap, setIsSafetyResources }) => {
-  // Coordinates for the center of the map (University of Johannesburg)
-  const mapRegion = {
+  const [mapRegion, setMapRegion] = useState({
     latitude: -26.183,
     longitude: 27.999,
     latitudeDelta: 0.04,
     longitudeDelta: 0.02,
+  });
+  const [downloadSize, setDownloadSize] = useState(55);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [showProgress, setShowProgress] = useState(false);
+  
+  // Selection box state
+  const [selectionBox, setSelectionBox] = useState({
+    x: screenWidth * 0.125,
+    y: screenHeight * 0.25,
+    width: screenWidth * 0.75,
+    height: screenHeight * 0.4,
+  });
+  
+  const mapRef = useRef(null);
+
+  useEffect(() => {
+    updateDownloadSize();
+  }, [mapRegion]);
+
+  const updateDownloadSize = () => {
+    const size = OfflineMapService.calculateDownloadSize(mapRegion);
+    setDownloadSize(size);
+  };
+
+  const handleRegionChange = (region) => {
+    setMapRegion(region);
+  };
+
+  const updateMapRegionFromSelection = () => {
+    // Calculate lat/lng deltas based on box size
+    const latDelta = (selectionBox.height / screenHeight) * 0.08;
+    const lngDelta = (selectionBox.width / screenWidth) * 0.08;
+    
+    const newRegion = {
+      ...mapRegion,
+      latitudeDelta: latDelta,
+      longitudeDelta: lngDelta,
+    };
+    
+    setMapRegion(newRegion);
+  };
+
+  // Pan responder for dragging the selection box
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {},
+      onPanResponderMove: (evt, gestureState) => {
+        const newX = Math.max(0, Math.min(screenWidth - selectionBox.width, selectionState.startX + gestureState.dx));
+        const newY = Math.max(100, Math.min(screenHeight - selectionBox.height - 200, selectionState.startY + gestureState.dy));
+        
+        setSelectionBox(prev => ({
+          ...prev,
+          x: newX,
+          y: newY,
+        }));
+      },
+      onPanResponderRelease: () => {
+        updateMapRegionFromSelection();
+      },
+    })
+  ).current;
+
+  const [selectionState] = useState({ startX: 0, startY: 0 });
+
+  const handleSelectionStart = () => {
+    selectionState.startX = selectionBox.x;
+    selectionState.startY = selectionBox.y;
+  };
+
+  const handleDownload = async () => {
+    Alert.alert(
+      'Download Offline Map',
+      `This will download approximately ${downloadSize} MB of map data. Continue?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Download', onPress: startDownload }
+      ]
+    );
+  };
+
+  const startDownload = async () => {
+    setIsDownloading(true);
+    setShowProgress(true);
+    setDownloadProgress(0);
+
+    const result = await OfflineMapService.downloadMapTiles(
+      mapRegion,
+      (progress) => {
+        setDownloadProgress(progress.percentage);
+      }
+    );
+
+    setIsDownloading(false);
+    setShowProgress(false);
+
+    if (result.success) {
+      Alert.alert(
+        'Download Complete',
+        `Successfully downloaded ${result.tilesDownloaded} map tiles. The map is now available offline.`,
+        [{ text: 'OK', onPress: () => { setIsOfflineMap(false); setIsSafetyResources(true); } }]
+      );
+    } else {
+      Alert.alert('Download Failed', result.error || 'Failed to download map tiles.');
+    }
   };
 
   return (
     <SafeAreaView style={styles.container}>
       {/* --- Background Map --- */}
       <MapView
+        ref={mapRef}
         provider={PROVIDER_GOOGLE}
         style={styles.map}
         initialRegion={mapRegion}
         showsUserLocation={true}
-        customMapStyle={mapStyle} // Applying a custom, clean map style
+        customMapStyle={mapStyle}
+        scrollEnabled={true}
+        zoomEnabled={true}
       />
 
       {/* --- Main Content Overlay --- */}
@@ -53,26 +168,46 @@ const OfflineMap = ({ setIsOfflineMap, setIsSafetyResources }) => {
             <TouchableOpacity>
               <Icon name="bell" size={24} color="#333" style={styles.icon} />
             </TouchableOpacity>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => {
+              setIsOfflineMap(false);
+              setIsSafetyResources(true);
+            }}>
               <Icon name="menu" size={26} color="#333" style={styles.icon} />
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* --- Map Selection Area --- */}
-        <View style={styles.selectionContainer}>
+        {/* --- Interactive Map Selection Area --- */}
+        <View 
+          style={[
+            styles.selectionContainer,
+            {
+              left: selectionBox.x,
+              top: selectionBox.y,
+              width: selectionBox.width,
+              height: selectionBox.height,
+            }
+          ]}
+          {...panResponder.panHandlers}
+          onTouchStart={handleSelectionStart}
+        >
           <View style={styles.selectionBox}>
             {/* Corner Handles */}
             <View style={[styles.cornerHandle, styles.topLeft]} />
             <View style={[styles.cornerHandle, styles.topRight]} />
             <View style={[styles.cornerHandle, styles.bottomLeft]} />
-            <View style={[styles.cornerHandle, styles.bottomRight]} />
+            <View style={[styles.cornerHandle, styles.bottomRight, styles.resizeHandle]} />
+            
+            {/* Drag indicator */}
+            <View style={styles.dragIndicator}>
+              <Text style={styles.dragText}>Drag to move selection area</Text>
+            </View>
           </View>
         </View>
         
         {/* --- Size Info Label --- */}
         <View style={styles.sizeLabel}>
-            <Text style={styles.sizeText}>The size of the selected map: 55 MB</Text>
+            <Text style={styles.sizeText}>The size of the selected map: {downloadSize} MB</Text>
         </View>
 
 
@@ -87,11 +222,28 @@ const OfflineMap = ({ setIsOfflineMap, setIsSafetyResources }) => {
           >
             <Text style={styles.buttonText}>Cancel</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.button, styles.downloadButton]}>
+          <TouchableOpacity 
+            style={[styles.button, styles.downloadButton, isDownloading && styles.disabledButton]}
+            onPress={handleDownload}
+            disabled={isDownloading}
+          >
             <Icon name="download" size={18} color="#fff" />
-            <Text style={styles.buttonText}>Download</Text>
+            <Text style={styles.buttonText}>{isDownloading ? 'Downloading...' : 'Download'}</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Download Progress Modal */}
+        <Modal visible={showProgress} transparent animationType="fade">
+          <View style={styles.progressOverlay}>
+            <View style={styles.progressContainer}>
+              <Text style={styles.progressTitle}>Downloading Map</Text>
+              <View style={styles.progressBar}>
+                <View style={[styles.progressFill, { width: `${downloadProgress}%` }]} />
+              </View>
+              <Text style={styles.progressText}>{downloadProgress}% Complete</Text>
+            </View>
+          </View>
+        </Modal>
       </View>
     </SafeAreaView>
   );
@@ -160,25 +312,44 @@ const styles = StyleSheet.create({
     marginLeft: 15,
   },
   selectionContainer: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingBottom: 60, // Adjust to avoid overlap with bottom sheet/buttons
+    position: 'absolute',
+    zIndex: 10,
   },
   selectionBox: {
-    width: '75%',
-    height: '50%',
+    flex: 1,
     borderRadius: 20,
     borderWidth: 2,
-    borderColor: 'rgba(231, 76, 60, 0.7)',
+    borderColor: 'rgba(231, 76, 60, 0.8)',
     borderStyle: 'dashed',
-    backgroundColor: 'rgba(200, 200, 200, 0.1)',
+    backgroundColor: 'rgba(231, 76, 60, 0.1)',
   },
   cornerHandle: {
     position: 'absolute',
     width: 25,
     height: 25,
     borderColor: '#e74c3c',
+    backgroundColor: 'rgba(231, 76, 60, 0.3)',
+  },
+  resizeHandle: {
+    backgroundColor: '#e74c3c',
+    borderRadius: 12.5,
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  dragIndicator: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -60 }, { translateY: -10 }],
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  dragText: {
+    color: '#fff',
+    fontSize: 10,
+    textAlign: 'center',
   },
   topLeft: {
     top: -2,
@@ -248,6 +419,44 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     marginLeft: 5,
+  },
+  disabledButton: {
+    opacity: 0.6,
+  },
+  progressOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  progressContainer: {
+    backgroundColor: '#fff',
+    padding: 30,
+    borderRadius: 15,
+    width: '80%',
+    alignItems: 'center',
+  },
+  progressTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    color: '#333',
+  },
+  progressBar: {
+    width: '100%',
+    height: 10,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 5,
+    marginBottom: 15,
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#4caf50',
+    borderRadius: 5,
+  },
+  progressText: {
+    fontSize: 16,
+    color: '#666',
   },
 });
 

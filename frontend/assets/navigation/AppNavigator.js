@@ -1,29 +1,39 @@
 // AppNavigator.js
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, View, Alert } from 'react-native'; // Added Alert import
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import AnimatedSplash from '../screens/AnimatedSplash';
 import Login from '../screens/LoginScreen';
-import Signup from '../screens/signup'; // ✅ Import signup
+import Signup from '../screens/signup';
 import Home from '../screens/Home';
+import OnBoarding from '../screens/OnBoarding';
 
 const Stack = createNativeStackNavigator();
 
 const AppNavigator = () => {
   const [showSplash, setShowSplash] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [onboardingComplete, setOnboardingComplete] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const checkLoginStatus = async () => {
-      const status = await AsyncStorage.getItem('isLoggedIn');
-      setIsLoggedIn(status === 'true');
-      setIsLoading(false);
+    const checkInitialStatus = async () => {
+      try {
+        // Check login status only
+        const loginStatus = await AsyncStorage.getItem('isLoggedIn');
+
+        setIsLoggedIn(loginStatus === 'true');
+      } catch (error) {
+        console.error('Error reading storage:', error);
+      } finally {
+        setIsLoading(false);
+      }
     };
-    checkLoginStatus();
+
+    checkInitialStatus();
   }, []);
 
   useEffect(() => {
@@ -33,6 +43,35 @@ const AppNavigator = () => {
 
     return () => clearTimeout(timeout);
   }, []);
+
+  // LOG OUT FUNCTION
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout Confirmation',
+      'Are you sure you want to log out?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Log Out',
+          onPress: async () => {
+            try {
+              await AsyncStorage.removeItem('isLoggedIn');
+              await AsyncStorage.multiRemove(['userToken', 'userData']);
+              setIsLoggedIn(false);
+              setOnboardingComplete(false);
+            } catch (error) {
+              console.error('Logout failed:', error);
+              Alert.alert('Logout Error', 'Failed to log out. Please try again.');
+            }
+          },
+          style: 'destructive',
+        },
+      ]
+    );
+  };
 
   if (showSplash) return <AnimatedSplash />;
 
@@ -47,15 +86,30 @@ const AppNavigator = () => {
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {!isLoggedIn ? (
+        {!isLoggedIn && !onboardingComplete ? (
+          <Stack.Screen name="OnBoarding">
+            {(props) => (
+              <OnBoarding
+                {...props}
+                setOnboardingComplete={setOnboardingComplete}
+                setIsLoggedIn = {setIsLoggedIn}
+              />
+            )}
+          </Stack.Screen>
+        ) : !isLoggedIn ? (
           <>
             <Stack.Screen name="LoginScreen">
               {(props) => <Login {...props} setIsLoggedIn={setIsLoggedIn} />}
             </Stack.Screen>
-            <Stack.Screen name="signup" component={Signup} />
+            <Stack.Screen name="signup">
+              {(props) => <Signup {...props} setIsLoggedIn={setIsLoggedIn} />}
+            </Stack.Screen>
           </>
         ) : (
-          <Stack.Screen name="Home" component={Home} />
+          <Stack.Screen name="Home">
+                {(props) => <Home {...props} handleLogout={handleLogout} />
+                }
+          </Stack.Screen>
         )}
       </Stack.Navigator>
     </NavigationContainer>

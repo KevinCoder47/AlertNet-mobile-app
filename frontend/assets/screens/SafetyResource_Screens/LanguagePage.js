@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useContext, createContext } from 'react';
 import {
   View,
   Text,
@@ -7,10 +7,91 @@ import {
   TextInput,
   ScrollView,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 
+// Language Context for app-wide language state
+const LanguageContext = createContext();
+
+// Language Provider Component
+export const LanguageProvider = ({ children }) => {
+  const [currentLanguage, setCurrentLanguage] = useState('English');
+  
+  return (
+    <LanguageContext.Provider value={{ currentLanguage, setCurrentLanguage }}>
+      {children}
+    </LanguageContext.Provider>
+  );
+};
+
+// Hook to use language context
+export const useLanguage = () => {
+  const context = useContext(LanguageContext);
+  if (!context) {
+    throw new Error('useLanguage must be used within a LanguageProvider');
+  }
+  return context;
+};
+
+// Translations object - you can expand this with actual translations
+const translations = {
+  English: {
+    language: 'Language',
+    search: 'Search...',
+    save: 'Save',
+    languageChanged: 'Language changed successfully!',
+  },
+  IsiZulu: {
+    language: 'Ulimi',
+    search: 'Sesha...',
+    save: 'Gcina',
+    languageChanged: 'Ulimi lushintshelwe ngempumelelo!',
+  },
+  Afrikaans: {
+    language: 'Taal',
+    search: 'Soek...',
+    save: 'Stoor',
+    languageChanged: 'Taal suksesvol verander!',
+  },
+  IsiPedi: {
+    language: 'Polelo',
+    search: 'Nyaka...',
+    save: 'Boloka',
+    languageChanged: 'Polelo e fetošitšwe ka katlego!',
+  },
+  Mandarin: {
+    language: '语言',
+    search: '搜索...',
+    save: '保存',
+    languageChanged: '语言更改成功！',
+  },
+  Español: {
+    language: 'Idioma',
+    search: 'Buscar...',
+    save: 'Guardar',
+    languageChanged: '¡Idioma cambiado exitosamente!',
+  },
+  Français: {
+    language: 'Langue',
+    search: 'Rechercher...',
+    save: 'Enregistrer',
+    languageChanged: 'Langue changée avec succès!',
+  },
+  Deutsch: {
+    language: 'Sprache',
+    search: 'Suchen...',
+    save: 'Speichern',
+    languageChanged: 'Sprache erfolgreich geändert!',
+  },
+  Português: {
+    language: 'Idioma',
+    search: 'Pesquisar...',
+    save: 'Salvar',
+    languageChanged: 'Idioma alterado com sucesso!',
+  },
+};
+
 // --- Data for the language list ---
-// You can easily add or remove languages here.
 const languages = [
   { code: 'UK', name: 'English', native: 'English' },
   { code: 'ZA', name: 'IsiZulu', native: 'Zulu' },
@@ -24,16 +105,50 @@ const languages = [
 ];
 
 const LanguagePage = ({setIsLanguagePage, setIsSafetyResources}) => {
-  // State to track the currently selected language
-  const [selectedLanguage, setSelectedLanguage] = useState('English');
+  const { currentLanguage, setCurrentLanguage } = useLanguage();
+  
+  // State to track the temporarily selected language (before saving)
+  const [selectedLanguage, setSelectedLanguage] = useState(currentLanguage);
   // State for the search input
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Get current translations
+  const t = translations[currentLanguage] || translations['English'];
 
   // Filter languages based on search query
   const filteredLanguages = languages.filter(lang =>
     lang.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     lang.native.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Handle save button press
+  const handleSave = () => {
+    if (selectedLanguage !== currentLanguage) {
+      setCurrentLanguage(selectedLanguage);
+      
+      // Get translation for success message in the newly selected language
+      const newLangTranslations = translations[selectedLanguage] || translations['English'];
+      
+      Alert.alert(
+        'Success',
+        newLangTranslations.languageChanged,
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              // Navigate back to safety resources
+              setIsLanguagePage(false);
+              setIsSafetyResources(true);
+            }
+          }
+        ]
+      );
+    } else {
+      // If no change, just go back
+      setIsLanguagePage(false);
+      setIsSafetyResources(true);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -47,7 +162,7 @@ const LanguagePage = ({setIsLanguagePage, setIsSafetyResources}) => {
         >
           <Text style={styles.backArrow}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Language</Text>
+        <Text style={styles.headerTitle}>{t.language}</Text>
       </View>
 
       {/* --- Search Bar --- */}
@@ -55,7 +170,7 @@ const LanguagePage = ({setIsLanguagePage, setIsSafetyResources}) => {
         <Text style={styles.searchIcon}>🔍</Text>
         <TextInput
           style={styles.searchInput}
-          placeholder="Search..."
+          placeholder={t.search}
           placeholderTextColor="#999"
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -71,6 +186,7 @@ const LanguagePage = ({setIsLanguagePage, setIsSafetyResources}) => {
               key={index}
               style={[styles.languageItem, isSelected && styles.selectedItem]}
               onPress={() => setSelectedLanguage(lang.name)}
+              activeOpacity={0.7}
             >
               <Text style={[styles.langCode, isSelected && styles.selectedLangCode]}>
                 {lang.code}
@@ -91,8 +207,20 @@ const LanguagePage = ({setIsLanguagePage, setIsSafetyResources}) => {
 
       {/* --- Save Button --- */}
       <View style={styles.saveButtonContainer}>
-        <TouchableOpacity style={styles.saveButton}>
-          <Text style={styles.saveButtonText}>Save</Text>
+        <TouchableOpacity 
+          style={[
+            styles.saveButton,
+            selectedLanguage !== currentLanguage && styles.saveButtonActive
+          ]}
+          onPress={handleSave}
+          activeOpacity={0.8}
+        >
+          <Text style={[
+            styles.saveButtonText,
+            selectedLanguage !== currentLanguage && styles.saveButtonTextActive
+          ]}>
+            {t.save}
+          </Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -100,7 +228,7 @@ const LanguagePage = ({setIsLanguagePage, setIsSafetyResources}) => {
 };
 
 // --- Styles ---
-// Meticulously crafted to be identical to the screenshot.
+// Identical to original with small additions for active save button
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -224,11 +352,30 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
+  saveButtonActive: {
+    backgroundColor: '#e74c3c',
+  },
   saveButtonText: {
     color: '#e74c3c',
     fontSize: 16,
     fontWeight: 'bold',
   },
+  saveButtonTextActive: {
+    color: '#fff',
+  },
 });
 
 export default LanguagePage;
+
+// Example usage in your main App component:
+/*
+import { LanguageProvider } from './LanguagePage';
+
+export default function App() {
+  return (
+    <LanguageProvider>
+      <YourAppContent />
+    </LanguageProvider>
+  );
+}
+*/

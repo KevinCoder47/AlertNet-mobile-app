@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import {
   PanResponder,
   Animated,
@@ -8,6 +8,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -18,6 +19,7 @@ import {
   MaterialIcons,
   Octicons,
 } from "@expo/vector-icons";
+import { contentIndex } from './contentIndex';
 
 // 1. Add setIsOfflineMap to the props here
 export default function SafetyResources({
@@ -32,9 +34,27 @@ export default function SafetyResources({
   setIsLanguagePage,
   setIsSafetyVideos,
   setIsOfflineMap, // ADD THIS,
-  setIsWalkingAloneTips
+  setIsWalkingAloneTips,
+  handleLogout,
+  setIsSubscriptionScreen,
+  setIsSafetyZones,
+  previousScreen = "sos",
+  backgroundContent
 }) {
-  const pan = useRef(new Animated.ValueXY()).current;
+  const screenWidth = Dimensions.get('window').width;
+  const pan = useRef(new Animated.ValueXY({ x: screenWidth * 0.9, y: 0 })).current;
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Entrance animation when component mounts
+  useEffect(() => {
+    console.log("SafetyResources Clicked from:", previousScreen);
+    Animated.spring(pan, {
+      toValue: { x: 0, y: 0 },
+      useNativeDriver: true,
+      tension: 100,
+      friction: 8,
+    }).start();
+  }, []);
 
   // PanResponder for horizontal swipe right gesture to go back
   const panResponder = useRef(
@@ -49,7 +69,9 @@ export default function SafetyResources({
       onPanResponderRelease: (_, gestureState) => {
         if (gestureState.dx > 100) {
           setIsSafetyResources(false);
-          setIsSOS(true);
+          if (previousScreen === "sos") {
+            setIsSOS(true);
+          }
         } else {
           Animated.spring(pan, {
             toValue: { x: 0, y: 0 },
@@ -59,6 +81,177 @@ export default function SafetyResources({
       },
     })
   ).current;
+
+  // Define all menu items with their search keywords
+  const allMenuItems = [
+    {
+      section: "How to Use the App",
+      items: [
+        {
+          icon: <MaterialIcons name="sos" size={18} color="#fff" />,
+          text: "Test SOS",
+          keywords: ["test", "sos", "emergency", "panic"],
+          onPress: () => {
+            setIsSafetyResources(false);
+            setIsTestSOS(true);
+          }
+        },
+        {
+          icon: <Ionicons name="mic-outline" size={18} color="#fff" />,
+          text: "Activate Voice Recognition (Panic Word)",
+          keywords: ["voice", "recognition", "panic", "word", "activate", "mic", "microphone"],
+          onPress: () => {
+            console.log("Voice Trigger Clicked")
+            setIsSafetyResources(false);
+            setIsVoiceTrigger(true);
+          }
+        }
+      ]
+    },
+    {
+      section: "Safety Instructions",
+      items: [
+        {
+          icon: <Ionicons name="alert-circle-outline" size={18} color="#fff" />,
+          text: "What to do when feeling unsafe",
+          keywords: ["unsafe", "feeling", "danger", "help", "emergency", "alert"],
+          onPress: () => {
+            setIsSafetyResources(false);
+            setIsUnsafePage(true);
+          }
+        },
+        {
+          icon: <FontAwesome5 name="walking" size={18} color="#fff" />,
+          text: "Tips for walking alone",
+          keywords: ["walking", "alone", "tips", "safety", "walk"],
+          onPress: () => {
+            setIsSafetyResources(false)
+            setIsWalkingAloneTips(true)
+          }
+        },
+        {
+          icon: <Feather name="map-pin" size={18} color="#fff" />,
+          text: "Finding safe zones",
+          keywords: ["safe", "zones", "finding", "location", "map", "pin"],
+          onPress: () => {
+            setIsSafetyResources(false);
+            setIsSafetyZones(true);
+          }
+        }
+      ]
+    },
+    {
+      section: "Account",
+      items: [
+        {
+          icon: <MaterialIcons name="subscriptions" size={18} color="#fff" />,
+          text: "Subscription",
+          keywords: ["subscription", "account", "premium", "billing"],
+          onPress: () => {
+            setIsSafetyResources(false)
+            setIsSubscriptionScreen(true)
+          }
+        },
+        {
+          icon: <MaterialIcons name="language" size={18} color="#fff" />,
+          text: "Language",
+          keywords: ["language", "translate", "locale", "settings"],
+          onPress: () => {
+            setIsSafetyResources(false)
+            setIsLanguagePage(true)
+          }
+        }
+      ]
+    },
+    {
+      section: "Info & Support",
+      items: [
+        {
+          icon: <Entypo name="video" size={18} color="#fff" />,
+          text: "YouTube safety videos",
+          keywords: ["youtube", "videos", "safety", "tutorial", "help"],
+          onPress: () => {
+            setIsSafetyResources(false)
+            setIsSafetyVideos(true)
+          }
+        },
+        {
+          icon: <MaterialIcons name="support-agent" size={18} color="#fff" />,
+          text: "Emergency contact",
+          keywords: ["emergency", "contact", "support", "help", "agent"],
+          onPress: () => {
+            setIsSafetyResources(false);
+            setIsEmergencyContacts(true);
+          }
+        }
+      ]
+    },
+    {
+      section: "History",
+      items: [
+        {
+          icon: <FontAwesome5 name="walking" size={18} color="#fff" />,
+          text: "Previous walks",
+          keywords: ["previous", "walks", "history", "past", "record"],
+          onPress: () => {
+            setIsSafetyResources(false);
+            setIsPreviousWalks(true);
+          }
+        }
+      ]
+    },
+    {
+      section: "Download",
+      items: [
+        {
+          icon: <Feather name="download" size={18} color="#fff" />,
+          text: "Offline maps",
+          keywords: ["offline", "maps", "download", "navigation"],
+          onPress: () => {
+            setIsSafetyResources(false);
+            setIsOfflineMap(true);
+          }
+        }
+      ]
+    }
+  ];
+
+  // Filter menu items based on search query
+  const getFilteredSections = () => {
+    if (!searchQuery.trim()) {
+      return allMenuItems;
+    }
+
+    const query = searchQuery.toLowerCase().trim();
+    const filteredSections = [];
+
+    allMenuItems.forEach(section => {
+      const filteredItems = section.items.filter(item => {
+        // Check if query matches text or any keywords
+        const textMatch = item.text.toLowerCase().includes(query);
+        const keywordMatch = item.keywords.some(keyword => 
+          keyword.toLowerCase().includes(query)
+        );
+        
+        // Check if query matches content from the page
+        const contentMatch = contentIndex[item.text] && 
+          contentIndex[item.text].content.some(content => 
+            content.toLowerCase().includes(query)
+          );
+        
+        return textMatch || keywordMatch || contentMatch;
+      });
+
+      if (filteredItems.length > 0) {
+        filteredSections.push({
+          ...section,
+          items: filteredItems
+        });
+      }
+    });
+
+    return filteredSections;
+  };
 
   const SectionHeader = ({ title }) => <Text style={styles.sectionHeader}>{title}</Text>;
 
@@ -78,14 +271,21 @@ export default function SafetyResources({
     </TouchableOpacity>
   );
 
+  const filteredSections = getFilteredSections();
+
   return (
     <SafeAreaView style={styles.safeAreaContainer}>
+      {backgroundContent && (
+        <View style={styles.backgroundContent} pointerEvents="none">
+          {backgroundContent}
+        </View>
+      )}
+      <View style={styles.overlay} />
       <Animated.View
         {...panResponder.panHandlers}
         style={[
           {
             flex: 1,
-            backgroundColor: "#000",
             justifyContent: "flex-end",
             alignItems: "flex-end",
           },
@@ -122,131 +322,56 @@ export default function SafetyResources({
                   style={styles.searchInput}
                   placeholder="Search something..."
                   placeholderTextColor="#999"
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
                 />
+                {searchQuery.length > 0 && (
+                  <TouchableOpacity 
+                    onPress={() => setSearchQuery("")}
+                    style={styles.clearButton}
+                  >
+                    <Ionicons name="close-circle" size={20} color="#999" />
+                  </TouchableOpacity>
+                )}
               </View>
 
-              {/* How to Use the App Section */}
-              <SectionHeader title="How to Use the App" />
-              <View style={styles.menuSection}>
-                <MenuItem
-                  icon={<MaterialIcons name="sos" size={18} color="#fff" />}
-                  text="Test SOS"
-                  onPress={() => {
-                    setIsSafetyResources(false);
-                    setIsTestSOS(true);
-                  }}
-                />
-                <View style={styles.separator} />
-                <MenuItem
-                  icon={<Ionicons name="mic-outline" size={18} color="#fff" />}
-                  text="Activate Voice Recognition (Panic Word)"
-                  onPress={() => {
-                    console.log("Voice Trigger Clicked")
-                    setIsSafetyResources(false);
-                    setIsVoiceTrigger(true);
-                  }}
-                />
-              </View>
+              {/* Render filtered sections */}
+              {filteredSections.length > 0 ? (
+                filteredSections.map((section, sectionIndex) => (
+                  <View key={sectionIndex}>
+                    <SectionHeader title={section.section} />
+                    <View style={styles.menuSection}>
+                      {section.items.map((item, itemIndex) => (
+                        <View key={itemIndex}>
+                          <MenuItem
+                            icon={item.icon}
+                            text={item.text}
+                            onPress={item.onPress}
+                          />
+                          {itemIndex < section.items.length - 1 && (
+                            <View style={styles.separator} />
+                          )}
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                ))
+              ) : (
+                <View style={styles.noResultsContainer}>
+                  <Text style={styles.noResultsText}>No results found for "{searchQuery}"</Text>
+                  <Text style={styles.noResultsSubtext}>Try searching for something else</Text>
+                </View>
+              )}
 
-              {/* Safety Instructions Section */}
-              <SectionHeader title="Safety Instructions" />
-              <View style={styles.menuSection}>
-                <MenuItem
-                  icon={<Ionicons name="alert-circle-outline" size={18} color="#fff" />}
-                  text="What to do when feeling unsafe"
-                  onPress={() => {
-                    setIsSafetyResources(false);
-                    setIsUnsafePage(true);
-                  }}
-                />
-                <View style={styles.separator} />
-                <MenuItem 
-                  icon={<FontAwesome5 name="walking" size={18} color="#fff" />} 
-                  text="Tips for walking alone" 
-                  onPress={() => {
-                    setIsSafetyResources(false)
-                    setIsWalkingAloneTips(true)
-                  }}
-                />
-                <View style={styles.separator} />
-                <MenuItem 
-                  icon={<Feather name="map-pin" size={18} color="#fff" />} 
-                  text="Finding safe zones" 
-                />
-              </View>
-
-              {/* Account Section */}
-              <SectionHeader title="Account" />
-              <View style={styles.menuSection}>
-                <MenuItem 
-                  icon={<MaterialIcons name="subscriptions" size={18} color="#fff" />} 
-                  text="Subscription" 
-                />
-                <View style={styles.separator} />
-                <MenuItem 
-                  icon={<MaterialIcons name="language" size={18} color="#fff" />} 
-                  text="Language" 
-                  onPress={() => {
-                    setIsSafetyResources(false)
-                    setIsLanguagePage(true)
-                  }}
-                />
-              </View>
-
-              {/* Info & Support Section */}
-              <SectionHeader title="Info & Support" />
-              <View style={styles.menuSection}>
-                <MenuItem 
-                  icon={<Entypo name="video" size={18} color="#fff" />} 
-                  text="YouTube safety videos" 
-                  onPress={() => {
-                    setIsSafetyResources(false)
-                    setIsSafetyVideos(true)
-                  }}
-                />
-                <View style={styles.separator} />
-                <MenuItem 
-                  icon={<MaterialIcons name="support-agent" size={18} color="#fff" />} 
-                  text="Emergency contact"
-                  onPress={() => {
-                    setIsSafetyResources(false);
-                    setIsEmergencyContacts(true);
-                  }} 
-                />
-              </View>
-
-              {/* History Section */}
-              <SectionHeader title="History" />
-              <View style={styles.menuSection}>
-                <MenuItem 
-                  icon={<FontAwesome5 name="walking" size={18} color="#fff" />} 
-                  text="Previous walks"
-                  onPress={() => {
-                    setIsSafetyResources(false);
-                    setIsPreviousWalks(true);
-                  }}
-                />
-              </View>
-
-              {/* Download Section */}
-              <SectionHeader title="Download" />
-              <View style={styles.menuSection}>
-                {/* 2. Add the onPress handler to this MenuItem */}
-                <MenuItem 
-                  icon={<Feather name="download" size={18} color="#fff" />} 
-                  text="Offline maps" 
-                  onPress={() => {
-                    setIsSafetyResources(false);
-                    setIsOfflineMap(true);
-                  }}
-                />
-              </View>
-
-              {/* Logout */}
-              <TouchableOpacity style={styles.logoutBtn} activeOpacity={0.7}>
+              {/* Logout - only show if no search query */}
+              {!searchQuery.trim() && (
+                <TouchableOpacity style={styles.logoutBtn} activeOpacity={0.7}
+                onPress={handleLogout}
+                >
                 <Text style={styles.logoutText}>Log out</Text>
                 <MaterialIcons name="logout" size={18} color="red" />
               </TouchableOpacity>
+              )}
             </View>
                       </ScrollView>
           </View>
@@ -259,7 +384,22 @@ export default function SafetyResources({
 const styles = StyleSheet.create({
   safeAreaContainer: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: "transparent",
+  },
+  backgroundContent: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  overlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
   },
   scrollContent: {
     padding: 20,
@@ -315,6 +455,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#000",
   },
+  clearButton: {
+    marginLeft: 8,
+  },
   sectionHeader: {
     fontWeight: "600",
     fontSize: 13,
@@ -365,6 +508,21 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: "#f0f0f0",
     marginLeft: 55,
+  },
+  noResultsContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 40,
+  },
+  noResultsText: {
+    fontSize: 16,
+    color: "#666",
+    fontWeight: "500",
+    marginBottom: 8,
+  },
+  noResultsSubtext: {
+    fontSize: 14,
+    color: "#999",
   },
   logoutBtn: {
     flexDirection: "row",

@@ -1,10 +1,11 @@
 import { StyleSheet, View, Dimensions } from 'react-native';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Map from '../componets/Map';
 import TopBar from '../componets/TopBar';
 import BottomNav from '../componets/BottomNav';
 import { MapProvider } from '../contexts/MapContext';
 import MyProfile from '../screens/MyProfile';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import WalkPartner from './WalkPartner';
 import SOSPage from './SOS';
@@ -14,16 +15,17 @@ import TestSOS from './SafetyResource_Screens/TestSOS';
 import LiveLocation from './SafetyResource_Screens/LiveLocation';
 import VoiceTrigger from './SafetyResource_Screens/VoiceTrigger';
 import Unsafe from './SafetyResource_Screens/Unsafe';
-import PreviousWalks from './SafetyResource_Screens/previousWalks'
-import EmergencyContacts from './SafetyResource_Screens/emergencyContacts'
-import LanguagePage from './SafetyResource_Screens/LanguagePage'
-import SafetyVideos from './SafetyResource_Screens/safetyVideos'
-import OfflineMap from './SafetyResource_Screens/offlineMap'
-import WalkingAloneTips from './SafetyResource_Screens/walkingAlone'; // 1. IMPORT THE TIPS COMPONENT
+import PreviousWalks from './SafetyResource_Screens/previousWalks';
+import EmergencyContacts from './SafetyResource_Screens/emergencyContacts';
+import LanguagePage from './SafetyResource_Screens/LanguagePage';
+import SafetyVideos from './SafetyResource_Screens/safetyVideos';
+import OfflineMap from './SafetyResource_Screens/offlineMap';
+import WalkingAloneTips from './SafetyResource_Screens/walkingAlone';
+import Subscription from './SafetyResource_Screens/Subscription';
 
 const { width, height } = Dimensions.get('window');
 
-const Home = () => {
+const Home = ({handleLogout}) => {
   const [isNotHome, setIsNotHome] = useState(false);
   const [isSOS, setIsSOS] = useState(false);
   const [isWalkPartner, setIsWalkPartner] = useState(false);
@@ -35,12 +37,42 @@ const Home = () => {
   const [isUnsafePage, setIsUnsafePage] = useState(false);
   const [isUserProfile, setIsUserProfile] = useState(false);
   const [isPreviousWalks, setIsPreviousWalks] = useState(false);
-  const [isEmergencyContacts,setIsEmergencyContacts] = useState(false);
+  const [isEmergencyContacts, setIsEmergencyContacts] = useState(false);
   const [isLanguagePage, setIsLanguagePage] = useState(false);
   const [isSafetyVideos, setIsSafetyVideos] = useState(false);
   const [isOfflineMap, setIsOfflineMap] = useState(false);
-  const [isSubscription, setIsSubscription] = useState(false); 
-  const [isWalkingAloneTips ,setIsWalkingAloneTips] = useState(false)
+  const [isSubscriptionScreen, setIsSubscriptionScreen] = useState(false);
+  const [isWalkingAloneTips, setIsWalkingAloneTips] = useState(false);
+  const [isSubscription, setIsSubscription] = useState(false);
+  
+  const [isPeopleActive, setIsPeopleActive] = useState(false);
+  const [isTopBarManuallyExpanded, setIsTopBarManuallyExpanded] = useState(false);
+  
+  // State for profile image
+  const [userImage, setUserImage] = useState(null);
+
+  // Load profile image from AsyncStorage
+  useEffect(() => {
+    
+    const loadProfileImage = async () => {
+      try {
+        const userDataJSON = await AsyncStorage.getItem('userData');
+        
+        if (userDataJSON) {
+          const userData = JSON.parse(userDataJSON);
+          console.log(userData.name);
+          if (userData.imageUrl) {
+            setUserImage(userData.imageUrl);
+            
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load profile image', error);
+      }
+    };
+
+    loadProfileImage();
+  }, []);
 
   if (isWalkPartner) {
     return <WalkPartner setIsWalkPartner={setIsWalkPartner} />;
@@ -106,7 +138,9 @@ const Home = () => {
         setIsSafetyVideos = {setIsSafetyVideos}
         setIsOfflineMap = {setIsOfflineMap}
         setIsSubscription = {setIsSubscription} 
-        setIsWalkingAloneTips = {setIsWalkingAloneTips}
+        setIsWalkingAloneTips={setIsWalkingAloneTips}
+        handleLogout={handleLogout}
+        setIsSubscriptionScreen = {setIsSubscriptionScreen}
       />
     );
   }
@@ -133,28 +167,28 @@ const Home = () => {
   if (isEmergencyContacts) {
     return (
       <EmergencyContacts
-        setIsEmergencyContacts = {setIsEmergencyContacts}
-        setIsSafetyResources = {setIsSafetyResources}
+        setIsEmergencyContacts={setIsEmergencyContacts}
+        setIsSafetyResources={setIsSafetyResources}
       />
-    )
+    );
   }
 
-  if (isLanguagePage){
+  if (isLanguagePage) {
     return (
       <LanguagePage
-        setIsLanguagePage = {setIsLanguagePage}
-        setIsSafetyResources = {setIsSafetyResources}
+        setIsLanguagePage={setIsLanguagePage}
+        setIsSafetyResources={setIsSafetyResources}
       />
-    )
+    );
   }
-  
+
   if (isSafetyVideos) {
     return (
       <SafetyVideos
-        setIsSafetyVideos = {setIsSafetyVideos}
-        setIsSafetyResources = {setIsSafetyResources}
+        setIsSafetyVideos={setIsSafetyVideos}
+        setIsSafetyResources={setIsSafetyResources}
       />
-    )
+    );
   }
 
   if (isOfflineMap) {
@@ -165,37 +199,47 @@ const Home = () => {
       />
     );
   }
-  
-  if (isSubscription) {
+
+  if (isSubscriptionScreen) {
     return (
       <Subscription
-        setIsSubscription={setIsSubscription}
+        setIsSubscriptionScreen={setIsSubscriptionScreen}
         setIsSafetyResources={setIsSafetyResources}
       />
     );
   }
 
-  // 2. ADD THIS BLOCK TO RENDER THE TIPS SCREEN
   if (isWalkingAloneTips) {
-      return (
-          <WalkingAloneTips
-              setIsWalkingAloneTips={setIsWalkingAloneTips}
-              setIsSafetyResources={setIsSafetyResources}
-          />
-      );
+    return (
+      <WalkingAloneTips
+        setIsWalkingAloneTips={setIsWalkingAloneTips}
+        setIsSafetyResources={setIsSafetyResources}
+      />
+    );
   }
+
 
   return (
     <MapProvider>
       <View style={styles.container}>
-        <Map />
-        <TopBar setIsUserProfile={setIsUserProfile} />
+        <Map userImage={userImage} />
+        <TopBar 
+          setIsUserProfile={setIsUserProfile}
+          isNotHome={isNotHome}
+          isPeopleActive={isPeopleActive}
+          isTopBarManuallyExpanded={isTopBarManuallyExpanded}
+          setIsTopBarManuallyExpanded={setIsTopBarManuallyExpanded}
+          setIsSafetyResources={() => setIsSafetyResources(true)}
+          profileImageUri={userImage}
+        />
         <BottomNav
           isNotHome={isNotHome}
           setIsNotHome={setIsNotHome}
           isWalkPartner={isWalkPartner}
           setIsWalkPartner={setIsWalkPartner}
           setIsSOS={setIsSOS}
+          setIsPeopleActive={setIsPeopleActive}
+          setIsTopBarManuallyExpanded={setIsTopBarManuallyExpanded}
         />
       </View>
     </MapProvider>
@@ -206,6 +250,6 @@ export default Home;
 
 const styles = StyleSheet.create({
   container: {
-    // flex: 1, // uncomment if needed
+    // flex: 1,
   },
 });
