@@ -14,10 +14,14 @@ import {
 import MapView, { PROVIDER_GOOGLE } from 'react-native-maps';
 import Icon from 'react-native-vector-icons/Feather';
 import OfflineMapService from '../../services/OfflineMapService';
+import { OfflineMapFirebaseService } from '../../../backend/Firebase/OfflineMapFirebaseService';
+import { auth } from '../../../backend/Firebase/FirebaseConfig';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { OfflineMapDiagnostics } from '../../services/OfflineMapDiagnostics';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
-const OfflineMap = ({ setIsOfflineMap, setIsSafetyResources }) => {
+const OfflineMap = ({ setIsOfflineMap, setIsSafetyResources, setIsDownloadedMaps, downloadedMaps, setDownloadedMaps }) => {
   const [mapRegion, setMapRegion] = useState({
     latitude: -26.183,
     longitude: 27.999,
@@ -41,6 +45,10 @@ const OfflineMap = ({ setIsOfflineMap, setIsSafetyResources }) => {
 
   useEffect(() => {
     updateDownloadSize();
+    // Sync with Firebase when component mounts
+    if (auth.currentUser) {
+      OfflineMapService.syncWithFirebase();
+    }
   }, [mapRegion]);
 
   const updateDownloadSize = () => {
@@ -100,8 +108,31 @@ const OfflineMap = ({ setIsOfflineMap, setIsSafetyResources }) => {
       `This will download approximately ${downloadSize} MB of map data. Continue?`,
       [
         { text: 'Cancel', style: 'cancel' },
+        { text: 'Test First', onPress: runDiagnostics },
         { text: 'Download', onPress: startDownload }
       ]
+    );
+  };
+
+  const runDiagnostics = async () => {
+    Alert.alert('Running Diagnostics', 'Testing offline map functionality...');
+    
+    const result = await OfflineMapDiagnostics.testSingleTileDownload();
+    const coordTest = await OfflineMapDiagnostics.testTileCoordinates(
+      mapRegion.latitude, 
+      mapRegion.longitude
+    );
+    
+    const message = result.success 
+      ? `✅ Diagnostics PASSED\n\nNetwork: OK\nFile System: OK\nTile Download: OK (${result.fileSize} bytes)\nCoordinates: ${coordTest.success ? 'Valid' : 'Invalid'}\n\nOffline maps should work correctly!`
+      : `❌ Diagnostics FAILED\n\nError: ${result.error}\n\nPlease check your internet connection and try again.`;
+    
+    Alert.alert(
+      result.success ? 'Diagnostics Passed' : 'Diagnostics Failed',
+      message,
+      result.success 
+        ? [{ text: 'Download Now', onPress: startDownload }, { text: 'Cancel' }]
+        : [{ text: 'OK' }]
     );
   };
 
@@ -121,13 +152,51 @@ const OfflineMap = ({ setIsOfflineMap, setIsSafetyResources }) => {
     setShowProgress(false);
 
     if (result.success) {
+      // Create new map entry
+      const mapId = result.mapId;
+      const newMap = {
+        id: mapId,
+        name: `Map ${downloadedMaps.length + 1}`,
+        size: `${downloadSize} MB`,
+        expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric'
+        }),
+        region: mapRegion,
+        downloadDate: new Date().toISOString(),
+        tileCount: result.tilesDownloaded,
+        failedTiles: result.tilesFailed || 0,
+        successRate: result.successRate || 100
+      };
+
+      // Update downloaded maps
+      const updatedMaps = [...downloadedMaps, newMap];
+      setDownloadedMaps(updatedMaps);
+
+      // Save to AsyncStorage
+      try {
+        await AsyncStorage.setItem('downloadedMaps', JSON.stringify(updatedMaps));
+      } catch (error) {
+        console.error('Failed to save downloaded map', error);
+      }
+
+      // Record the download in Firebase if user is authenticated
+      if (auth.currentUser) {
+        await OfflineMapFirebaseService.addMapUpdateHistory(mapId, 'downloaded', `Downloaded ${result.tilesDownloaded} tiles (${result.successRate}% success rate)`);
+      }
+
+      const message = result.tilesFailed > 0 
+        ? `Downloaded ${result.tilesDownloaded} tiles successfully (${result.successRate}% success rate). ${result.tilesFailed} tiles failed but the map is still usable.`
+        : `Successfully downloaded ${result.tilesDownloaded} map tiles. The map is now available offline.`;
+
       Alert.alert(
         'Download Complete',
-        `Successfully downloaded ${result.tilesDownloaded} map tiles. The map is now available offline.`,
-        [{ text: 'OK', onPress: () => { setIsOfflineMap(false); setIsSafetyResources(true); } }]
+        message,
+        [{ text: 'OK', onPress: () => { setIsOfflineMap(false); setIsDownloadedMaps(true); } }]
       );
     } else {
-      Alert.alert('Download Failed', result.error || 'Failed to download map tiles.');
+      Alert.alert('Download Failed', result.error || 'Failed to download map tiles. Please check your internet connection and try again.');
     }
   };
 
@@ -147,35 +216,6 @@ const OfflineMap = ({ setIsOfflineMap, setIsSafetyResources }) => {
 
       {/* --- Main Content Overlay --- */}
       <View style={styles.overlayContainer}>
-        {/* --- Top Header Sheet --- */}
-        <View style={styles.headerSheet}>
-          <View style={styles.handleBar} />
-          <View style={styles.headerContent}>
-            <Image
-              // Replace with your actual user profile image source
-              source={require('../../images/kemal.jpg')}
-              style={styles.profileImage}
-            />
-            <View style={styles.userInfo}>
-              <Text style={styles.greetingText}>
-                Hello, <Text style={styles.userName}>Mpilo</Text>
-              </Text>
-              <Text style={styles.locationText}>
-                <Icon name="map-pin" size={12} color="#1abc9c" /> School, Auckland
-                Park, Johannesburg
-              </Text>
-            </View>
-            <TouchableOpacity>
-              <Icon name="bell" size={24} color="#333" style={styles.icon} />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => {
-              setIsOfflineMap(false);
-              setIsSafetyResources(true);
-            }}>
-              <Icon name="menu" size={26} color="#333" style={styles.icon} />
-            </TouchableOpacity>
-          </View>
-        </View>
 
         {/* --- Interactive Map Selection Area --- */}
         <View 
@@ -217,11 +257,12 @@ const OfflineMap = ({ setIsOfflineMap, setIsSafetyResources }) => {
             style={styles.button}
             onPress={() => {
               setIsOfflineMap(false);
-              setIsSafetyResources(true);
+              setIsDownloadedMaps(true);
             }}
           >
             <Text style={styles.buttonText}>Cancel</Text>
           </TouchableOpacity>
+
           <TouchableOpacity 
             style={[styles.button, styles.downloadButton, isDownloading && styles.disabledButton]}
             onPress={handleDownload}
@@ -241,6 +282,7 @@ const OfflineMap = ({ setIsOfflineMap, setIsSafetyResources }) => {
                 <View style={[styles.progressFill, { width: `${downloadProgress}%` }]} />
               </View>
               <Text style={styles.progressText}>{downloadProgress}% Complete</Text>
+              <Text style={styles.progressSubText}>Downloading map tiles...</Text>
             </View>
           </View>
         </Modal>
@@ -262,55 +304,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'space-between',
   },
-  headerSheet: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 5,
-  },
-  handleBar: {
-    width: 40,
-    height: 5,
-    backgroundColor: '#ccc',
-    borderRadius: 3,
-    alignSelf: 'center',
-    marginBottom: 15,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  profileImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#e0e0e0',
-    marginRight: 12,
-  },
-  userInfo: {
-    flex: 1,
-  },
-  greetingText: {
-    fontSize: 18,
-    color: '#000',
-  },
-  userName: {
-    fontWeight: 'bold',
-  },
-  locationText: {
-    fontSize: 12,
-    color: '#555',
-    marginTop: 2,
-  },
-  icon: {
-    marginLeft: 15,
-  },
+
   selectionContainer: {
     position: 'absolute',
     zIndex: 10,
@@ -457,6 +451,11 @@ const styles = StyleSheet.create({
   progressText: {
     fontSize: 16,
     color: '#666',
+  },
+  progressSubText: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 5,
   },
 });
 

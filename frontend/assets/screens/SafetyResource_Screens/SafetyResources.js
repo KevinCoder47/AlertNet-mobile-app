@@ -33,13 +33,17 @@ export default function SafetyResources({
   setIsEmergencyContacts,
   setIsLanguagePage,
   setIsSafetyVideos,
-  setIsOfflineMap, // ADD THIS,
+  setIsOfflineMap,
   setIsWalkingAloneTips,
   handleLogout,
   setIsSubscriptionScreen,
   setIsSafetyZones,
-  previousScreen = "sos",
-  backgroundContent
+  setIsDownloadedMaps,
+  previousScreen = "home",
+  backgroundContent,
+  setIsUserProfile,
+  setIsWalkPartner,
+  setIsQrCode
 }) {
   const screenWidth = Dimensions.get('window').width;
   const pan = useRef(new Animated.ValueXY({ x: screenWidth * 0.9, y: 0 })).current;
@@ -69,8 +73,22 @@ export default function SafetyResources({
       onPanResponderRelease: (_, gestureState) => {
         if (gestureState.dx > 100) {
           setIsSafetyResources(false);
-          if (previousScreen === "sos") {
-            setIsSOS(true);
+          switch (previousScreen) {
+            case "sos":
+              setIsSOS(true);
+              break;
+            case "userProfile":
+              setIsUserProfile(true);
+              break;
+            case "walkPartner":
+              setIsWalkPartner(true);
+              break;
+            case "qrCode":
+              setIsQrCode(true);
+              break;
+            default:
+              // All safety resource pages return to home
+              break;
           }
         } else {
           Animated.spring(pan, {
@@ -209,7 +227,7 @@ export default function SafetyResources({
           keywords: ["offline", "maps", "download", "navigation"],
           onPress: () => {
             setIsSafetyResources(false);
-            setIsOfflineMap(true);
+            setIsDownloadedMaps(true);
           }
         }
       ]

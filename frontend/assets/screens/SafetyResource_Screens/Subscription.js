@@ -65,7 +65,10 @@ const SubscriptionScreen = ({setIsSubscriptionScreen, setIsSafetyResources}) => 
             <Icon name="arrow-left" size={24} color="#000" />
           </TouchableOpacity>
 
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => {
+              setIsSubscriptionScreen(false);
+              setIsSafetyResources(true);
+            }}>
               <Icon name="menu" size={24} color="#000" />
             </TouchableOpacity>
           </View>
