@@ -21,7 +21,6 @@ import {
 } from "@expo/vector-icons";
 import { contentIndex } from './contentIndex';
 
-// 1. Add setIsOfflineMap to the props here
 export default function SafetyResources({
   setIsSafetyResources,
   setIsSOS,
@@ -33,17 +32,13 @@ export default function SafetyResources({
   setIsEmergencyContacts,
   setIsLanguagePage,
   setIsSafetyVideos,
-  setIsOfflineMap,
+  setIsOfflineMap, // ADD THIS,
   setIsWalkingAloneTips,
   handleLogout,
   setIsSubscriptionScreen,
   setIsSafetyZones,
-  setIsDownloadedMaps,
-  previousScreen = "home",
-  backgroundContent,
-  setIsUserProfile,
-  setIsWalkPartner,
-  setIsQrCode
+  previousScreen = "sos",
+  backgroundContent
 }) {
   const screenWidth = Dimensions.get('window').width;
   const pan = useRef(new Animated.ValueXY({ x: screenWidth * 0.9, y: 0 })).current;
@@ -73,22 +68,8 @@ export default function SafetyResources({
       onPanResponderRelease: (_, gestureState) => {
         if (gestureState.dx > 100) {
           setIsSafetyResources(false);
-          switch (previousScreen) {
-            case "sos":
-              setIsSOS(true);
-              break;
-            case "userProfile":
-              setIsUserProfile(true);
-              break;
-            case "walkPartner":
-              setIsWalkPartner(true);
-              break;
-            case "qrCode":
-              setIsQrCode(true);
-              break;
-            default:
-              // All safety resource pages return to home
-              break;
+          if (previousScreen === "sos") {
+            setIsSOS(true);
           }
         } else {
           Animated.spring(pan, {
@@ -227,7 +208,7 @@ export default function SafetyResources({
           keywords: ["offline", "maps", "download", "navigation"],
           onPress: () => {
             setIsSafetyResources(false);
-            setIsDownloadedMaps(true);
+            setIsOfflineMap(true);
           }
         }
       ]
