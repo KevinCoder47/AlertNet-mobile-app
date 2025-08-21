@@ -394,13 +394,18 @@ export const handleFirestoreError = (error) => {
  */
 export const getUsersByPhoneNumbers = async (phoneNumbers) => {
   try {
+    if (!Array.isArray(phoneNumbers) || phoneNumbers.length === 0) {
+      return {};
+    }
+    
     const batchSize = 10;
     const userMap = {};
     
     for (let i = 0; i < phoneNumbers.length; i += batchSize) {
       const batch = phoneNumbers.slice(i, i + batchSize);
       
-      // Verify "Phone" matches your Firestore field name
+      if (batch.length === 0) continue;
+      
       const q = query(
         collection(db, "users"),
         where("Phone", "in", batch)
@@ -426,6 +431,132 @@ export const getUsersByPhoneNumbers = async (phoneNumbers) => {
 };
 
 
+/**
+ * Offline Maps Functions
+ */
+export const saveUserOfflineMap = async (userId, mapData) => {
+  try {
+    const mapRef = doc(db, "users", userId, "offlineMaps", mapData.id);
+    await setDoc(mapRef, {
+      ...mapData,
+      userId,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+    return { success: true, id: mapData.id };
+  } catch (error) {
+    const handledError = handleFirestoreError(error);
+    console.error("Error saving offline map:", handledError);
+    throw handledError;
+  }
+};
+
+export const getUserOfflineMaps = async (userId) => {
+  try {
+    const mapsRef = collection(db, "users", userId, "offlineMaps");
+    const querySnapshot = await getDocs(mapsRef);
+    const maps = [];
+    querySnapshot.forEach((doc) => {
+      maps.push({ id: doc.id, ...doc.data() });
+    });
+    return maps;
+  } catch (error) {
+    const handledError = handleFirestoreError(error);
+    console.error("Error getting offline maps:", handledError);
+    throw handledError;
+  }
+};
+
+export const updateOfflineMapUsage = async (userId, mapId) => {
+  try {
+    const mapRef = doc(db, "users", userId, "offlineMaps", mapId);
+    await updateDoc(mapRef, {
+      accessCount: FieldValue.increment(1),
+      lastAccessed: new Date(),
+      updatedAt: new Date()
+    });
+    return { success: true };
+  } catch (error) {
+    const handledError = handleFirestoreError(error);
+    console.error("Error updating map usage:", handledError);
+    throw handledError;
+  }
+};
+
+export const deleteUserOfflineMap = async (userId, mapId) => {
+  try {
+    const mapRef = doc(db, "users", userId, "offlineMaps", mapId);
+    await deleteDoc(mapRef);
+    return { success: true };
+  } catch (error) {
+    const handledError = handleFirestoreError(error);
+    console.error("Error deleting offline map:", handledError);
+    throw handledError;
+  }
+};
+
+/**
+ * Emergency Contacts Functions
+ */
+export const addEmergencyContact = async (userId, contactData) => {
+  try {
+    const contactRef = doc(collection(db, "users", userId, "emergencyContacts"));
+    await setDoc(contactRef, {
+      ...contactData,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+    return { success: true, id: contactRef.id };
+  } catch (error) {
+    const handledError = handleFirestoreError(error);
+    console.error("Error adding emergency contact:", handledError);
+    throw handledError;
+  }
+};
+
+export const getEmergencyContacts = async (userId) => {
+  try {
+    const contactsRef = collection(db, "users", userId, "emergencyContacts");
+    const querySnapshot = await getDocs(contactsRef);
+    const contacts = [];
+    querySnapshot.forEach((doc) => {
+      contacts.push({ id: doc.id, ...doc.data() });
+    });
+    return contacts;
+  } catch (error) {
+    const handledError = handleFirestoreError(error);
+    console.error("Error getting emergency contacts:", handledError);
+    throw handledError;
+  }
+};
+
+export const updateEmergencyContact = async (userId, contactId, updates) => {
+  try {
+    const contactRef = doc(db, "users", userId, "emergencyContacts", contactId);
+    await updateDoc(contactRef, {
+      ...updates,
+      updatedAt: new Date()
+    });
+    return { success: true };
+  } catch (error) {
+    const handledError = handleFirestoreError(error);
+    console.error("Error updating emergency contact:", handledError);
+    throw handledError;
+  }
+};
+
+export const deleteEmergencyContact = async (userId, contactId) => {
+  try {
+    const contactRef = doc(db, "users", userId, "emergencyContacts", contactId);
+    await deleteDoc(contactRef);
+    return { success: true };
+  } catch (error) {
+    const handledError = handleFirestoreError(error);
+    console.error("Error deleting emergency contact:", handledError);
+    throw handledError;
+  }
+};
+
 // Export all functions
 export default {
   createUserDocument,
@@ -438,6 +569,14 @@ export default {
   createUserWithCollections,
   incrementWalkCount,
   updateUserLocation,
-    handleFirestoreError,
-  getUsersByPhoneNumbers
+  handleFirestoreError,
+  getUsersByPhoneNumbers,
+  saveUserOfflineMap,
+  getUserOfflineMaps,
+  updateOfflineMapUsage,
+  deleteUserOfflineMap,
+  addEmergencyContact,
+  getEmergencyContacts,
+  updateEmergencyContact,
+  deleteEmergencyContact
 };

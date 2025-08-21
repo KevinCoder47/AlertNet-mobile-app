@@ -22,6 +22,7 @@ import SafetyVideos from './SafetyResource_Screens/safetyVideos';
 import OfflineMap from './SafetyResource_Screens/offlineMap';
 import WalkingAloneTips from './SafetyResource_Screens/walkingAlone';
 import Subscription from './SafetyResource_Screens/Subscription';
+import DownloadedMaps from './SafetyResource_Screens/downloadedMaps';
 
 const { width, height } = Dimensions.get('window');
 
@@ -31,6 +32,7 @@ const Home = ({handleLogout}) => {
   const [isWalkPartner, setIsWalkPartner] = useState(false);
   const [isQrCode, setIsQrCode] = useState(false);
   const [isSafetyResources, setIsSafetyResources] = useState(false);
+  const [previousScreen, setPreviousScreen] = useState('home');
   const [isTestSOS, setIsTestSOS] = useState(false);
   const [isLiveLocation, setIsLiveLocation] = useState(false);
   const [isVoiceTrigger, setIsVoiceTrigger] = useState(false);
@@ -44,6 +46,8 @@ const Home = ({handleLogout}) => {
   const [isSubscriptionScreen, setIsSubscriptionScreen] = useState(false);
   const [isWalkingAloneTips, setIsWalkingAloneTips] = useState(false);
   const [isSubscription, setIsSubscription] = useState(false);
+  const [isDownloadedMaps, setIsDownloadedMaps] = useState(false);
+  const [downloadedMaps, setDownloadedMaps] = useState([]);
   
   const [isPeopleActive, setIsPeopleActive] = useState(false);
   const [isTopBarManuallyExpanded, setIsTopBarManuallyExpanded] = useState(false);
@@ -51,7 +55,7 @@ const Home = ({handleLogout}) => {
   // State for profile image
   const [userImage, setUserImage] = useState(null);
 
-  // Load profile image from AsyncStorage
+  // Load profile image and downloaded maps from AsyncStorage
   useEffect(() => {
     
     const loadProfileImage = async () => {
@@ -71,7 +75,19 @@ const Home = ({handleLogout}) => {
       }
     };
 
+    const loadDownloadedMaps = async () => {
+      try {
+        const mapsJSON = await AsyncStorage.getItem('downloadedMaps');
+        if (mapsJSON) {
+          setDownloadedMaps(JSON.parse(mapsJSON));
+        }
+      } catch (error) {
+        console.error('Failed to load downloaded maps', error);
+      }
+    };
+
     loadProfileImage();
+    loadDownloadedMaps();
   }, []);
 
   if (isWalkPartner) {
@@ -87,7 +103,10 @@ const Home = ({handleLogout}) => {
       <SOSPage
         setIsSOS={setIsSOS}
         setIsQrCode={setIsQrCode}
-        setIsSafetyResources={setIsSafetyResources}
+        setIsSafetyResources={(value) => {
+          if (value) setPreviousScreen('sos');
+          setIsSafetyResources(value);
+        }}
       />
     );
   }
@@ -100,7 +119,10 @@ const Home = ({handleLogout}) => {
     return (
       <TestSOS
         setIsTestSOS={setIsTestSOS}
-        setIsSafetyResources={setIsSafetyResources}
+        setIsSafetyResources={(value) => {
+          if (value) setPreviousScreen('testSOS');
+          setIsSafetyResources(value);
+        }}
       />
     );
   }
@@ -118,7 +140,10 @@ const Home = ({handleLogout}) => {
     return (
       <VoiceTrigger
         setIsVoiceTrigger={setIsVoiceTrigger}
-        setIsSafetyResources={setIsSafetyResources}
+        setIsSafetyResources={(value) => {
+          if (value) setPreviousScreen('voiceTrigger');
+          setIsSafetyResources(value);
+        }}
       />
     );
   }
@@ -141,6 +166,17 @@ const Home = ({handleLogout}) => {
         setIsWalkingAloneTips={setIsWalkingAloneTips}
         handleLogout={handleLogout}
         setIsSubscriptionScreen = {setIsSubscriptionScreen}
+        setIsDownloadedMaps = {setIsDownloadedMaps}
+        previousScreen={previousScreen}
+        setIsUserProfile={setIsUserProfile}
+        setIsWalkPartner={setIsWalkPartner}
+        setIsQrCode={setIsQrCode}
+        setIsEmergencyContacts={setIsEmergencyContacts}
+        setIsLanguagePage={setIsLanguagePage}
+        setIsSafetyVideos={setIsSafetyVideos}
+        setIsOfflineMap={setIsOfflineMap}
+        setIsSubscriptionScreen={setIsSubscriptionScreen}
+        setIsDownloadedMaps={setIsDownloadedMaps}
       />
     );
   }
@@ -149,7 +185,10 @@ const Home = ({handleLogout}) => {
     return (
       <Unsafe
         setIsUnsafePage={setIsUnsafePage}
-        setIsSafetyResources={setIsSafetyResources}
+        setIsSafetyResources={(value) => {
+          if (value) setPreviousScreen('unsafe');
+          setIsSafetyResources(value);
+        }}
         setIsSOS={setIsSOS}
       />
     );
@@ -159,7 +198,10 @@ const Home = ({handleLogout}) => {
     return (
       <PreviousWalks
         setIsPreviousWalks={setIsPreviousWalks}
-        setIsSafetyResources={setIsSafetyResources}
+        setIsSafetyResources={(value) => {
+          if (value) setPreviousScreen('previousWalks');
+          setIsSafetyResources(value);
+        }}
       />
     );
   }
@@ -168,7 +210,10 @@ const Home = ({handleLogout}) => {
     return (
       <EmergencyContacts
         setIsEmergencyContacts={setIsEmergencyContacts}
-        setIsSafetyResources={setIsSafetyResources}
+        setIsSafetyResources={(value) => {
+          if (value) setPreviousScreen('emergencyContacts');
+          setIsSafetyResources(value);
+        }}
       />
     );
   }
@@ -177,7 +222,10 @@ const Home = ({handleLogout}) => {
     return (
       <LanguagePage
         setIsLanguagePage={setIsLanguagePage}
-        setIsSafetyResources={setIsSafetyResources}
+        setIsSafetyResources={(value) => {
+          if (value) setPreviousScreen('languagePage');
+          setIsSafetyResources(value);
+        }}
       />
     );
   }
@@ -186,7 +234,10 @@ const Home = ({handleLogout}) => {
     return (
       <SafetyVideos
         setIsSafetyVideos={setIsSafetyVideos}
-        setIsSafetyResources={setIsSafetyResources}
+        setIsSafetyResources={(value) => {
+          if (value) setPreviousScreen('safetyVideos');
+          setIsSafetyResources(value);
+        }}
       />
     );
   }
@@ -195,7 +246,13 @@ const Home = ({handleLogout}) => {
     return (
       <OfflineMap
         setIsOfflineMap={setIsOfflineMap}
-        setIsSafetyResources={setIsSafetyResources}
+        setIsSafetyResources={(value) => {
+          if (value) setPreviousScreen('offlineMap');
+          setIsSafetyResources(value);
+        }}
+        setIsDownloadedMaps={setIsDownloadedMaps}
+        downloadedMaps={downloadedMaps}
+        setDownloadedMaps={setDownloadedMaps}
       />
     );
   }
@@ -204,7 +261,10 @@ const Home = ({handleLogout}) => {
     return (
       <Subscription
         setIsSubscriptionScreen={setIsSubscriptionScreen}
-        setIsSafetyResources={setIsSafetyResources}
+        setIsSafetyResources={(value) => {
+          if (value) setPreviousScreen('subscription');
+          setIsSafetyResources(value);
+        }}
       />
     );
   }
@@ -213,7 +273,28 @@ const Home = ({handleLogout}) => {
     return (
       <WalkingAloneTips
         setIsWalkingAloneTips={setIsWalkingAloneTips}
-        setIsSafetyResources={setIsSafetyResources}
+        setIsSafetyResources={(value) => {
+          if (value) setPreviousScreen('walkingAloneTips');
+          setIsSafetyResources(value);
+        }}
+      />
+    );
+  }
+
+  if (isDownloadedMaps) {
+    return (
+      <DownloadedMaps
+        navigation={{
+          goBack: () => {
+            setIsDownloadedMaps(false);
+            setPreviousScreen('downloadedMaps');
+            setIsSafetyResources(true);
+          }
+        }}
+        setIsOfflineMap={setIsOfflineMap}
+        setIsDownloadedMaps={setIsDownloadedMaps}
+        downloadedMaps={downloadedMaps}
+        setDownloadedMaps={setDownloadedMaps}
       />
     );
   }
@@ -229,7 +310,10 @@ const Home = ({handleLogout}) => {
           isPeopleActive={isPeopleActive}
           isTopBarManuallyExpanded={isTopBarManuallyExpanded}
           setIsTopBarManuallyExpanded={setIsTopBarManuallyExpanded}
-          setIsSafetyResources={() => setIsSafetyResources(true)}
+          setIsSafetyResources={() => {
+            setPreviousScreen('home');
+            setIsSafetyResources(true);
+          }}
           profileImageUri={userImage}
         />
         <BottomNav

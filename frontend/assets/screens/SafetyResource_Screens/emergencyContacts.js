@@ -17,7 +17,12 @@ import SOSService from '../../services/SOSService';
 const EmergencyContacts = ({ setIsEmergencyContacts, setIsSafetyResources }) => {
   const [contacts, setContacts] = useState([]);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newContact, setNewContact] = useState({ name: '', phoneNumber: '' });
+  const [newContact, setNewContact] = useState({ 
+    name: '', 
+    phoneNumber: '', 
+    relationship: 'Family',
+    isPrimary: false 
+  });
 
   useEffect(() => {
     loadContacts();
@@ -34,23 +39,29 @@ const EmergencyContacts = ({ setIsEmergencyContacts, setIsSafetyResources }) => 
       return;
     }
 
-    const contact = {
-      id: Date.now().toString(),
-      name: newContact.name,
-      phoneNumber: newContact.phoneNumber,
-    };
-
-    const updatedContacts = [...contacts, contact];
-    await SOSService.saveEmergencyContacts(updatedContacts);
-    setContacts(updatedContacts);
-    setNewContact({ name: '', phoneNumber: '' });
-    setShowAddForm(false);
+    try {
+      await SOSService.addEmergencyContact({
+        name: newContact.name,
+        phoneNumber: newContact.phoneNumber,
+        relationship: newContact.relationship,
+        isPrimary: newContact.isPrimary,
+        isVerified: false
+      });
+      await loadContacts();
+      setNewContact({ name: '', phoneNumber: '', relationship: 'Family', isPrimary: false });
+      setShowAddForm(false);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to add contact');
+    }
   };
 
   const removeContact = async (contactId) => {
-    const updatedContacts = contacts.filter(c => c.id !== contactId);
-    await SOSService.saveEmergencyContacts(updatedContacts);
-    setContacts(updatedContacts);
+    try {
+      await SOSService.removeEmergencyContact(contactId);
+      await loadContacts();
+    } catch (error) {
+      Alert.alert('Error', 'Failed to remove contact');
+    }
   };
   return (
     <SafeAreaView style={styles.container}>
@@ -85,6 +96,9 @@ const EmergencyContacts = ({ setIsEmergencyContacts, setIsSafetyResources }) => 
                 <Text style={styles.contactNumber}>
                   Contact No: {contact.phoneNumber}
                 </Text>
+                <Text style={styles.contactRelationship}>
+                  {contact.relationship} {contact.isPrimary ? '(Primary)' : ''}
+                </Text>
               </View>
               <TouchableOpacity 
                 style={styles.removeButton}
@@ -113,6 +127,28 @@ const EmergencyContacts = ({ setIsEmergencyContacts, setIsSafetyResources }) => 
               onChangeText={(text) => setNewContact({...newContact, phoneNumber: text})}
               keyboardType="phone-pad"
             />
+            <View style={styles.pickerContainer}>
+              <Text style={styles.pickerLabel}>Relationship:</Text>
+              <View style={styles.relationshipButtons}>
+                {['Family', 'Friend', 'Colleague', 'Other'].map(rel => (
+                  <TouchableOpacity
+                    key={rel}
+                    style={[styles.relationshipButton, newContact.relationship === rel && styles.selectedRelationship]}
+                    onPress={() => setNewContact({...newContact, relationship: rel})}
+                  >
+                    <Text style={[styles.relationshipText, newContact.relationship === rel && styles.selectedRelationshipText]}>{rel}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+            <TouchableOpacity
+              style={styles.primaryToggle}
+              onPress={() => setNewContact({...newContact, isPrimary: !newContact.isPrimary})}
+            >
+              <Text style={styles.primaryToggleText}>
+                {newContact.isPrimary ? '✓' : '○'} Primary Contact
+              </Text>
+            </TouchableOpacity>
             <View style={styles.formButtons}>
               <TouchableOpacity style={styles.cancelButton} onPress={() => setShowAddForm(false)}>
                 <Text style={styles.cancelButtonText}>Cancel</Text>
@@ -224,6 +260,12 @@ const styles = StyleSheet.create({
     color: '#cccccc',
     marginTop: 4,
   },
+  contactRelationship: {
+    fontSize: 12,
+    color: '#aaaaaa',
+    marginTop: 2,
+    fontStyle: 'italic',
+  },
   removeButton: {
     backgroundColor: '#d32f2f',
     paddingVertical: 6,
@@ -274,6 +316,51 @@ const styles = StyleSheet.create({
     color: '#fff',
     textAlign: 'center',
     fontWeight: 'bold',
+  },
+  pickerContainer: {
+    marginBottom: 15,
+  },
+  pickerLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    color: '#333',
+  },
+  relationshipButtons: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  relationshipButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 15,
+    backgroundColor: '#e0e0e0',
+    borderWidth: 1,
+    borderColor: '#ccc',
+  },
+  selectedRelationship: {
+    backgroundColor: '#4caf50',
+    borderColor: '#4caf50',
+  },
+  relationshipText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  selectedRelationshipText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  primaryToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    marginBottom: 10,
+  },
+  primaryToggleText: {
+    fontSize: 16,
+    color: '#333',
+    marginLeft: 5,
   },
   addButton: {
     backgroundColor: '#a0a0a0',

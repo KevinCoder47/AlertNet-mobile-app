@@ -1,24 +1,60 @@
 import * as Location from 'expo-location';
 import * as SMS from 'expo-sms';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FirebaseService } from '../../backend/Firebase/FirebaseService';
+import { auth } from '../../backend/Firebase/FirebaseConfig';
+import { getEmergencyContacts, addEmergencyContact, updateEmergencyContact, deleteEmergencyContact } from '../../services/firestore';
 
 class SOSService {
   static async getEmergencyContacts() {
     try {
-      const contacts = await AsyncStorage.getItem('emergencyContacts');
-      return contacts ? JSON.parse(contacts) : [];
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        console.warn('No authenticated user');
+        return [];
+      }
+      return await getEmergencyContacts(currentUser.uid);
     } catch (error) {
       console.error('Error getting emergency contacts:', error);
       return [];
     }
   }
 
-  static async saveEmergencyContacts(contacts) {
+  static async addEmergencyContact(contactData) {
     try {
-      await AsyncStorage.setItem('emergencyContacts', JSON.stringify(contacts));
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error('User not authenticated');
+      }
+      return await addEmergencyContact(currentUser.uid, contactData);
     } catch (error) {
-      console.error('Error saving emergency contacts:', error);
+      console.error('Error adding emergency contact:', error);
+      throw error;
+    }
+  }
+
+  static async updateEmergencyContact(contactId, updates) {
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error('User not authenticated');
+      }
+      return await updateEmergencyContact(currentUser.uid, contactId, updates);
+    } catch (error) {
+      console.error('Error updating emergency contact:', error);
+      throw error;
+    }
+  }
+
+  static async removeEmergencyContact(contactId) {
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error('User not authenticated');
+      }
+      return await deleteEmergencyContact(currentUser.uid, contactId);
+    } catch (error) {
+      console.error('Error removing emergency contact:', error);
+      throw error;
     }
   }
 

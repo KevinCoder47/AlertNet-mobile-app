@@ -14,6 +14,7 @@ import SafetyResources from './SafetyResource_Screens/SafetyResources';
 
 export default function SOS({ setIsSOS, setIsQrCode, setIsSafetyResources }) {
   const [activityLog, setActivityLog] = useState([
+    { time: '21:44', message: 'Police called (0638184478)' },
     { time: '21:45', message: 'Your friends have been notified' },
     { time: '21:47', message: 'Mpilo is on the way to you' },
     { time: '21:48', message: 'APB Security is on the way to you.' },
