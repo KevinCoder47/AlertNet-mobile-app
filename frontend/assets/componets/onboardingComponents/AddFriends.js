@@ -33,7 +33,9 @@ const ContactPickerModal = ({
   selectedContacts, 
   onSelectContacts 
 }) => {
-  const [tempSelected, setTempSelected] = useState(selectedContacts);
+    const [tempSelected, setTempSelected] = useState(selectedContacts);
+    
+
 
     const toggleContact = (contact) => {
     const isSelected = tempSelected.some(c => c.uid === contact.uid); // Compare by UID
@@ -106,6 +108,10 @@ const AddFriends = ({ navigation, setIsLoggedIn,profileImageUri }) => {
     const [registeredContacts, setRegisteredContacts] = useState([]);
     const [isCheckingContacts, setIsCheckingContacts] = useState(false);
     const [userLocation, setUserLocation] = useState(null);
+
+        useEffect(() => {
+  console.log("AddFriends received profileImageUri:", profileImageUri);
+}, [profileImageUri]);
     
     // Get user data from AsyncStorage and request location permission
     useEffect(() => {
@@ -373,23 +379,26 @@ useEffect(() => {
             }
 
             // Create user document with friends
-            await createUserDocument(userId, {
-                name: currentUserData.name || '',
-                surname: currentUserData.surname || '',
-                phone: currentUserData.phoneNumber || '',
-                email: currentUserData.email || '',
-                imageUrl: profileImageUri || '',
-                gender: currentUserData.gender || '',
-                campus: currentUserData.campus || "",  
-                currentLocation: userCurrentLocation, // Use real location
-                residenceAddress: currentUserData.residenceAddress || {  
+                await createUserDocument(
+                userId, 
+                {
+                    name: currentUserData.name || '',
+                    surname: currentUserData.surname || '',
+                    phone: currentUserData.phoneNumber || '',
+                    email: currentUserData.email || '',
+                    gender: currentUserData.gender || '',
+                    campus: currentUserData.campus || "",  
+                    currentLocation: userCurrentLocation,
+                    residenceAddress: currentUserData.residenceAddress || {  
                     latitude: 0,
                     longitude: 0
+                    },
+                    rating: currentUserData.rating || 0,  
+                    walks: currentUserData.walks || 0,
+                    friends: alertnetContacts
                 },
-                rating: currentUserData.rating || 0,  
-                walks: currentUserData.walks || 0,
-                friends: alertnetContacts
-            });
+                profileImageUri 
+                );
             
             // Update AsyncStorage with new contacts format
             const updatedUserData = {
