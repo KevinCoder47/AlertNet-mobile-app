@@ -13,7 +13,9 @@ const firebaseConfig = {
   messagingSenderId: "535753118943",
   appId: "1:535753118943:web:a51328dbfedef5c1c0456a",
   measurementId: "G-XZ80NK3MH0"
+  
 };
+
 
 // Prevent duplicate initialization
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
@@ -27,6 +29,8 @@ const auth = getApps().length
 
 const db = getFirestore(app);
 const storage = getStorage(app);
+
+console.log("Storage bucket:", storage.app.options.storageBucket);
 
 let analytics = null;
 isSupported()

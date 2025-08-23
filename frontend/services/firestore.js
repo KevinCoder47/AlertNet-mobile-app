@@ -27,30 +27,54 @@ export const createUserDocument = async (userId, userData, profileImageUri = nul
   try {
     let imageUrl = userData.imageUrl || '';
     
-    // Upload image if provided
-    if (profileImageUri) {
+    console.log("createUserDocument received profileImageUri:", profileImageUri);
+    
+    // Upload image if provided and it's a local file
+    if (profileImageUri && (profileImageUri.startsWith('file://') || profileImageUri.startsWith('/'))) {
       try {
+        console.log("Starting image upload for user:", userId);
+        
         const formattedUri = profileImageUri.startsWith("file://") 
           ? profileImageUri 
           : `file://${profileImageUri}`;
         
+        // Convert image file to blob
+        console.log("Fetching image from:", formattedUri);
         const response = await fetch(formattedUri);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch image: ${response.status}`);
+        }
+        
         const blob = await response.blob();
+        console.log("Image blob created successfully, size:", blob.size);
 
         // Create a storage reference
         const timestamp = Date.now();
         const storageRef = ref(storage, `profileImages/${userId}/${timestamp}.jpg`);
+        console.log("Storage reference:", storageRef.fullPath);
 
         const metadata = {
           contentType: 'image/jpeg',
         };
         
+        console.log("Uploading image to Firebase Storage...");
         await uploadBytes(storageRef, blob, metadata);
+        console.log("Image uploaded successfully");
+        
+        // Get the download URL
         imageUrl = await getDownloadURL(storageRef);
+        console.log("Download URL obtained:", imageUrl);
       } catch (uploadError) {
         console.error("Error uploading image:", uploadError);
-        // Continue without image if upload fails
+        // Don't continue with local URI if upload fails
+        throw new Error(`Image upload failed: ${uploadError.message}`);
       }
+    } else if (profileImageUri && profileImageUri.startsWith('https://')) {
+      // If it's already a URL (from previous upload), use it directly
+      imageUrl = profileImageUri;
+      console.log("Using existing image URL:", imageUrl);
+    } else {
+      console.log("No valid profile image provided");
     }
 
     // Ensure all values are defined
@@ -100,7 +124,10 @@ export const createUserDocument = async (userId, userData, profileImageUri = nul
       userID: userId
     };
 
+    console.log("Creating user document with data:", firestoreData);
     await setDoc(doc(db, "users", userId), firestoreData);
+    console.log("User document created successfully");
+    
     return true;
   } catch (error) {
     const handledError = handleFirestoreError(error);
