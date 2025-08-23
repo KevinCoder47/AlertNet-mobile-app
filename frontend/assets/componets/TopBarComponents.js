@@ -6,7 +6,7 @@ import { useTheme } from '../contexts/ColorContext'
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
-const TopBarComponents = ({isNotHome, setIsUserProfile, setIsSafetyResources,profileImageUri}) => {
+const TopBarComponents = ({isNotHome, setIsUserProfile, setIsSafetyResources,userImage}) => {
   const [userName, setUserName] = useState("Guest");
   const [location, setLocation] = useState("School, AuklandPark, Johannesburg");
   const { colors, isDark } = useTheme();
@@ -53,7 +53,7 @@ useEffect(() => {
               console.log("Profile pressed");
             }}>
           <ImageBackground
-            source={{ uri: profileImageUri }} 
+            source={{uri: userImage }} 
             style={styles.profilePic}
             imageStyle={styles.profilePicImage}
 

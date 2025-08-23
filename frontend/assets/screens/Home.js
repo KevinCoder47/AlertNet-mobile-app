@@ -65,8 +65,8 @@ const Home = ({handleLogout}) => {
         if (userDataJSON) {
           const userData = JSON.parse(userDataJSON);
           console.log(userData.name);
-          if (userData.imageUrl) {
-            setUserImage(userData.imageUrl);
+          if (userData.localImagePath) {
+            setUserImage(userData.localImagePath);
             
           }
         }
@@ -314,7 +314,7 @@ const Home = ({handleLogout}) => {
             setPreviousScreen('home');
             setIsSafetyResources(true);
           }}
-          profileImageUri={userImage}
+          userImage={userImage}
         />
         <BottomNav
           isNotHome={isNotHome}

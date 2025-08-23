@@ -1,4 +1,3 @@
-
 import { 
   getFirestore, 
   doc, 
@@ -14,9 +13,9 @@ import {
   where,         
   getDocs 
 } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { db, storage } from '../backend/Firebase/FirebaseConfig';
 import { app } from '../backend/Firebase/FirebaseConfig';
-
-const db = getFirestore(app);
 
 /**
  * Creates a new user document in Firestore matching your schema
@@ -24,8 +23,36 @@ const db = getFirestore(app);
  * @param {Object} userData - User data to store
  * @returns {Promise<boolean>} - True if successful
  */
-export const createUserDocument = async (userId, userData) => {
+export const createUserDocument = async (userId, userData, profileImageUri = null) => {
   try {
+    let imageUrl = userData.imageUrl || '';
+    
+    // Upload image if provided
+    if (profileImageUri) {
+      try {
+        const formattedUri = profileImageUri.startsWith("file://") 
+          ? profileImageUri 
+          : `file://${profileImageUri}`;
+        
+        const response = await fetch(formattedUri);
+        const blob = await response.blob();
+
+        // Create a storage reference
+        const timestamp = Date.now();
+        const storageRef = ref(storage, `profileImages/${userId}/${timestamp}.jpg`);
+
+        const metadata = {
+          contentType: 'image/jpeg',
+        };
+        
+        await uploadBytes(storageRef, blob, metadata);
+        imageUrl = await getDownloadURL(storageRef);
+      } catch (uploadError) {
+        console.error("Error uploading image:", uploadError);
+        // Continue without image if upload fails
+      }
+    }
+
     // Ensure all values are defined
     const safeUserData = {
       campus: userData.campus || "",
@@ -36,7 +63,7 @@ export const createUserDocument = async (userId, userData) => {
       email: userData.email || "",
       friends: userData.friends || [],
       gender: userData.gender || "",
-      imageUrl: userData.imageUrl || "",
+      imageUrl: imageUrl, // Use the uploaded image URL or existing one
       name: userData.name || "",
       phone: userData.phone || "",
       rating: userData.rating || 0,
@@ -55,7 +82,8 @@ export const createUserDocument = async (userId, userData) => {
       CurrentLocation: safeUserData.currentLocation,
       Email: safeUserData.email,
       Friends: safeUserData.friends.map(friend => ({
-        id: friend.id || '',
+        id: friend.uid || friend.id || '', // Use uid first, then fallback to id
+        uid: friend.uid || friend.id || '', // Also store uid separately for clarity
         name: friend.name || '',
         email: friend.email || '',
         phoneNumber: friend.phoneNumber || ''
@@ -141,27 +169,32 @@ export const getUserDocument = async (userId) => {
     const docRef = doc(db, "users", userId);
     const docSnap = await getDoc(docRef);
     
-    if (docSnap.exists()) {
-      // Map back to our app's naming convention
-      const data = docSnap.data();
-      return {
-        userId: data.userID,
-        campus: data.Campus,
-        createdAt: data.CreatedAt?.toDate() || null,
-        currentLocation: data.CurrentLocation || { latitude: 0, longitude: 0 },
-        email: data.Email,
-        friends: data.Friends,
-        gender: data.Gender,
-        imageUrl: data.ImageURL,
-        lastLogin: data.LastLogin?.toDate() || null,
-        name: data.Name,
-        phone: data.Phone,
-        rating: data.Rating,
-        residenceAddress: data.ResidenceAddress || { latitude: 0, longitude: 0 },
-        surname: data.Surname,
-        walks: data.Walks
-      };
-    }
+  if (docSnap.exists()) {
+    // Map back to our app's naming convention
+    const data = docSnap.data();
+    return {
+      userId: data.userID,
+      campus: data.Campus,
+      createdAt: data.CreatedAt?.toDate() || null,
+      currentLocation: data.CurrentLocation || { latitude: 0, longitude: 0 },
+      email: data.Email,
+      friends: data.Friends.map(friend => ({
+        uid: friend.uid || friend.id || '', // Use uid first, then fallback to id
+        name: friend.name || '',
+        email: friend.email || '',
+        phoneNumber: friend.phoneNumber || ''
+      })),
+      gender: data.Gender,
+      imageUrl: data.ImageURL,
+      lastLogin: data.LastLogin?.toDate() || null,
+      name: data.Name,
+      phone: data.Phone,
+      rating: data.Rating,
+      residenceAddress: data.ResidenceAddress || { latitude: 0, longitude: 0 },
+      surname: data.Surname,
+      walks: data.Walks
+    };
+  }
     return null;
   } catch (error) {
     const handledError = handleFirestoreError(error);

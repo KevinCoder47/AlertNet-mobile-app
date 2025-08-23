@@ -3,6 +3,7 @@ import React, { useRef, useState } from 'react'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { registerUser } from '../../backend/Firebase/authentication';
+import GeneralLoader from '../componets/Loaders/GeneralLoarder'
 
 const {width, height} = Dimensions.get('window')
 

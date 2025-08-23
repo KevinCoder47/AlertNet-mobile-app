@@ -1,14 +1,17 @@
-import { StyleSheet, Text, View, Dimensions, Image, TouchableOpacity } from 'react-native'
+import { StyleSheet, Text, View, Dimensions, Image, TouchableOpacity, Alert } from 'react-native'
 import React, { useState, useEffect } from 'react'
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getAuth } from 'firebase/auth';
+import { uploadProfileImage } from '../../../backend/Firebase/storage';
 
 const {width, height} = Dimensions.get('window')
 
-const AddProfileImage = ({ onImageSelected,isImageSaved,setIsImageSaved }) => {
-  const [profileImageUri, setProfileImageUri] = useState(null);
+const AddProfileImage = ({ onImageSelected, isImageSaved, setIsImageSaved,profileImageUri,setProfileImageUri }) => {
+  
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -74,16 +77,14 @@ const pickImage = async () => {
         to: newPath
       });
 
-      // FIX: Retrieve userData from AsyncStorage first
+      // Update userData with local image path
       const userDataJSON = await AsyncStorage.getItem('userData');
       const userData = userDataJSON ? JSON.parse(userDataJSON) : {};
-      
-      // Update userData with new image path
-      userData.imageUrl = newPath;
+      userData.localImagePath = newPath;
       
       await AsyncStorage.setItem('userData', JSON.stringify(userData));
       
-      // Update state
+      // Update state with local URI
       setProfileImageUri(newPath);
       setIsImageSaved(true);
       if (onImageSelected) onImageSelected(newPath);
@@ -95,45 +96,57 @@ const pickImage = async () => {
 };
 
   return (
-      <View style={styles.container}>
-          <Text style = {styles.title}>
-              Add profile image
-          </Text>
+    <View style={styles.container}>
+      <Text style={styles.title}>
+        Add profile image
+      </Text>
 
-          <Text style = {styles.p}>
-              select your best image to make you identifiable 
-          </Text>
+      <Text style={styles.p}>
+        Select your best image to make you identifiable 
+      </Text>
 
-          {/* Image selector */}
-          <TouchableOpacity 
-            style={styles.imageSelector}
-            onPress={pickImage}
-          >
-            {profileImageUri ? (
-              <Image 
-                source={{ uri: profileImageUri }} 
-                style={styles.selectedImage} 
-              />
-            ) : (
-              <Ionicons
-                name='image'
-                size={25}
-                color={'#717171'}
-              />
-            )}
-          </TouchableOpacity>
-
-          {/* terms */}
-          <View style ={{flexDirection: 'row', marginTop: 15,gap: 5}}>
-              <Ionicons
-                  name='lock-closed'
-                  size={10}
-                  color={'#666666'}
-              />
-              <Text style={[styles.p, {marginTop: 0,color: '#666666'}]}>
-                  We'll only show your image to people you connect with on Alertnet.
-              </Text>
+      {/* Image selector */}
+      <TouchableOpacity 
+        style={[styles.imageSelector, uploading && styles.uploading]}
+        onPress={pickImage}
+        disabled={uploading}
+      >
+        {profileImageUri ? (
+          <Image 
+            source={{ uri: profileImageUri }} 
+            style={styles.selectedImage} 
+          />
+        ) : (
+          <Ionicons
+            name='image'
+            size={25}
+            color={'#717171'}
+          />
+        )}
+        
+        {uploading && (
+          <View style={styles.uploadOverlay}>
+            <Ionicons
+              name='cloud-upload'
+              size={40}
+              color={'#FFF'}
+            />
+            <Text style={styles.uploadText}>Uploading...</Text>
           </View>
+        )}
+      </TouchableOpacity>
+
+      {/* terms */}
+      <View style={{flexDirection: 'row', marginTop: 15, gap: 5}}>
+        <Ionicons
+          name='lock-closed'
+          size={10}
+          color={'#666666'}
+        />
+        <Text style={[styles.p, {marginTop: 0, color: '#666666'}]}>
+          We'll only show your image to people you connect with on Alertnet.
+        </Text>
+      </View>
     </View>
   )
 }
@@ -141,36 +154,54 @@ const pickImage = async () => {
 export default AddProfileImage
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        width: width,
-        height: height,
-        paddingTop: 40,
-        alignItems: 'center'
-    },
-    title: {
-        fontSize: 18,
-        fontWeight: '600'
-    },
-    p: {
-        fontSize: 10,
-        marginTop: 20,
-        fontWeight: '400'
-    },
-    imageSelector: {
-        width: width * 0.9,
-        height: width * 0.9,
-        backgroundColor: '#FFEDD5',
-        marginTop: 60,
-        borderRadius: 10,
-        borderWidth: 0.2,
-        borderColor: '#F57527',
-        alignItems: 'center',
-        justifyContent: 'center',
-        overflow: 'hidden' // Ensure image stays within rounded corners
-    },
-    selectedImage: {
-        width: '100%',
-        height: '100%'
-    }
-})
+  container: {
+    flex: 1,
+    width: width,
+    height: height,
+    paddingTop: 40,
+    alignItems: 'center'
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '600'
+  },
+  p: {
+    fontSize: 10,
+    marginTop: 20,
+    fontWeight: '400'
+  },
+  imageSelector: {
+    width: width * 0.9,
+    height: width * 0.9,
+    backgroundColor: '#FFEDD5',
+    marginTop: 60,
+    borderRadius: 10,
+    borderWidth: 0.2,
+    borderColor: '#F57527',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden'
+  },
+  selectedImage: {
+    width: '100%',
+    height: '100%'
+  },
+  uploading: {
+    opacity: 0.7
+  },
+  uploadOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  uploadText: {
+    color: '#FFF',
+    marginTop: 10,
+    fontSize: 16
+  }
+});
