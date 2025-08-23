@@ -23,6 +23,7 @@ import OfflineMap from './SafetyResource_Screens/offlineMap';
 import WalkingAloneTips from './SafetyResource_Screens/walkingAlone';
 import Subscription from './SafetyResource_Screens/Subscription';
 import DownloadedMaps from './SafetyResource_Screens/downloadedMaps';
+import NotificationsPopup from './NotificationsPopup';
 
 const { width, height } = Dimensions.get('window');
 
@@ -48,6 +49,7 @@ const Home = ({handleLogout}) => {
   const [isSubscription, setIsSubscription] = useState(false);
   const [isDownloadedMaps, setIsDownloadedMaps] = useState(false);
   const [downloadedMaps, setDownloadedMaps] = useState([]);
+  const [IsNotification, setIsNotification] = useState(false);
   
   const [isPeopleActive, setIsPeopleActive] = useState(false);
   const [isTopBarManuallyExpanded, setIsTopBarManuallyExpanded] = useState(false);
@@ -315,7 +317,9 @@ const Home = ({handleLogout}) => {
             setIsSafetyResources(true);
           }}
           userImage={userImage}
+          setIsNotification={setIsNotification}
         />
+
         <BottomNav
           isNotHome={isNotHome}
           setIsNotHome={setIsNotHome}
@@ -325,6 +329,12 @@ const Home = ({handleLogout}) => {
           setIsPeopleActive={setIsPeopleActive}
           setIsTopBarManuallyExpanded={setIsTopBarManuallyExpanded}
         />
+        {/* Notifications Popup - Add this */}
+        {IsNotification && (
+          <NotificationsPopup
+            setIsNotification={setIsNotification}
+          />
+        )}
       </View>
     </MapProvider>
   );

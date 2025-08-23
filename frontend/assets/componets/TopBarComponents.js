@@ -6,7 +6,7 @@ import { useTheme } from '../contexts/ColorContext'
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
-const TopBarComponents = ({isNotHome, setIsUserProfile, setIsSafetyResources,userImage}) => {
+const TopBarComponents = ({isNotHome, setIsUserProfile, setIsSafetyResources,userImage, setIsNotification}) => {
   const [userName, setUserName] = useState("Guest");
   const [location, setLocation] = useState("School, AuklandPark, Johannesburg");
   const { colors, isDark } = useTheme();
@@ -79,7 +79,7 @@ useEffect(() => {
         
         {/* Notification bell */}
         <View style = {{marginLeft: "auto", marginHorizontal: 5, flexDirection: "row"}}>
-          <TouchableOpacity style = {{width: 20, height: 20, marginRight: 20}}>
+          <TouchableOpacity onPress={() => setIsNotification(true)} style = {{width: 20, height: 20, marginRight: 20}}>
             <Image source={isDark ? require('../icons/notification-dark.png') : require('../icons/notification-light.png')} style = {{width: 20, height: 20}} />
           </TouchableOpacity>
           
