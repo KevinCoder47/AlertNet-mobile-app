@@ -55,6 +55,7 @@ const Home = ({handleLogout}) => {
   
   const [isPeopleActive, setIsPeopleActive] = useState(false);
   const [isTopBarManuallyExpanded, setIsTopBarManuallyExpanded] = useState(false);
+  const [userData, setUserData] = useState();
   
   // State for profile image
   const [userImage, setUserImage] = useState(null);
@@ -95,6 +96,7 @@ const Home = ({handleLogout}) => {
         if (userDataJSON) {
           const userData = JSON.parse(userDataJSON);
           console.log("User data loaded:", userData.name);
+          setUserData(userData);
           
           // Priority 1: Use Firebase Storage URL if available
           if (userData.imageUrl) {
@@ -185,7 +187,11 @@ const Home = ({handleLogout}) => {
   }
 
   if (isUserProfile) {
-    return <MyProfile setIsUserProfile={setIsUserProfile} />;
+    return <MyProfile
+      setIsUserProfile={setIsUserProfile}
+      userImage={getImageSource()}
+      userData = {userData}
+    />;
   }
 
   if (isSOS) {
