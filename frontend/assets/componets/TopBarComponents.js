@@ -13,7 +13,7 @@ const TopBarComponents = ({
   userLocation
 }) => {
   const [userName, setUserName] = useState("Guest");
-  const [location, setLocation] = useState(`${userLocation.latitude}, ${userLocation.longitude}`);
+  const [location, setLocation] = useState("School, AuklandPark, Johannesburg");
   const { colors, isDark } = useTheme();
   
 const [userData, setUserData] = useState(null);

@@ -60,7 +60,7 @@
     "react-redux": "^9.2.0",
     "resend": "^4.8.0",
     "expo-image": "~2.4.0",
-    "expo-task-manager": "~13.1.6"
+    "expo-task-manager": "~13.1.6",
     "expo-clipboard": "~7.1.5"
   },
   "devDependencies": {
