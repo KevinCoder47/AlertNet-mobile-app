@@ -8,6 +8,7 @@ import MyProfile from '../screens/MyProfile';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
+import { getUserDocument } from '../../services/firestore';
 
 import WalkPartner from './WalkPartner';
 import SOSPage from './SOS';
@@ -61,6 +62,65 @@ const Home = ({handleLogout}) => {
   const [userImage, setUserImage] = useState(null);
   const [cachedImagePath, setCachedImagePath] = useState(null);
   const [imageError, setImageError] = useState(false);
+
+  //friends
+  const [friendsDetails, setFriendsDetails] = useState({});
+useEffect(() => {
+  const fetchFriendsDetails = async () => {
+    if (!userData || !userData.friends || userData.friends.length === 0) {
+      return;
+    }
+
+    try {
+      // Check if we already have details for all friends
+      const friendIds = userData.friends.map(f => f.uid);
+      const existingIds = Object.keys(friendsDetails);
+      
+      // Only fetch if we don't have all friends' details
+      if (friendIds.some(id => !existingIds.includes(id))) {
+        const friendsData = { ...friendsDetails };
+        let hasUpdates = false;
+        
+        // Fetch details for each friend that we don't have yet
+        for (const friend of userData.friends) {
+          // Skip if we already have this friend's details
+          if (friendsData[friend.uid]) continue;
+          
+          try {
+            const friendDoc = await getUserDocument(friend.uid);
+            if (friendDoc) {
+              friendsData[friend.uid] = {
+                name: friendDoc.name || friend.name || 'Unknown',
+                imageUrl: friendDoc.imageUrl || null,
+                currentLocation: friendDoc.currentLocation || null,
+                // Add any other fields you need
+              };
+              hasUpdates = true;
+            }
+          } catch (error) {
+            console.error(`Error fetching details for friend ${friend.uid}:`, error);
+            // Add a placeholder for this friend to avoid repeated attempts
+            friendsData[friend.uid] = {
+              name: friend.name || 'Unknown',
+              imageUrl: null,
+              currentLocation: null,
+            };
+            hasUpdates = true;
+          }
+        }
+        
+        // Only update state if we actually fetched new data
+        if (hasUpdates) {
+          setFriendsDetails(friendsData);
+        }
+      }
+    } catch (error) {
+      console.error("Error in fetchFriendsDetails:", error);
+    }
+  };
+
+  fetchFriendsDetails();
+}, [userData, friendsDetails]);
 
   // Function to cache image
   const cacheImage = async (imageUrl) => {
@@ -398,7 +458,11 @@ const Home = ({handleLogout}) => {
   return (
     <MapProvider>
       <View style={styles.container}>
-        <Map userImage={getImageSource()} />
+        <Map 
+          userImage={getImageSource()} 
+          friendsDetails={friendsDetails} 
+          setFriendsDetails = {setFriendsDetails}
+        />
         <TopBar 
           setIsUserProfile={setIsUserProfile}
           isNotHome={isNotHome}
