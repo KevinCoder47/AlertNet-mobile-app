@@ -617,6 +617,24 @@ export const deleteEmergencyContact = async (userId, contactId) => {
   }
 };
 
+
+//update current location
+export const updateCurrentLocation = async (userId, location) => {
+  try {
+    await updateDoc(doc(db, "users", userId), {
+      CurrentLocation: {
+        latitude: location.latitude,
+        longitude: location.longitude
+      },
+      LastLocationUpdate: new Date()
+    });
+    return true;
+  } catch (error) {
+    console.error("Error updating location:", error);
+    return false;
+  }
+};
+
 // Export all functions
 export default {
   createUserDocument,
@@ -638,5 +656,6 @@ export default {
   addEmergencyContact,
   getEmergencyContacts,
   updateEmergencyContact,
-  deleteEmergencyContact
+  deleteEmergencyContact,
+  updateCurrentLocation
 };

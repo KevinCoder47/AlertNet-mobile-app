@@ -12,7 +12,7 @@ const { width, height } = Dimensions.get('window');
 const TopBar = ({
   isNotHome, isPeopleActive, isTopBarManuallyExpanded,
   setIsTopBarManuallyExpanded, setIsUserProfile, setIsSafetyResources,
-  userImage, setIsNotification,renderProfileImage
+  userImage, setIsNotification,renderProfileImage,userLocation
 }) => {
   const { colors } = useTheme();
   
@@ -104,7 +104,8 @@ const TopBar = ({
           setIsSafetyResources={setIsSafetyResources}
           userImage = {userImage}
           setIsNotification={setIsNotification}
-          renderProfileImage = {renderProfileImage}
+          renderProfileImage={renderProfileImage}
+          userLocation = {userLocation}
         />
         
         

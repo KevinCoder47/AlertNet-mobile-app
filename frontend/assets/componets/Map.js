@@ -111,11 +111,10 @@ const MAP_IDS = {
   dark: "f48cf5b0589cd8bfd9dedc8e" 
 };
 
-export default function SafetyMap({userImage, friendsDetails, setFriendsDetails}) {
+export default function SafetyMap({userImage, friendsDetails, setFriendsDetails, userLocation, mapRef}) {
   const { colors } = useTheme();
   const [location, setLocation] = useState(null);
   const [mapReady, setMapReady] = useState(false);
-  const { mapRef, userLocation, setUserLocation } = useMapContext();
   
   // Platform-specific configuration
   const isAndroid = Platform.OS === 'android';
@@ -145,34 +144,50 @@ export default function SafetyMap({userImage, friendsDetails, setFriendsDetails}
     };
   };
 
-  // Update region when friends data changes
+  // Update region to focus on user but include nearby friends
   useEffect(() => {
-    if (Object.keys(friendsDetails).length > 0) {
-      // Calculate center point of all friends
-      const lats = Object.values(friendsDetails)
-        .filter(friend => friend.currentLocation)
-        .map(friend => friend.currentLocation.latitude);
-      
-      const lngs = Object.values(friendsDetails)
-        .filter(friend => friend.currentLocation)
-        .map(friend => friend.currentLocation.longitude);
-      
-      if (lats.length > 0 && lngs.length > 0) {
-        const avgLat = lats.reduce((a, b) => a + b, 0) / lats.length;
-        const avgLng = lngs.reduce((a, b) => a + b, 0) / lngs.length;
-        
-        // Update the map region to center on friends
-        if (mapRef.current) {
-          mapRef.current.animateToRegion({
-            latitude: avgLat,
-            longitude: avgLng,
-            latitudeDelta: 0.05,
-            longitudeDelta: 0.05,
-          }, 1000);
-        }
-      }
+    if (!userLocation || !mapRef.current) return;
+    
+    // Get all valid friend locations
+    const friendLocations = Object.values(friendsDetails)
+      .filter(friend => friend.currentLocation)
+      .map(friend => friend.currentLocation);
+    
+    // If no friends or friends are far away, focus on user only
+    if (friendLocations.length === 0) {
+      mapRef.current.animateToRegion({
+        latitude: userLocation.latitude,
+        longitude: userLocation.longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      }, 1000);
+      return;
     }
-  }, [friendsDetails]);
+    
+    // Calculate bounds that include user and nearby friends
+    const allLocations = [userLocation, ...friendLocations];
+    
+    // Find min and max coordinates
+    const lats = allLocations.map(loc => loc.latitude);
+    const lngs = allLocations.map(loc => loc.longitude);
+    
+    const minLat = Math.min(...lats);
+    const maxLat = Math.max(...lats);
+    const minLng = Math.min(...lngs);
+    const maxLng = Math.max(...lngs);
+    
+    // Calculate deltas with some padding
+    const latDelta = (maxLat - minLat) * 1.5;
+    const lngDelta = (maxLng - minLng) * 1.5;
+    
+    // Center on user but include nearby friends
+    mapRef.current.animateToRegion({
+      latitude: userLocation.latitude,
+      longitude: userLocation.longitude,
+      latitudeDelta: Math.max(0.01, Math.min(0.1, latDelta)), // Keep within reasonable bounds
+      longitudeDelta: Math.max(0.01, Math.min(0.1, lngDelta)), // Keep within reasonable bounds
+    }, 1000);
+  }, [userLocation, friendsDetails]);
 
   // friends location listener
   useEffect(() => {
@@ -199,29 +214,15 @@ export default function SafetyMap({userImage, friendsDetails, setFriendsDetails}
     return () => clearInterval(interval);
   }, [friendsDetails]);
 
-  // Get user location
-  useEffect(() => {
-    (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission denied', 'Location is required for your safety.');
-        return;
-      }
-
-      const current = await Location.getCurrentPositionAsync({});
-      setUserLocation(current.coords);
-    })();
-  }, [setUserLocation]);
-
-  // Initial region calculation
+  // Initial region calculation - focus on user
   const initialRegion = useMemo(() => {
     if (!userLocation) return null;
     
     return {
       latitude: userLocation.latitude,
       longitude: userLocation.longitude,
-      latitudeDelta: 0.26262139386467,
-      longitudeDelta: 0.13496406376361492
+      latitudeDelta: 0.01, // Smaller delta for closer zoom
+      longitudeDelta: 0.01, // Smaller delta for closer zoom
     };
   }, [userLocation]);
 
@@ -244,7 +245,7 @@ export default function SafetyMap({userImage, friendsDetails, setFriendsDetails}
           initialRegion={initialRegion}
           zoomEnabled={true}
         >
-          {/* user marker */}
+          {/* user marker - make it more prominent */}
           <Marker
             coordinate={{
               latitude: userLocation.latitude,
@@ -312,7 +313,7 @@ const styles = StyleSheet.create({
     borderRadius: 25
   },
   friendMarker: {
-    width: 50,
+    width: 50, 
     height: 50,
     borderRadius: 25,
     borderWidth: 2,
