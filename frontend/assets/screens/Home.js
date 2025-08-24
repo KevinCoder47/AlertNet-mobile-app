@@ -1,5 +1,5 @@
-import { StyleSheet, View, Dimensions, Image } from 'react-native';
-import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, Dimensions, Image,AppState } from 'react-native';
+import React, { useState, useEffect,useRef } from 'react';
 import Map from '../componets/Map';
 import TopBar from '../componets/TopBar';
 import BottomNav from '../componets/BottomNav';
@@ -9,6 +9,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
 import { getUserDocument } from '../../services/firestore';
+import * as Location from 'expo-location';
+import { updateCurrentLocation } from '../../services/firestore';
+import * as TaskManager from 'expo-task-manager';
 
 import WalkPartner from './WalkPartner';
 import SOSPage from './SOS';
@@ -27,6 +30,7 @@ import WalkingAloneTips from './SafetyResource_Screens/walkingAlone';
 import Subscription from './SafetyResource_Screens/Subscription';
 import DownloadedMaps from './SafetyResource_Screens/downloadedMaps';
 import NotificationsPopup from './NotificationsPopup';
+
 
 const { width, height } = Dimensions.get('window');
 
@@ -62,6 +66,51 @@ const Home = ({handleLogout}) => {
   const [userImage, setUserImage] = useState(null);
   const [cachedImagePath, setCachedImagePath] = useState(null);
   const [imageError, setImageError] = useState(false);
+
+
+  //USER LOCATION:
+  const [userLocation, setUserLocation] = useState(null);
+  const mapRef = useRef(null);
+  useEffect(() => {
+  (async () => {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission denied', 'Location is required for your safety.');
+      return;
+    }
+
+    const current = await Location.getCurrentPositionAsync({});
+    setUserLocation(current.coords);
+    
+    // Update Firebase with the user's location
+    if (userData && userData.userId) {
+      await updateCurrentLocation(userData.userId, current.coords);
+    }
+  })();
+}, [userData]);
+
+// Add this useEffect to update the user's location periodically
+useEffect(() => {
+  const interval = setInterval(async () => {
+    if (!userData) return;
+    
+    try {
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced
+      });
+      
+      // Update Firebase with new location
+      await updateCurrentLocation(userData.userId, location.coords);
+      
+      // Update local state
+      setUserLocation(location.coords);
+    } catch (error) {
+      console.error("Error updating user location:", error);
+    }
+  }, 30000); // Update every 30 seconds
+
+  return () => clearInterval(interval);
+}, [userData]);
 
   //friends
   const [friendsDetails, setFriendsDetails] = useState({});
@@ -121,6 +170,125 @@ useEffect(() => {
 
   fetchFriendsDetails();
 }, [userData, friendsDetails]);
+  
+  //UPDATE CURRENT LOCATION IN THE MOST EFFICIENT WAY
+  const [locationUpdateInterval, setLocationUpdateInterval] = useState(null);
+useEffect(() => {
+  const updateUserLocation = async () => {
+    if (!userData) return;
+    
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') return;
+      
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced
+      });
+      
+      // Update Firebase with new location
+      await updateCurrentLocation(userData.userId, location.coords);
+      
+      // Update local state if needed
+      setUserLocation(location.coords);
+    } catch (error) {
+      console.error("Error updating user location:", error);
+    }
+  };
+  
+  // Update immediately
+  updateUserLocation();
+  
+  // Set up interval for updates (every 30 seconds when app is active)
+  const interval = setInterval(updateUserLocation, 30000);
+  setLocationUpdateInterval(interval);
+  
+  return () => {
+    if (locationUpdateInterval) {
+      clearInterval(locationUpdateInterval);
+    }
+  };
+}, [userData]);
+  
+  
+// Request background location permissions
+useEffect(() => {
+  const requestBackgroundPermission = async () => {
+    try {
+      const { status } = await Location.requestBackgroundPermissionsAsync();
+      if (status === 'granted') {
+        // Start background location updates
+        await Location.startLocationUpdatesAsync('backgroundLocationTask', {
+          accuracy: Location.Accuracy.Balanced,
+          timeInterval: 300000, // 5 minutes
+          distanceInterval: 100, // 100 meters
+          showsBackgroundLocationIndicator: true,
+        });
+      }
+    } catch (error) {
+      console.error("Error requesting background location:", error);
+    }
+  };
+  
+  requestBackgroundPermission();
+  
+  return () => {
+    // Clean up when component unmounts
+    Location.stopLocationUpdatesAsync('backgroundLocationTask');
+  };
+}, []);
+
+// Define a task to handle background location updates
+TaskManager.defineTask('backgroundLocationTask', async ({ data, error }) => {
+  if (error) {
+    console.error('Background location task error:', error);
+    return;
+  }
+  
+  if (data && userData) {
+    const { locations } = data;
+    const location = locations[0];
+    
+    if (location) {
+      // Update Firebase with new location
+      await updateCurrentLocation(userData.userId, location.coords);
+    }
+  }
+});
+  
+  
+
+// Add app state awareness to reduce updates when app is in background
+useEffect(() => {
+  const subscription = AppState.addEventListener('change', nextAppState => {
+    if (nextAppState === 'background' || nextAppState === 'inactive') {
+      // Clear interval when app goes to background
+      if (locationUpdateInterval) {
+        clearInterval(locationUpdateInterval);
+        setLocationUpdateInterval(null);
+      }
+    } else if (nextAppState === 'active') {
+      // Restart interval when app comes to foreground
+      const interval = setInterval(async () => {
+        if (!userData) return;
+        
+        try {
+          const location = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced
+          });
+          await updateCurrentLocation(userData.userId, location.coords);
+        } catch (error) {
+          console.error("Error updating user location:", error);
+        }
+      }, 30000);
+      
+      setLocationUpdateInterval(interval);
+    }
+  });
+  
+  return () => {
+    subscription.remove();
+  };
+}, [userData]);
 
   // Function to cache image
   const cacheImage = async (imageUrl) => {
@@ -456,12 +624,14 @@ useEffect(() => {
   }
 
   return (
-    <MapProvider>
+  <MapProvider value={{ mapRef, userLocation, setUserLocation }}>
       <View style={styles.container}>
         <Map 
           userImage={getImageSource()} 
           friendsDetails={friendsDetails} 
-          setFriendsDetails = {setFriendsDetails}
+          setFriendsDetails={setFriendsDetails}
+          userLocation={userLocation}
+          mapRef={mapRef}
         />
         <TopBar 
           setIsUserProfile={setIsUserProfile}
@@ -476,6 +646,7 @@ useEffect(() => {
           userImage={getImageSource()}
           setIsNotification={setIsNotification}
           renderProfileImage={renderProfileImage}
+        userLocation = {userLocation}
         />
 
         <BottomNav
