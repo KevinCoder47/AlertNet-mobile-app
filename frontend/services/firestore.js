@@ -1,4 +1,3 @@
-
 import { 
   getFirestore, 
   doc, 
@@ -14,9 +13,9 @@ import {
   where,         
   getDocs 
 } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { db, storage } from '../backend/Firebase/FirebaseConfig';
 import { app } from '../backend/Firebase/FirebaseConfig';
-
-const db = getFirestore(app);
 
 /**
  * Creates a new user document in Firestore matching your schema
@@ -24,8 +23,60 @@ const db = getFirestore(app);
  * @param {Object} userData - User data to store
  * @returns {Promise<boolean>} - True if successful
  */
-export const createUserDocument = async (userId, userData) => {
+export const createUserDocument = async (userId, userData, profileImageUri = null) => {
   try {
+    let imageUrl = userData.imageUrl || '';
+    
+    console.log("createUserDocument received profileImageUri:", profileImageUri);
+    
+    // Upload image if provided and it's a local file
+    if (profileImageUri && (profileImageUri.startsWith('file://') || profileImageUri.startsWith('/'))) {
+      try {
+        console.log("Starting image upload for user:", userId);
+        
+        const formattedUri = profileImageUri.startsWith("file://") 
+          ? profileImageUri 
+          : `file://${profileImageUri}`;
+        
+        // Convert image file to blob
+        console.log("Fetching image from:", formattedUri);
+        const response = await fetch(formattedUri);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch image: ${response.status}`);
+        }
+        
+        const blob = await response.blob();
+        console.log("Image blob created successfully, size:", blob.size);
+
+        // Create a storage reference
+        const timestamp = Date.now();
+        const storageRef = ref(storage, `profileImages/${userId}/${timestamp}.jpg`);
+        console.log("Storage reference:", storageRef.fullPath);
+
+        const metadata = {
+          contentType: 'image/jpeg',
+        };
+        
+        console.log("Uploading image to Firebase Storage...");
+        await uploadBytes(storageRef, blob, metadata);
+        console.log("Image uploaded successfully");
+        
+        // Get the download URL
+        imageUrl = await getDownloadURL(storageRef);
+        console.log("Download URL obtained:", imageUrl);
+      } catch (uploadError) {
+        console.error("Error uploading image:", uploadError);
+        // Don't continue with local URI if upload fails
+        throw new Error(`Image upload failed: ${uploadError.message}`);
+      }
+    } else if (profileImageUri && profileImageUri.startsWith('https://')) {
+      // If it's already a URL (from previous upload), use it directly
+      imageUrl = profileImageUri;
+      console.log("Using existing image URL:", imageUrl);
+    } else {
+      console.log("No valid profile image provided");
+    }
+
     // Ensure all values are defined
     const safeUserData = {
       campus: userData.campus || "",
@@ -36,7 +87,7 @@ export const createUserDocument = async (userId, userData) => {
       email: userData.email || "",
       friends: userData.friends || [],
       gender: userData.gender || "",
-      imageUrl: userData.imageUrl || "",
+      imageUrl: imageUrl, // Use the uploaded image URL or existing one
       name: userData.name || "",
       phone: userData.phone || "",
       rating: userData.rating || 0,
@@ -55,7 +106,8 @@ export const createUserDocument = async (userId, userData) => {
       CurrentLocation: safeUserData.currentLocation,
       Email: safeUserData.email,
       Friends: safeUserData.friends.map(friend => ({
-        id: friend.id || '',
+        id: friend.uid || friend.id || '', // Use uid first, then fallback to id
+        uid: friend.uid || friend.id || '', // Also store uid separately for clarity
         name: friend.name || '',
         email: friend.email || '',
         phoneNumber: friend.phoneNumber || ''
@@ -72,7 +124,10 @@ export const createUserDocument = async (userId, userData) => {
       userID: userId
     };
 
+    console.log("Creating user document with data:", firestoreData);
     await setDoc(doc(db, "users", userId), firestoreData);
+    console.log("User document created successfully");
+    
     return true;
   } catch (error) {
     const handledError = handleFirestoreError(error);
@@ -141,27 +196,32 @@ export const getUserDocument = async (userId) => {
     const docRef = doc(db, "users", userId);
     const docSnap = await getDoc(docRef);
     
-    if (docSnap.exists()) {
-      // Map back to our app's naming convention
-      const data = docSnap.data();
-      return {
-        userId: data.userID,
-        campus: data.Campus,
-        createdAt: data.CreatedAt?.toDate() || null,
-        currentLocation: data.CurrentLocation || { latitude: 0, longitude: 0 },
-        email: data.Email,
-        friends: data.Friends,
-        gender: data.Gender,
-        imageUrl: data.ImageURL,
-        lastLogin: data.LastLogin?.toDate() || null,
-        name: data.Name,
-        phone: data.Phone,
-        rating: data.Rating,
-        residenceAddress: data.ResidenceAddress || { latitude: 0, longitude: 0 },
-        surname: data.Surname,
-        walks: data.Walks
-      };
-    }
+  if (docSnap.exists()) {
+    // Map back to our app's naming convention
+    const data = docSnap.data();
+    return {
+      userId: data.userID,
+      campus: data.Campus,
+      createdAt: data.CreatedAt?.toDate() || null,
+      currentLocation: data.CurrentLocation || { latitude: 0, longitude: 0 },
+      email: data.Email,
+      friends: data.Friends.map(friend => ({
+        uid: friend.uid || friend.id || '', // Use uid first, then fallback to id
+        name: friend.name || '',
+        email: friend.email || '',
+        phoneNumber: friend.phoneNumber || ''
+      })),
+      gender: data.Gender,
+      imageUrl: data.ImageURL,
+      lastLogin: data.LastLogin?.toDate() || null,
+      name: data.Name,
+      phone: data.Phone,
+      rating: data.Rating,
+      residenceAddress: data.ResidenceAddress || { latitude: 0, longitude: 0 },
+      surname: data.Surname,
+      walks: data.Walks
+    };
+  }
     return null;
   } catch (error) {
     const handledError = handleFirestoreError(error);

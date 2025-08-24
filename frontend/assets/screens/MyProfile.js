@@ -1,232 +1,377 @@
 import React, {useState} from 'react';
-import { View, Text, StyleSheet,TouchableOpacity, Image,TextInput } from 'react-native'
-import { Ionicons } from '@expo/vector-icons'
+import { View, Text, StyleSheet, TouchableOpacity, Image, TextInput, Dimensions, SafeAreaView, Switch, ImageBackground, Modal } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native'; 
 import { useTheme } from '../contexts/ColorContext';
+import { LinearGradient } from 'expo-linear-gradient';
 
-//testing 
+const { width, height } = Dimensions.get("window");
 
-const MyProfile = ({setIsUserProfile}) => {
-
+const MyProfile = ({setIsUserProfile, userImage,userData}) => {
   const navigation = useNavigation();
-  const [isLocationOn, setIsLocationOn] = useState(false);
-  const [userFullName, setUserFullName] = useState('Musa Buthelezi');
-  const [userName, setUserName] = useState('Mpilo');
-  const [userPhoneNumber, setUserPhoneNumber] = useState('0693243053');
-  const [userEmail, setUserEmail] = useState('mpilo@gmail.com');
-  const [userAddress, setUserAddress] = useState('37 Bunting Rd, Cotteloe');
+  const [isLocationOn, setIsLocationOn] = useState(true);
+  const [userFullName, setUserFullName] = useState(`${userData.name} ${userData.surname}`);
+  const [userCampus, setUserCampus] = useState(userData.campus || '');
+  const [userPhoneNumber, setUserPhoneNumber] = useState(userData.phone);
+  const [userEmail, setUserEmail] = useState(userData.email);
+  const [userAddress, setUserAddress] = useState(userData.address || 'Not set');
+  const [showCampusPicker, setShowCampusPicker] = useState(false);
 
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const [isEditing, setIsEditing] = useState(false);
-  const dark = false;
+
+  const campuses = ['APK', 'APB', 'DFC', 'SWC'];
 
   return (
-    <View style={styles.container}>
-    
-      <TouchableOpacity onPress={() => setIsUserProfile(false)} style={{marginTop: 40}}>
-        <Ionicons name="chevron-back" size={28} color="#FFFFFF" />
-      </TouchableOpacity>
-
-      <View style={styles.topSection}>
-        <Text style={styles.headerText}>My Profile</Text>
-    
-        <View style={styles.imageWrapper}>
-          <Image
-            source={{ uri: 'https://via.placeholder.com/100' }} 
-            style={styles.profileImage}
+    <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}>
+      {/* Profile Image with Gradient Overlay */}
+      <TouchableOpacity style={styles.profilePicture} onPress={() => {}}>
+        <ImageBackground style={styles.profilePicture} source={{ uri: userImage }}>
+          <LinearGradient
+            colors={['rgba(0,0,0,0.4)', 'transparent']}
+            style={styles.overlay}
           />
+        </ImageBackground>
+      </TouchableOpacity>
+      
+      {/* Back Button */}
+      <TouchableOpacity onPress={() => setIsUserProfile(false)} style={styles.backButton}>
+        <Ionicons name="chevron-back" size={24} color="white" />
+      </TouchableOpacity>
+      
+      <View style={styles.contentWrapper}>
+        {/* Header with Name */}
+        <View style={styles.headerContainer}>
+          <Text style={[styles.artistName, {fontSize: 40}]} numberOfLines={2}>
+            {userFullName}
+          </Text>
+          <Ionicons name="person-outline" size={20} color="white" style={styles.personIcon} />
         </View>
 
-        <TouchableOpacity onPress={() => {}}>
-          <Text style={styles.addPhotoText}>+ Add Profile Picture</Text>
-        </TouchableOpacity>
+        {/* Info Card */}
+        <View style={[styles.infoView, {backgroundColor: colors.background, paddingTop: 20}]}>
+          {/* Full Name */}
+          <View style={styles.titleAndInfo}>
+            <View style={styles.iconContainer}>
+              <Ionicons name="person-outline" size={16} color={colors.secondary} />
+              <Text style={[styles.title, { color: colors.secondary, marginLeft: 8, fontSize: 11 }]}>FULL NAME</Text>
+            </View>
+            <TextInput
+              value={userFullName}
+              onChangeText={setUserFullName}
+              editable={isEditing}
+              style={[styles.textInput, { color: colors.text, fontSize: 13 }]}
+              placeholder="Enter your full name"
+              placeholderTextColor={colors.secondary}
+            />
+          </View>
+
+          <View style={styles.divider} />
+
+          {/* Campus Selection */}
+          <View style={styles.titleAndInfo}>
+            <View style={styles.iconContainer}>
+              <Ionicons name="business-outline" size={16} color={colors.secondary} />
+              <Text style={[styles.title, { color: colors.secondary, marginLeft: 8, fontSize: 11 }]}>CAMPUS</Text>
+            </View>
+            {isEditing ? (
+              <TouchableOpacity onPress={() => setShowCampusPicker(true)}>
+                <Text style={[styles.textInput, { color: colors.text, fontSize: 13 }]}>{userCampus || 'Select Campus'}</Text>
+              </TouchableOpacity>
+            ) : (
+              <Text style={[styles.textInput, { color: colors.text, fontSize: 13 }]}>{userCampus || 'Not selected'}</Text>
+            )}
+          </View>
+
+          <View style={styles.divider} />
+
+          {/* Phone Number */}
+          <View style={styles.titleAndInfo}>
+            <View style={styles.iconContainer}>
+              <Ionicons name="call-outline" size={16} color={colors.secondary} />
+              <Text style={[styles.title, { color: colors.secondary, marginLeft: 8, fontSize: 11 }]}>PHONE NUMBER</Text>
+            </View>
+            <TextInput
+              value={userPhoneNumber}
+              onChangeText={setUserPhoneNumber}
+              editable={isEditing}
+              style={[styles.textInput, { color: colors.text, fontSize: 13 }]}
+              placeholder="Enter your phone number"
+              placeholderTextColor={colors.secondary}
+              keyboardType="phone-pad"
+            />
+          </View>
+
+          <View style={styles.divider} />
+
+          {/* Email */}
+          <View style={styles.titleAndInfo}>
+            <View style={styles.iconContainer}>
+              <Ionicons name="mail-outline" size={16} color={colors.secondary} />
+              <Text style={[styles.title, { color: colors.secondary, marginLeft: 8, fontSize: 11 }]}>EMAIL</Text>
+            </View>
+            <TextInput
+              value={userEmail}
+              onChangeText={setUserEmail}
+              editable={isEditing}
+              style={[styles.textInput, { color: colors.text, fontSize: 13 }]}
+              placeholder="Enter your email"
+              placeholderTextColor={colors.secondary}
+              keyboardType="email-address"
+            />
+          </View>
+
+          <View style={styles.divider} />
+
+          {/* Address */}
+          <View style={styles.titleAndInfo}>
+            <View style={styles.iconContainer}>
+              <Ionicons name="location-outline" size={16} color={colors.secondary} />
+              <Text style={[styles.title, { color: colors.secondary, marginLeft: 8, fontSize: 11 }]}>RES ADDRESS</Text>
+            </View>
+            <TextInput
+              value={userAddress}
+              onChangeText={setUserAddress}
+              editable={isEditing}
+              style={[styles.textInput, { color: colors.text, fontSize: 13 }]}
+              placeholder="Enter your address"
+              placeholderTextColor={colors.secondary}
+            />
+          </View>
+
+          <View style={styles.divider} />
+
+          {/* Terms and Conditions */}
+          <View style={styles.titleAndInfo}>
+            <View style={styles.iconContainer}>
+              <Ionicons name="document-text-outline" size={16} color={colors.secondary} />
+              <Text style={[styles.title, { color: colors.secondary, marginLeft: 8, fontSize: 11 }]}>TERMS & CONDITIONS</Text>
+            </View>
+            <TouchableOpacity>
+              <Text style={[styles.buttonText, { color: colors.text, fontSize: 13 }]}>View</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.divider} />
+
+          {/* Privacy Policy */}
+          <View style={styles.titleAndInfo}>
+            <View style={styles.iconContainer}>
+              <Ionicons name="shield-checkmark-outline" size={16} color={colors.secondary} />
+              <Text style={[styles.title, { color: colors.secondary, marginLeft: 8, fontSize: 11 }]}>PRIVACY POLICY</Text>
+            </View>
+            <TouchableOpacity>
+              <Text style={[styles.buttonText, { color: colors.text, fontSize: 13 }]}>View</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.divider} />
+
+          {/* Permission */}
+          <View style={styles.titleAndInfo}>
+            <View style={styles.iconContainer}>
+              <Ionicons name="key-outline" size={16} color={colors.secondary} />
+              <Text style={[styles.title, { color: colors.secondary, marginLeft: 8, fontSize: 11 }]}>PERMISSIONS</Text>
+            </View>
+            <TouchableOpacity>
+              <Text style={[styles.buttonText, { color: colors.text, fontSize: 13 }]}>Change</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.divider} />
+
+          {/* Share Live Location with Toggle */}
+          <View style={styles.titleAndInfo}>
+            <View style={styles.iconContainer}>
+              <Ionicons name="location-outline" size={16} color={colors.secondary} />
+              <Text style={[styles.title, { color: colors.secondary, marginLeft: 8, fontSize: 11 }]}>SHARE LIVE LOCATION</Text>
+            </View>
+            <Switch
+              value={isLocationOn}
+              onValueChange={setIsLocationOn}
+              trackColor={{ false: "#767577", true: "#34C759" }}
+              thumbColor={isLocationOn ? "#fff" : "#f4f3f4"}
+            />
+          </View>
+
+          {/* Edit/Save Button */}
+          <TouchableOpacity 
+            style={[styles.editButton, { backgroundColor: isEditing ? '#FF7E30' : '#333333' }]} 
+            onPress={() => setIsEditing(!isEditing)}
+          >
+            <Text style={[styles.editButtonText, {fontSize: 13}]}>
+              {isEditing ? 'Save Changes' : 'Edit Profile'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      <View style={styles.infoCard}>
-
-        {/* Full Name */}
-        <View style={styles.row}>
-          <Text style={styles.label}>Full Name</Text>
-          <TextInput
-            value={userFullName}
-            onChangeText={setUserFullName}
-            editable={isEditing}
-            style={[styles.value, { color: colors.text }]}
-          />
-        </View>
-
-        {/* UserName */}
-        <View style={styles.row}>
-          <Text style={styles.label}>UserName</Text>
-          <TextInput
-            value={userName}
-            onChangeText={setUserName}
-            editable={isEditing}
-            style={[styles.value, { color: colors.text }]}
-          />
-        </View>
-
-        {/* Phone Number */}
-        <View style={styles.row}>
-          <Text style={styles.label}>Phone Number</Text>
-          <TextInput
-            value={userPhoneNumber}
-            onChangeText={setUserPhoneNumber}
-            editable={isEditing}
-            style={[styles.value, { color: colors.text }]}
-            keyboardType="phone-pad"
-          />
-        </View>
-
-        {/* Email */}
-        <View style={styles.row}>
-          <Text style={styles.label}>Email</Text>
-          <TextInput
-            value={userEmail}
-            onChangeText={setUserEmail}
-            editable={isEditing}
-            style={[styles.value, { color: colors.text }]}
-            keyboardType="email-address"
-          />
-        </View>
-
-        {/* Address */}
-        <View style={styles.row}>
-          <Text style={styles.label}>Address</Text>
-          <TextInput
-            value={userAddress}
-            onChangeText={setUserAddress}
-            editable={isEditing}
-            style={[styles.value, { color: colors.text }]}
-          />
-        </View>
-
-        {/* Terms and Conditions */}
-        <View style={styles.row}>
-          <Text style={styles.label}>Terms and Conditions</Text>
-          <TouchableOpacity style={styles.value}>
-            <Text style={styles.buttonText}>View</Text>
-          </TouchableOpacity>
-        </View>
-        
-        {/* Privacy Policy */}
-        <View style={styles.row}>
-          <Text style={styles.label}>Privacy & Policy</Text>
-          <TouchableOpacity style={styles.value}>
-            <Text style={styles.buttonText}>View</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Permission */}
-        <View style={styles.row}>
-          <Text style={styles.label}>Permission</Text>
-          <TouchableOpacity style={styles.value}>
-            <Text style={styles.buttonText}>Change</Text>
-          </TouchableOpacity>
-        </View>
-        
-        {/* Share Live Location */}
-        <View style={styles.row}>
-          <View style={styles.leftSide}>
-            <Ionicons name="location-outline" size={20} color="#FFFFFF" />
-            <Text style={[styles.label, { marginLeft: 8 }]}>Share Live Location</Text>
+      {/* Campus Selection Modal */}
+      <Modal
+        visible={showCampusPicker}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowCampusPicker(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={[styles.modalContent, {backgroundColor: colors.background}]}>
+            <Text style={[styles.modalTitle, {color: colors.text}]}>Select Campus</Text>
+            {campuses.map((campus) => (
+              <TouchableOpacity
+                key={campus}
+                style={styles.campusOption}
+                onPress={() => {
+                  setUserCampus(campus);
+                  setShowCampusPicker(false);
+                }}
+              >
+                <Text style={[styles.campusText, {color: colors.text}]}>{campus}</Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => setShowCampusPicker(false)}
+            >
+              <Text style={[styles.cancelText, {color: colors.text}]}>Cancel</Text>
+            </TouchableOpacity>
           </View>
         </View>
-        
-        {/* Edit/Save Button */}
-        <TouchableOpacity 
-          style={styles.editButton} 
-          onPress={() => setIsEditing(!isEditing)}
-        >
-          {isEditing 
-            ? <Text style={styles.editButtonText}>Save</Text> 
-            : <Text style={styles.editButtonText}>Edit</Text>}
-        </TouchableOpacity>
-      </View>
-    </View>
+      </Modal>
+    </SafeAreaView>
   );
 };
 
 export default MyProfile;
 
 const styles = StyleSheet.create({
-  container: {
+ container: {
     flex: 1,
-    backgroundColor: 'black',
-    padding: 20,
+    width: width,
+    height: height,
   },
-  topSection: {
-    alignItems: 'center',
-    marginBottom: 30,
+  profilePicture: {
+    width: width,
+    height: width * 0.9,
+    position: "absolute",
+    resizeMode: "cover",
   },
-  imageWrapper: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#555',
-    overflow: 'hidden',
-    marginBottom: 10,
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
   },
-  profileImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
+  contentWrapper: {
+    flex: 1,
+    paddingTop: 100,
   },
-  addPhotoText: {
-    color: '#AAAAAA',
-    fontSize: 14,
-    marginBottom: 10,
-    textDecorationLine: 'underline',
+  backButton: {
+    position: 'absolute',
+    top: 40,
+    left: 20,
+    zIndex: 100,
   },
-  headerText: {
-    color: '#FFFFFF',
-    fontSize: 20,
+  headerContainer: {
+    marginLeft: 20,
+    height: width * 0.4,
+    justifyContent: 'flex-end',
+    top: 0,
+  },
+  artistName: {
     fontWeight: 'bold',
-    marginTop: 5,
-    marginBottom: 20,
+    color: 'white',
+    letterSpacing: -1,
+    lineHeight: 40,
   },
-  infoCard: {
-    backgroundColor: '#1C1C1E',
-    borderRadius: 15,
-    padding: 20,
-    marginTop: 20,
-    gap: 10,
+  personIcon: {
+    position: 'absolute',
+    right: 20,
+    bottom: 5,
   },
-  row: {
+  infoView: {
+    flex: 1,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+  },
+  titleAndInfo: {
+    marginTop: 12,
+    marginBottom: 12,
+    marginHorizontal: 24,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 15,
-  },
-  label: {
-    color: '#AAAAAA',
-    fontSize: 14,
-  },
-  value: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: 'bold',
-    flex: 1,
-    textAlign: 'right',
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    textDecorationLine: 'underline',
-  },
-  leftSide: {
-    flexDirection: 'row',
     alignItems: 'center',
   },
+  iconContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  title: {
+    fontWeight: "400",
+  },
+  textInput: {
+    padding: 0,
+    paddingTop: 0,
+    paddingBottom: 0,
+    paddingVertical: 0,
+    includeFontPadding: false,
+    minHeight: 0,
+    textAlign: 'right',
+    flex: 1,
+    marginLeft: 10,
+    fontWeight: "600",
+  },
+  buttonText: {
+    textDecorationLine: 'underline',
+    fontWeight: "600",
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#E0E0E0',
+    marginHorizontal: 24,
+    opacity: 0.5,
+  },
   editButton: {
-    backgroundColor: '#333333',
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderRadius: 10,
     alignItems: 'center',
     marginTop: 20,
+    marginBottom: 20,
+    marginHorizontal: 24,
   },
   editButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    width: '80%',
+    borderRadius: 10,
+    padding: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
     fontWeight: 'bold',
-  }
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  campusOption: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  campusText: {
+    fontSize: 16,
+  },
+  cancelButton: {
+    marginTop: 10,
+    padding: 15,
+    alignItems: 'center',
+  },
+  cancelText: {
+    fontSize: 16,
+    color: '#FF7E30',
+  },
 });

@@ -20,9 +20,8 @@ export const checkUserExists = async (email) => {
 };
 
 export const loginUser = async (email, password) => {
-  const fullmail = `222087503@student.uj.ac.za`
   try {
-    const userCredential = await signInWithEmailAndPassword(auth, fullmail, password);
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
     return userCredential.user;
   } catch (error) {
     throw error;

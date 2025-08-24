@@ -6,6 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { handleUserData, createUserDocument } from '../../../services/firestore';
 import { getUsersByPhoneNumbers } from '../../../services/firestore';
 import { getAuth } from 'firebase/auth';
+import * as Location from 'expo-location'
 
 const { width, height } = Dimensions.get('window');
 
@@ -32,7 +33,9 @@ const ContactPickerModal = ({
   selectedContacts, 
   onSelectContacts 
 }) => {
-  const [tempSelected, setTempSelected] = useState(selectedContacts);
+    const [tempSelected, setTempSelected] = useState(selectedContacts);
+    
+
 
     const toggleContact = (contact) => {
     const isSelected = tempSelected.some(c => c.uid === contact.uid); // Compare by UID
@@ -94,7 +97,7 @@ const ContactPickerModal = ({
   );
 };
 
-const AddFriends = ({ navigation, setIsLoggedIn }) => {
+const AddFriends = ({ navigation, setIsLoggedIn,profileImageUri }) => {
     const [totalContacts, setTotalContacts] = useState(0);
     const [isLoading, setIsLoading] = useState(false);
     const [permissionGranted, setPermissionGranted] = useState(false);
@@ -104,8 +107,13 @@ const AddFriends = ({ navigation, setIsLoggedIn }) => {
     const [userData, setUserData] = useState(null);
     const [registeredContacts, setRegisteredContacts] = useState([]);
     const [isCheckingContacts, setIsCheckingContacts] = useState(false);
+    const [userLocation, setUserLocation] = useState(null);
+
+        useEffect(() => {
+  console.log("AddFriends received profileImageUri:", profileImageUri);
+}, [profileImageUri]);
     
-    // Get user data from AsyncStorage
+    // Get user data from AsyncStorage and request location permission
     useEffect(() => {
         const fetchUserData = async () => {
             try {
@@ -138,7 +146,26 @@ const AddFriends = ({ navigation, setIsLoggedIn }) => {
             }
         };
         
+        // Request location permission
+        const requestLocationPermission = async () => {
+            try {
+                let { status } = await Location.requestForegroundPermissionsAsync();
+                if (status !== 'granted') {
+                    Alert.alert('Permission denied', 'Location permission is needed to use this feature');
+                    return;
+                }
+                
+                // Get current location
+                let location = await Location.getCurrentPositionAsync({});
+                setUserLocation(location.coords);
+            } catch (error) {
+                console.error('Error getting location:', error);
+                Alert.alert('Error', 'Could not get your current location');
+            }
+        };
+        
         fetchUserData();
+        requestLocationPermission();
     }, []);
 
 
@@ -186,9 +213,10 @@ const fetchAndFilterContacts = async () => {
                 acc.push({
                     ...contact,
                     alertnetUser: user, // Contains friend's Firebase UID
-                    uid: user.id, // Store friend's Firebase UID here
+                    uid: user.userID, // Store friend's Firebase UID here
                     phoneNumber: normalizedPhone,
                     name: contact.name || `${user.Name} ${user.Surname}`,
+                    email: user.Email, // Store friend's email from Firestore
                     imageAvailable: Boolean(user.ImageURL),
                     image: user.ImageURL ? { uri: user.ImageURL } : null
                 });
@@ -295,7 +323,7 @@ useEffect(() => {
         setSelectedContacts(contacts);
     };
 
-// Save user data to Firestore - UPDATED TO CREATE DOCUMENT
+   // Save user data to Firestore - UPDATED TO USE REAL LOCATION
     const saveUserToFirestore = async () => {
         try {
             setIsLoading(true);
@@ -313,39 +341,70 @@ useEffect(() => {
             }
 
             // Prepare contacts data with FRIEND'S FIREBASE UID
-            const alertnetContacts = selectedContacts.map(contact => ({
-                uid: contact.alertnetUser?.id || contact.uid, // Use friend's Firebase UID
-                name: contact.name,
-                email: contact.alertnetUser?.Email || contact.email,
-                phoneNumber: contact.phoneNumber
-            }));
+            const alertnetContacts = selectedContacts.map(contact => {
+                // Get the friend's Firebase UID - this is the correct way
+                const friendUid = contact.alertnetUser?.userID || contact.uid;
+                
+                return {
+                    uid: friendUid, // Use the friend's Firebase UID
+                    name: contact.name,
+                    email: contact.alertnetUser?.Email || contact.email,
+                    phoneNumber: contact.phoneNumber
+                };
+            });
+
+            // Use real location if available, otherwise use fallback
+            let userCurrentLocation;
+            if (userLocation) {
+                userCurrentLocation = {
+                    latitude: userLocation.latitude,
+                    longitude: userLocation.longitude
+                };
+            } else {
+                // Try to get location again if not available
+                try {
+                    let location = await Location.getCurrentPositionAsync({});
+                    userCurrentLocation = {
+                        latitude: location.coords.latitude,
+                        longitude: location.coords.longitude
+                    };
+                } catch (error) {
+                    console.error('Error getting location:', error);
+                    // Use default location as fallback
+                    userCurrentLocation = {
+                        latitude: -26.2041,
+                        longitude: 28.0473
+                    };
+                }
+            }
 
             // Create user document with friends
-            await createUserDocument(userId, {
-                name: currentUserData.name || '',
-                surname: currentUserData.surname || '',
-                phone: currentUserData.phoneNumber || '',
-                email: currentUserData.email || '',
-                imageUrl: currentUserData.imageUrl || '',
-                gender: currentUserData.gender || '',
-                campus: currentUserData.campus || "",  
-                currentLocation: currentUserData.currentLocation || {  
-                    latitude: -26.2041,  
-                    longitude: 28.0473
-                },
-                residenceAddress: currentUserData.residenceAddress || {  
+                await createUserDocument(
+                userId, 
+                {
+                    name: currentUserData.name || '',
+                    surname: currentUserData.surname || '',
+                    phone: currentUserData.phoneNumber || '',
+                    email: currentUserData.email || '',
+                    gender: currentUserData.gender || '',
+                    campus: currentUserData.campus || "",  
+                    currentLocation: userCurrentLocation,
+                    residenceAddress: currentUserData.residenceAddress || {  
                     latitude: 0,
                     longitude: 0
+                    },
+                    rating: currentUserData.rating || 0,  
+                    walks: currentUserData.walks || 0,
+                    friends: alertnetContacts
                 },
-                rating: currentUserData.rating || 0,  
-                walks: currentUserData.walks || 0,
-                friends: alertnetContacts
-            });
+                profileImageUri 
+                );
             
             // Update AsyncStorage with new contacts format
             const updatedUserData = {
                 ...currentUserData,
-                friends: alertnetContacts
+                friends: alertnetContacts,
+                currentLocation: userCurrentLocation // Save location to AsyncStorage too
             };
             await AsyncStorage.setItem('userData', JSON.stringify(updatedUserData));
             

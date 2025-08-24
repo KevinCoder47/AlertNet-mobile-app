@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View, Dimensions, Image, Animated, TouchableOpacity } from 'react-native'
-import React, { useRef, useState } from 'react'
+import React, { useRef, useState,useEffect } from 'react'
 import AddProfileImage from '../componets/onboardingComponents/AddProfileImage'
 import { Ionicons } from '@expo/vector-icons'
 import SelectGender from '../componets/onboardingComponents/SelectGender'
@@ -11,6 +11,11 @@ const AddInfo = ({setIsLoggedIn}) => {
   const [step, setStep] = useState(1) // 1 to 4
   const progress = useRef(new Animated.Value(0)).current
   const [isImageSaved, setIsImageSaved] = useState(false);
+  const [profileImageUri, setProfileImageUri] = useState(null);
+
+  useEffect(() => {
+  console.log("AddInfo profileImageUri:", profileImageUri);
+}, [profileImageUri]);
 
   const handleNext = () => {
     if (step < 4) {
@@ -63,13 +68,20 @@ const AddInfo = ({setIsLoggedIn}) => {
         <AddProfileImage
           setIsImageSaved={setIsImageSaved}
           isImageSaved={isImageSaved}
+          profileImageUri={profileImageUri}
+          setProfileImageUri={setProfileImageUri}
         />
       )}
       {step === 2 && (
         <SelectGender />
       )}
       {step === 3 && (
-        <AddFriends setIsLoggedIn={setIsLoggedIn} />
+        <AddFriends
+          setIsLoggedIn={setIsLoggedIn}
+          profileImageUri={profileImageUri}
+          setProfileImageUri={setProfileImageUri}
+          
+        />
       )}
 
       {/* Back button */}

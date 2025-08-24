@@ -9,7 +9,11 @@ import { Ionicons } from '@expo/vector-icons';
 
 const { width, height } = Dimensions.get('window');
 
-const TopBar = ({isNotHome, isPeopleActive, isTopBarManuallyExpanded, setIsTopBarManuallyExpanded, setIsUserProfile, setIsSafetyResources,profileImageUri}) => {
+const TopBar = ({
+  isNotHome, isPeopleActive, isTopBarManuallyExpanded,
+  setIsTopBarManuallyExpanded, setIsUserProfile, setIsSafetyResources,
+  userImage, setIsNotification,renderProfileImage
+}) => {
   const { colors } = useTheme();
   
   const shouldCollapse = isNotHome || (isPeopleActive && !isTopBarManuallyExpanded);
@@ -98,7 +102,9 @@ const TopBar = ({isNotHome, isPeopleActive, isTopBarManuallyExpanded, setIsTopBa
           isNotHome={shouldCollapse}
           setIsUserProfile={setIsUserProfile}
           setIsSafetyResources={setIsSafetyResources}
-          profileImageUri = {profileImageUri}
+          userImage = {userImage}
+          setIsNotification={setIsNotification}
+          renderProfileImage = {renderProfileImage}
         />
         
         
