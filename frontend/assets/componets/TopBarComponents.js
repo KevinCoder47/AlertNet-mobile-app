@@ -9,7 +9,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 const TopBarComponents = ({
   isNotHome, setIsUserProfile,
   setIsSafetyResources, userImage,
-  setIsNotification,renderProfileImage
+  setIsNotification, renderProfileImage,
+  userLocation
 }) => {
   const [userName, setUserName] = useState("Guest");
   const [location, setLocation] = useState("School, AuklandPark, Johannesburg");
