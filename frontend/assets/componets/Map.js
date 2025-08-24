@@ -6,7 +6,7 @@ import { useTheme } from '../contexts/ColorContext';
 import UserMapMarker from './UserMapMarker';
 import AndroidMarker from './AndroidMarker';
 import { useMapContext } from '../contexts/MapContext';
-
+import { getUserDocument } from '../../services/firestore';
 
 const MAP_STYLES = {
   light: [
@@ -84,10 +84,10 @@ const MAP_STYLES = {
       "elementType": "geometry",
       "stylers": [{ "color": "#a8c3d6" }]
     },
-      {
-    "featureType": "poi.park",
-    "elementType": "geometry",
-    "stylers": [{ "color": "#e0f0e0" }, { "visibility": "on" }]
+    {
+      "featureType": "poi.park",
+      "elementType": "geometry",
+      "stylers": [{ "color": "#e0f0e0" }, { "visibility": "on" }]
     },
   ],
   dark: [
@@ -111,9 +111,7 @@ const MAP_IDS = {
   dark: "f48cf5b0589cd8bfd9dedc8e" 
 };
 
-
-
-export default function SafetyMap({userImage}) {
+export default function SafetyMap({userImage, friendsDetails, setFriendsDetails}) {
   const { colors } = useTheme();
   const [location, setLocation] = useState(null);
   const [mapReady, setMapReady] = useState(false);
@@ -137,9 +135,71 @@ export default function SafetyMap({userImage}) {
     colors.isDark ? MAP_STYLES.dark : MAP_STYLES.light
   ), [colors.isDark]);
 
+  // Function to add a small offset to coordinates to prevent overlapping
+  const getOffsetCoordinates = (baseLat, baseLng, index) => {
+    // Add a small offset based on index to prevent markers from overlapping
+    const offset = 0.0001; // Approximately 10 meters
+    return {
+      latitude: baseLat + (offset * (index % 3 - 1)), // -offset, 0, or +offset
+      longitude: baseLng + (offset * (Math.floor(index / 3) % 3 - 1)), // -offset, 0, or +offset
+    };
+  };
 
+  // Update region when friends data changes
+  useEffect(() => {
+    if (Object.keys(friendsDetails).length > 0) {
+      // Calculate center point of all friends
+      const lats = Object.values(friendsDetails)
+        .filter(friend => friend.currentLocation)
+        .map(friend => friend.currentLocation.latitude);
+      
+      const lngs = Object.values(friendsDetails)
+        .filter(friend => friend.currentLocation)
+        .map(friend => friend.currentLocation.longitude);
+      
+      if (lats.length > 0 && lngs.length > 0) {
+        const avgLat = lats.reduce((a, b) => a + b, 0) / lats.length;
+        const avgLng = lngs.reduce((a, b) => a + b, 0) / lngs.length;
+        
+        // Update the map region to center on friends
+        if (mapRef.current) {
+          mapRef.current.animateToRegion({
+            latitude: avgLat,
+            longitude: avgLng,
+            latitudeDelta: 0.05,
+            longitudeDelta: 0.05,
+          }, 1000);
+        }
+      }
+    }
+  }, [friendsDetails]);
 
-// Get user location
+  // friends location listener
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Refresh friends' locations periodically
+      Object.keys(friendsDetails).forEach(async (uid) => {
+        try {
+          const friendDoc = await getUserDocument(uid);
+          if (friendDoc && friendDoc.currentLocation) {
+            setFriendsDetails(prev => ({
+              ...prev,
+              [uid]: {
+                ...prev[uid],
+                currentLocation: friendDoc.currentLocation
+              }
+            }));
+          }
+        } catch (error) {
+          console.error(`Error updating location for ${uid}:`, error);
+        }
+      });
+    }, 30000); // Update every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [friendsDetails]);
+
+  // Get user location
   useEffect(() => {
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -153,97 +213,6 @@ export default function SafetyMap({userImage}) {
     })();
   }, [setUserLocation]);
 
-  // temporal friends location code:
-const [friends, setFriends] = useState([
-  {
-    id: 1,
-    name: "Unathi Gumede",
-    location: {
-      latitude: -26.1076,
-      longitude: 28.0567
-    },
-    description: "Sandton City",
-    avatar: require('../images/profile-pictures/junior.jpeg')
-  },
-  {
-    id: 2,
-    name: "Chayenne Luthuli",
-    location: {
-      latitude: -26.1184,
-      longitude: 28.0603
-    },
-    description: "Melrose Arch",
-    avatar: require('../images/profile-pictures/cheyenne.jpeg')
-  },
-  {
-    id: 3,
-    name: "Musa Buthelezi",
-    location: {
-      latitude: -26.2034,
-      longitude: 28.0456
-    },
-    description: "Maboneng Precinct",
-    avatar: require('../images/profile-pictures/Musa.jpeg')
-  },
-  {
-    id: 4,
-    name: "Junior Madiba",
-    location: {
-      latitude: -33.9056,
-      longitude: 18.4189
-    },
-    description: "V&A Waterfront",
-   avatar: require('../images/profile-pictures/junior.jpeg')
-  },
-  {
-    id: 5,
-    name: "Kevin Serakalala",
-    location: {
-      latitude: 25.2048,  
-      longitude: 55.2708
-    },
-    description: "Dubai, UAE",
-    avatar: require('../images/profile-pictures/junior.jpeg'),
-    isInternational: true
-  },
-  {
-    id: 6,
-    name: "Siphephile Mtshali",
-    location: {
-      latitude: -29.8587,  
-      longitude: 31.0218
-    },
-    description: "Durban Beachfront",
-   avatar: require('../images/profile-pictures/siphe.jpeg')
-  },
-  {
-    id: 7,
-    name: "Okuhle Mgudlwa",
-    location: {
-      latitude: 53.4830,  
-      longitude: -2.2444
-    },
-    description: "Manchester, UK",
-    avatar: require('../images/profile-pictures/Musa.jpeg'),
-    isInternational: true
-  }
-]);
-  
-  const FriendMarker = ({ friend, onPress }) => (
-  <Marker
-    coordinate={friend.location}
-    title={friend.name}
-    description={friend.description}
-    onPress={onPress}
-  >
-    <View style={styles.friendMarker}>
-      <Image source={friend.avatar} style={styles.friendAvatar} />
-    </View>
-  </Marker>
-);
-
-
-
   // Initial region calculation
   const initialRegion = useMemo(() => {
     if (!userLocation) return null;
@@ -256,12 +225,8 @@ const [friends, setFriends] = useState([
     };
   }, [userLocation]);
 
-  // const onRegionChangeComplete = (region) => {
-  //   console.log("region", region);
-  // };
-
   return (
-   <View style={styles.container}>
+    <View style={styles.container}>
       {/* Main Map View */}
       {userLocation && mapReady && (
         <MapView
@@ -278,7 +243,6 @@ const [friends, setFriends] = useState([
           toolbarEnabled={false}
           initialRegion={initialRegion}
           zoomEnabled={true}
-          // onRegionChangeComplete={onRegionChangeComplete}
         >
           {/* user marker */}
           <Marker
@@ -293,30 +257,33 @@ const [friends, setFriends] = useState([
             {Platform.OS === 'ios' && <UserMapMarker userImage={userImage} />}
           </Marker>
 
-
-          {/* Friend Markers */}
-          {friends.map((friend) => (
-            <FriendMarker 
-              key={friend.id}
-              friend={friend}
-              onPress={() => {
-                // Handle marker press (e.g., show more info)
-                Alert.alert(
-                  friend.name,
-                  `${friend.description}\nLast updated: 10 mins ago`,
-                  [
-                    { text: "OK" },
-                    { text: "Navigate", onPress: () => openNavigation(friend.location) }
-                  ]
-                );
-              }}
-            />
-          ))}
+          {/* Friend Markers with offset to prevent overlapping */}
+          {Object.entries(friendsDetails).map(([uid, friend], index) => {
+            if (!friend.currentLocation) return null;
+            
+            const offsetCoords = getOffsetCoordinates(
+              friend.currentLocation.latitude,
+              friend.currentLocation.longitude,
+              index
+            );
+            
+            return (
+              <Marker
+                key={uid}
+                coordinate={offsetCoords}
+                title={friend.name}
+              >
+                <Image 
+                  source={{ uri: friend.imageUrl }} 
+                  style={styles.friendMarker}
+                  onError={() => console.log("Error loading friend image")}
+                />
+              </Marker>
+            );
+          })}
         </MapView>
       )}
 
-
-      
       {/* Hidden MapView for initialization */}
       {!mapReady && (
         <MapView
