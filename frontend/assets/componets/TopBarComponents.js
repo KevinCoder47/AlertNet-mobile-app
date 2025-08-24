@@ -6,7 +6,11 @@ import { useTheme } from '../contexts/ColorContext'
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
-const TopBarComponents = ({isNotHome, setIsUserProfile, setIsSafetyResources,userImage, setIsNotification}) => {
+const TopBarComponents = ({
+  isNotHome, setIsUserProfile,
+  setIsSafetyResources, userImage,
+  setIsNotification,renderProfileImage
+}) => {
   const [userName, setUserName] = useState("Guest");
   const [location, setLocation] = useState("School, AuklandPark, Johannesburg");
   const { colors, isDark } = useTheme();
