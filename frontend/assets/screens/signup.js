@@ -43,6 +43,10 @@ const SignupScreen = ({ navigation,setIsLoggedIn }) => {
 const saveUserData = async () => {
   const cleanedPhoneNumber = phoneNumber.replace(/\D/g, '');
   
+  if (cleanedPhoneNumber.startsWith("0")) {
+    cleanedPhoneNumber = cleanedPhoneNumber.substring(1);
+  }
+  
   const nameParts = fullName.trim().split(" ");
   const userData = {
     // Handle single-name users
