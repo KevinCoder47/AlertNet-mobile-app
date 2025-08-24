@@ -55,7 +55,6 @@ const Home = ({handleLogout}) => {
   const [downloadedMaps, setDownloadedMaps] = useState([]);
   const [IsNotification, setIsNotification] = useState(false);
   const [isSafetyZones, setIsSafetyZones] = useState(false);
-  
   const [isPeopleActive, setIsPeopleActive] = useState(false);
   const [isTopBarManuallyExpanded, setIsTopBarManuallyExpanded] = useState(false);
   const [userData, setUserData] = useState();
@@ -335,7 +334,7 @@ useEffect(() => {
         setIsOfflineMap={setIsOfflineMap}
         setIsSubscriptionScreen={setIsSubscriptionScreen}
         setIsDownloadedMaps={setIsDownloadedMaps}
-        setIsSafetyZones={setIsSafetyZones}
+        setIsSafetyZones = {setIsSafetyZones}
       />
     );
   }
@@ -440,18 +439,6 @@ useEffect(() => {
     );
   }
 
-  if (isSafetyZones) {
-    return(
-      <SafetyZones
-        setIsSafetyZones={setIsSafetyZones}
-        setIsSafetyResources={(value) => {
-          if (value) setPreviousScreen('safetyZones');
-          setIsSafetyResources(value);
-        }}
-      />
-    )
-  }
-
   if (isDownloadedMaps) {
     return (
       <DownloadedMaps
@@ -466,6 +453,14 @@ useEffect(() => {
         setIsDownloadedMaps={setIsDownloadedMaps}
         downloadedMaps={downloadedMaps}
         setDownloadedMaps={setDownloadedMaps}
+      />
+    );
+  }
+
+  if (isSafetyZones) {
+    return (
+      <SafetyZones
+        setIsSafetyZones={setIsSafetyZones}
       />
     );
   }

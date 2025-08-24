@@ -32,12 +32,14 @@ export default function SafetyResources({
   setIsEmergencyContacts,
   setIsLanguagePage,
   setIsSafetyVideos,
-  setIsOfflineMap, // ADD THIS,
+  setIsOfflineMap,
   setIsWalkingAloneTips,
   handleLogout,
   setIsSubscriptionScreen,
   setIsSafetyZones,
   previousScreen = "sos",
+  setIsDownloadedMaps,
+
   backgroundContent
 }) {
   const screenWidth = Dimensions.get('window').width;
@@ -208,7 +210,7 @@ export default function SafetyResources({
           keywords: ["offline", "maps", "download", "navigation"],
           onPress: () => {
             setIsSafetyResources(false);
-            setIsOfflineMap(true);
+            setIsDownloadedMaps(true);
           }
         }
       ]

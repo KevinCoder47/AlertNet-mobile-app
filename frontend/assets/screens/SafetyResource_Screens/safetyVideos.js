@@ -50,13 +50,16 @@ const SafetyVideos = ({ setIsSafetyVideos, setIsSafetyResources }) => {
       try {
         const response = await fetch(apiUrl);
         const data = await response.json();
+        console.log('YouTube API Response:', JSON.stringify(data, null, 2)); // More detailed logging
 
         if (data.error) {
-          Alert.alert('YouTube API Error', data.error.message);
+          // Provide more context in the error alert
+          const errorMessage = data.error.errors?.[0]?.message || data.error.message;
+          Alert.alert('YouTube API Error', `Message: ${errorMessage}\nReason: ${data.error.errors?.[0]?.reason}`);
           return;
         }
 
-        if (data.items) {
+        if (data.items && data.items.length > 0) {
           const detailedVideos = initialVideoData.map(initialVideo => {
             const apiDetails = data.items.find(item => item.id === initialVideo.videoId);
             if (apiDetails) {
@@ -77,6 +80,11 @@ const SafetyVideos = ({ setIsSafetyVideos, setIsSafetyResources }) => {
           }).filter(Boolean); // Filter out any null values
 
           setFetchedVideos(detailedVideos);
+        } else {
+          // Handle the case where API returns ok, but no items
+          Alert.alert("No Videos Found", "The API returned a successful response, but no video details were found for the given IDs.");
+          console.log("No items found in API response for video IDs:", videoIds);
+          setFetchedVideos([]); // Ensure it's an empty array
         }
       } catch (error) {
         console.error("Failed to fetch video details:", error);

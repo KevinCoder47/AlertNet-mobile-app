@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   SafeAreaView,
+  StatusBar,
 } from 'react-native';
 
 // --- Mock Data based on the image ---
@@ -56,189 +57,236 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Back Button */}
-        <TouchableOpacity 
-          style={styles.backButton} 
-          onPress={handleBackPress}
-        >
-          <Text style={styles.backButtonText}>← Back</Text>
-        </TouchableOpacity>
-        
-        <Text style={styles.title}>Safety Zone</Text>
-
-        {/* --- Top Icon Categories --- */}
-        <View style={styles.iconCategoryRow}>
-          {safetyCategories.map((category) => (
-            <TouchableOpacity key={category.name} style={styles.iconContainer}>
-              <View style={styles.iconCircle}>
-                <Text style={styles.icon}>{category.icon}</Text>
-              </View>
-              <Text style={styles.iconLabel} numberOfLines={2}>
-                {category.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
+    <View style={styles.fullScreenContainer}>
+      <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" />
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={handleBackPress}
+          >
+            <Text style={styles.backButtonText}>← Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.title}>Safety Zone</Text>
         </View>
 
-        {/* --- Saved Locations List --- */}
-        {savedLocations.map((location, index) => (
-          <TouchableOpacity key={index} style={styles.locationItem}>
-            <View style={styles.locationIconContainer}>
-              <Text style={styles.locationIcon}>{location.icon}</Text>
-            </View>
-            <View style={styles.locationTextContainer}>
-              <Text style={styles.locationType}>{location.type}</Text>
-              <Text style={styles.locationAddress}>{location.address}</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
+        <ScrollView 
+          style={styles.scrollView} 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* --- Top Icon Categories --- */}
+          <View style={styles.iconCategoryRow}>
+            {safetyCategories.map((category) => (
+              <TouchableOpacity key={category.name} style={styles.iconContainer}>
+                <View style={styles.iconCircle}>
+                  <Text style={styles.icon}>{category.icon}</Text>
+                </View>
+                <Text style={styles.iconLabel} numberOfLines={2}>
+                  {category.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
 
-        {/* --- Nearby Section --- */}
-        <Text style={styles.nearbyTitle}>Nearby</Text>
-        {nearbyLocations.map((location, index) => (
-          <TouchableOpacity key={index} style={styles.locationItem}>
-            <View style={styles.locationIconContainer}>
-              <Text style={styles.locationIcon}>{location.icon}</Text>
-            </View>
-            <View style={styles.locationTextContainer}>
-              <Text style={styles.locationType}>{location.type}</Text>
-              <Text style={styles.locationAddress}>{location.address}</Text>
-            </View>
+          {/* --- Saved Locations List --- */}
+          {savedLocations.map((location, index) => (
+            <TouchableOpacity key={index} style={styles.locationItem}>
+              <View style={styles.locationIconContainer}>
+                <Text style={styles.locationIcon}>{location.icon}</Text>
+              </View>
+              <View style={styles.locationTextContainer}>
+                <Text style={styles.locationType}>{location.type}</Text>
+                <Text style={styles.locationAddress}>{location.address}</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+
+          {/* --- Nearby Section --- */}
+          <Text style={styles.nearbyTitle}>Nearby</Text>
+          {nearbyLocations.map((location, index) => (
+            <TouchableOpacity key={index} style={styles.locationItem}>
+              <View style={styles.locationIconContainer}>
+                <Text style={styles.locationIcon}>{location.icon}</Text>
+              </View>
+              <View style={styles.locationTextContainer}>
+                <Text style={styles.locationType}>{location.type}</Text>
+                <Text style={styles.locationAddress}>{location.address}</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+          
+          {/* --- Add Button --- */}
+          <TouchableOpacity style={styles.addButton}>
+            <Text style={styles.addButtonText}>+ add</Text>
           </TouchableOpacity>
-        ))}
-        
-        {/* --- Add Button --- */}
-        <TouchableOpacity style={styles.addButton}>
-          <Text style={styles.addButtonText}>+ add</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </SafeAreaView>
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  fullScreenContainer: {
+    flex: 1,
+    backgroundColor: '#FFFFFF', // Ensures full page white background
+  },
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  header: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
   backButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 5,
+    paddingVertical: 5,
     marginBottom: 10,
+    alignSelf: 'flex-start',
   },
   backButtonText: {
     fontSize: 16,
     color: '#FF6347',
     fontWeight: '600',
   },
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF', // White background
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#000000',
+    marginBottom: 5,
   },
   scrollView: {
     flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 20,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#000000', // Black text for contrast on white
-    marginBottom: 25,
+    paddingBottom: 40,
+    flexGrow: 1,
   },
   iconCategoryRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginBottom: 25,
+    marginBottom: 30,
+    paddingVertical: 10,
   },
   iconContainer: {
     alignItems: 'center',
     flex: 1,
   },
   iconCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#FF6347', // Tomato/Orange color
+    width: 65,
+    height: 65,
+    borderRadius: 32.5,
+    backgroundColor: '#FF6347',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
-  },
-  icon: {
-    fontSize: 28,
-  },
-  iconLabel: {
-    color: '#000000', // Black text
-    fontSize: 12,
-    textAlign: 'center',
-    maxWidth: 70,
-  },
-  locationItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F5F5F5', // Light grey background for items
-    borderRadius: 15,
-    padding: 15,
     marginBottom: 10,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.15,
     shadowRadius: 3.84,
-    elevation: 5, // For Android shadow
+    elevation: 5,
+  },
+  icon: {
+    fontSize: 30,
+  },
+  iconLabel: {
+    color: '#000000',
+    fontSize: 13,
+    textAlign: 'center',
+    maxWidth: 75,
+    fontWeight: '500',
+  },
+  locationItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 15,
+    padding: 18,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 2,
   },
   locationIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 45,
+    height: 45,
+    borderRadius: 22.5,
     backgroundColor: '#FF6347',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 15,
+    shadowColor: '#FF6347',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    elevation: 3,
   },
   locationIcon: {
-    fontSize: 20,
+    fontSize: 22,
   },
   locationTextContainer: {
     flex: 1,
   },
   locationType: {
-    color: '#000000', // Black text
-    fontSize: 16,
+    color: '#000000',
+    fontSize: 17,
     fontWeight: 'bold',
+    marginBottom: 2,
   },
   locationAddress: {
-    color: '#666666', // Grey text for address
-    fontSize: 12,
+    color: '#666666',
+    fontSize: 13,
+    lineHeight: 18,
   },
   nearbyTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#000000', // Black text
-    marginTop: 20,
-    marginBottom: 15,
+    color: '#000000',
+    marginTop: 25,
+    marginBottom: 18,
   },
   addButton: {
-    backgroundColor: '#FF6347', // Orange background to match theme
-    borderRadius: 20,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
+    backgroundColor: '#FF6347',
+    borderRadius: 25,
+    paddingVertical: 15,
+    paddingHorizontal: 30,
     alignSelf: 'center',
-    marginTop: 15,
+    marginTop: 25,
     marginBottom: 20,
-    shadowColor: '#000',
+    minWidth: 120,
+    shadowColor: '#FF6347',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 3,
     },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 6,
   },
   addButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: 'bold',
+    textAlign: 'center',
   },
 });
 
