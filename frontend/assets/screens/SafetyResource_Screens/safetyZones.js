@@ -1,6 +1,3 @@
-
-
-import { SaudiRiyalIcon } from 'lucide-react-native'
 import React from 'react';
 import {
   StyleSheet,
@@ -9,11 +6,8 @@ import {
   TouchableOpacity,
   ScrollView,
   SafeAreaView,
+  StatusBar,
 } from 'react-native';
-// For icons, you can use a library like @expo/vector-icons or use your own image assets
-// For this example, I'll use text placeholders for icons.
-// To use real icons: npm install @expo/vector-icons
-// import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 
 // --- Mock Data based on the image ---
 const safetyCategories = [
@@ -54,17 +48,33 @@ const nearbyLocations = [
   },
 ];
 
-const SafetyZones = ({ setIsSafetyZones }) => {
-  return (
-    <View style={styles.overlay}>
-      <TouchableOpacity
-        style={StyleSheet.absoluteFill}
-        onPress={() => setIsSafetyZones(false)} // Close when clicking outside the main card
-      />
-      <SafeAreaView style={styles.card}>
-        <ScrollView showsVerticalScrollIndicator={false}>
-          <Text style={styles.title}>Safety Zone</Text>
+const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
+  const handleBackPress = () => {
+    setIsSafetyZones(false);
+    if (setIsSafetyResources) {
+      setIsSafetyResources(true);
+    }
+  };
 
+  return (
+    <View style={styles.fullScreenContainer}>
+      <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" />
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={handleBackPress}
+          >
+            <Text style={styles.backButtonText}>← Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.title}>Safety Zone</Text>
+        </View>
+
+        <ScrollView 
+          style={styles.scrollView} 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
           {/* --- Top Icon Categories --- */}
           <View style={styles.iconCategoryRow}>
             {safetyCategories.map((category) => (
@@ -117,104 +127,166 @@ const SafetyZones = ({ setIsSafetyZones }) => {
 };
 
 const styles = StyleSheet.create({
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+  fullScreenContainer: {
+    flex: 1,
+    backgroundColor: '#FFFFFF', // Ensures full page white background
   },
-  card: {
-    backgroundColor: '#2C2C2E', // A dark grey color from the image
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  header: {
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 20,
-    paddingTop: 20,
-    maxHeight: '85%',
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  backButton: {
+    paddingVertical: 5,
+    marginBottom: 10,
+    alignSelf: 'flex-start',
+  },
+  backButtonText: {
+    fontSize: 16,
+    color: '#FF6347',
+    fontWeight: '600',
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 25,
+    color: '#000000',
+    marginBottom: 5,
+  },
+  scrollView: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 40,
+    flexGrow: 1,
   },
   iconCategoryRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginBottom: 25,
+    marginBottom: 30,
+    paddingVertical: 10,
   },
   iconContainer: {
     alignItems: 'center',
     flex: 1,
   },
   iconCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#FF6347', // Tomato/Orange color
+    width: 65,
+    height: 65,
+    borderRadius: 32.5,
+    backgroundColor: '#FF6347',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   icon: {
-    fontSize: 28,
+    fontSize: 30,
   },
   iconLabel: {
-    color: '#FFFFFF',
-    fontSize: 12,
+    color: '#000000',
+    fontSize: 13,
     textAlign: 'center',
-    maxWidth: 70,
+    maxWidth: 75,
+    fontWeight: '500',
   },
   locationItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#3A3A3C', // Slightly lighter dark grey
+    backgroundColor: '#FFFFFF',
     borderRadius: 15,
-    padding: 15,
-    marginBottom: 10,
+    padding: 18,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 2,
   },
   locationIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 45,
+    height: 45,
+    borderRadius: 22.5,
     backgroundColor: '#FF6347',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 15,
+    shadowColor: '#FF6347',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    elevation: 3,
   },
   locationIcon: {
-    fontSize: 20,
+    fontSize: 22,
   },
   locationTextContainer: {
     flex: 1,
   },
   locationType: {
-    color: '#FFFFFF',
-    fontSize: 16,
+    color: '#000000',
+    fontSize: 17,
     fontWeight: 'bold',
+    marginBottom: 2,
   },
   locationAddress: {
-    color: '#E5E5EA',
-    fontSize: 12,
+    color: '#666666',
+    fontSize: 13,
+    lineHeight: 18,
   },
   nearbyTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginTop: 20,
-    marginBottom: 15,
+    color: '#000000',
+    marginTop: 25,
+    marginBottom: 18,
   },
   addButton: {
-    backgroundColor: '#48484A',
-    borderRadius: 20,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
+    backgroundColor: '#FF6347',
+    borderRadius: 25,
+    paddingVertical: 15,
+    paddingHorizontal: 30,
     alignSelf: 'center',
-    marginTop: 15,
+    marginTop: 25,
     marginBottom: 20,
+    minWidth: 120,
+    shadowColor: '#FF6347',
+    shadowOffset: {
+      width: 0,
+      height: 3,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 6,
   },
   addButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: 'bold',
+    textAlign: 'center',
   },
 });
 

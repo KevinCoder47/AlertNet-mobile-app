@@ -30,7 +30,7 @@ import WalkingAloneTips from './SafetyResource_Screens/walkingAlone';
 import Subscription from './SafetyResource_Screens/Subscription';
 import DownloadedMaps from './SafetyResource_Screens/downloadedMaps';
 import NotificationsPopup from './NotificationsPopup';
-
+import SafetyZones from './SafetyResource_Screens/safetyZones';
 
 const { width, height } = Dimensions.get('window');
 
@@ -57,7 +57,7 @@ const Home = ({handleLogout}) => {
   const [isDownloadedMaps, setIsDownloadedMaps] = useState(false);
   const [downloadedMaps, setDownloadedMaps] = useState([]);
   const [IsNotification, setIsNotification] = useState(false);
-  
+  const [isSafetyZones, setIsSafetyZones] = useState(false);
   const [isPeopleActive, setIsPeopleActive] = useState(false);
   const [isTopBarManuallyExpanded, setIsTopBarManuallyExpanded] = useState(false);
   const [userData, setUserData] = useState();
@@ -501,6 +501,7 @@ useEffect(() => {
         setIsOfflineMap={setIsOfflineMap}
         setIsSubscriptionScreen={setIsSubscriptionScreen}
         setIsDownloadedMaps={setIsDownloadedMaps}
+        setIsSafetyZones = {setIsSafetyZones}
       />
     );
   }
@@ -604,6 +605,18 @@ useEffect(() => {
       />
     );
   }
+
+  if (isSafetyZones) {
+    return (
+      <SafetyZones
+        setIsSafetyZones={setIsSafetyZones}
+        setIsSafetyResources={(value) => {
+          if (value) setPreviousScreen('safetyZones');
+          setIsSafetyResources(value);
+        }}
+      />
+    );
+  };
 
   if (isDownloadedMaps) {
     return (
