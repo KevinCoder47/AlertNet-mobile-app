@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import GeneralLoader from '../componets/Loaders/GeneralLoarder';
 import { loginUser } from '../../backend/Firebase/authentication';
+import { getUserDocument } from '../../services/firestore';
 
 
 const backgroundImage = require('../../assets/images/launch-background.jpg');
@@ -31,17 +32,36 @@ const handleLogin = async () => {
     Alert.alert('Error', 'Please enter email and password.');
     return;
   }
-  if (loading) return; // prevent multiple taps
+  if (loading) return;
 
   setLoading(true);
   try {
-    const email = emailPrefix;
+    const email = `${emailPrefix}@student.uj.ac.za`; 
     const user = await loginUser(email, password);
     
-    await AsyncStorage.setItem('isLoggedIn', 'true');
-    setIsLoggedIn(true);
-    Alert.alert('Success', `Welcome back, ${user.email}!`);
-    // navigation.replace('HomeScreen');
+    // Only proceed if authentication was successful
+    if (user && user.uid) {
+      // Get user document from Firestore
+      const userData = await getUserDocument(user.uid);
+      console.log(userData);
+      
+      if (userData) {
+        // Store user data in AsyncStorage
+        await AsyncStorage.multiSet([
+          ['isLoggedIn', 'true'],
+          ['userData', JSON.stringify(userData)],
+          ['userId', user.uid]
+        ]);
+        
+        setIsLoggedIn(true);
+        Alert.alert('Success', `Welcome back, ${userData.name || user.email}!`);
+        // navigation.replace('HomeScreen');
+      } else {
+        throw new Error('User data not found in database');
+      }
+    } else {
+      throw new Error('Authentication failed - no user returned');
+    }
   } catch (error) {
     Alert.alert('Login Failed', error.message);
   } finally {
