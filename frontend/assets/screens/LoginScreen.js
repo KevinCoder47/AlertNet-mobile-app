@@ -3,46 +3,71 @@ import React, { useState } from 'react';
 import {
   View, Text, TextInput, StyleSheet,
   TouchableOpacity, Dimensions, ImageBackground,
+  Alert
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Resend } from 'resend';
+import GeneralLoader from '../componets/Loaders/GeneralLoarder';
+import { loginUser } from '../../backend/Firebase/authentication';
+import { getUserDocument } from '../../services/firestore';
+
 
 const backgroundImage = require('../../assets/images/launch-background.jpg');
 
 const { width, height } = Dimensions.get('window');
 
 const Login = ({ setIsLoggedIn, navigation }) => {
-  const [emailPrefix, setEmailPrefix] = useState('');
+  const [emailPrefix, setEmailPrefix] = useState(null);
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const resend = new Resend('re_byskPbJb_9KRwfPAcbij5X9Pi67FamFbi');
+  const [loading, setLoading] = useState(false);
 
 
-// (async function () {
-//   const { data, error } = await resend.emails.send({
-//     from: 'Acme <onboarding@resend.dev>',
-//     to: ['mpilonhleradebe@icloud.com'],
-//     subject: 'Hello World',
-//     html: '<strong>It works!</strong>',
-//   });
 
-//   if (error) {
-//     return console.error({ error });
-//   }
 
-//   console.log({ data });
-// })();
 
-  const handleLogin = async () => {
-    if (emailPrefix.trim() && password.trim()) {
-      await AsyncStorage.setItem('isLoggedIn', 'true');
-      setIsLoggedIn(true);
+const handleLogin = async () => {
+  if (!emailPrefix.trim() || !password.trim()) {
+    Alert.alert('Error', 'Please enter email and password.');
+    return;
+  }
+  if (loading) return;
+
+  setLoading(true);
+  try {
+    const email = `${emailPrefix}@student.uj.ac.za`; 
+    const user = await loginUser(email, password);
+    
+    // Only proceed if authentication was successful
+    if (user && user.uid) {
+      // Get user document from Firestore
+      const userData = await getUserDocument(user.uid);
+      console.log(userData);
+      
+      if (userData) {
+        // Store user data in AsyncStorage
+        await AsyncStorage.multiSet([
+          ['isLoggedIn', 'true'],
+          ['userData', JSON.stringify(userData)],
+          ['userId', user.uid]
+        ]);
+        
+        setIsLoggedIn(true);
+        Alert.alert('Success', `Welcome back, ${userData.name || user.email}!`);
+        // navigation.replace('HomeScreen');
+      } else {
+        throw new Error('User data not found in database');
+      }
     } else {
-      alert('Please enter email and password.');
+      throw new Error('Authentication failed - no user returned');
     }
-  };
+  } catch (error) {
+    Alert.alert('Login Failed', error.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <ImageBackground source={backgroundImage} style={styles.background}>
@@ -121,7 +146,11 @@ const Login = ({ setIsLoggedIn, navigation }) => {
             Sign Up
           </Text>
         </Text>
+
       </View>
+              {loading && (
+          <GeneralLoader />
+        )}
     </ImageBackground>
   );
 };

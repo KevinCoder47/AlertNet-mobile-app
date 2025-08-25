@@ -19,6 +19,7 @@ const BottomNav = ({ isNotHome, setIsNotHome, isWalkPartner, setIsWalkPartner, s
     setIsPeople(false);
     setIsHelpLine(false);
     setIsNotHome(false);
+    setIsExpanded(false);
     setIsPeopleActive(false);
     setIsTopBarManuallyExpanded(false);
     recenterToUserLocation();
@@ -30,6 +31,7 @@ const BottomNav = ({ isNotHome, setIsNotHome, isWalkPartner, setIsWalkPartner, s
     setIsPeople(false);
     setIsHelpLine(false);
     setIsNotHome(true);
+    setIsExpanded(false);
     setIsPeopleActive(false);
     setIsTopBarManuallyExpanded(false);
   };
@@ -40,6 +42,7 @@ const BottomNav = ({ isNotHome, setIsNotHome, isWalkPartner, setIsWalkPartner, s
     setIsWalkPartner(false);
     setIsHelpLine(false);
     setIsNotHome(true);
+    setIsExpanded(false);
     setIsPeopleActive(true);
     setIsTopBarManuallyExpanded(false);
   };
@@ -50,6 +53,7 @@ const BottomNav = ({ isNotHome, setIsNotHome, isWalkPartner, setIsWalkPartner, s
     setIsWalkPartner(false);
     setIsPeople(false);
     setIsNotHome(true);
+    setIsExpanded(false);
     setIsPeopleActive(false);
     setIsTopBarManuallyExpanded(false);
   };

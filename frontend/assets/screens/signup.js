@@ -1,5 +1,4 @@
-// screens/signup.js
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, StyleSheet,
   TouchableOpacity, Dimensions, ImageBackground, 
@@ -11,6 +10,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { registerUser } from '../../backend/Firebase/authentication';
 import VerifyEmailScreen from '../componets/VerifyEmailScreen';
 import GeneralLoader from '../componets/Loaders/GeneralLoarder';
+import AddInfo from './AddInfo';
+
 
 const { width, height } = Dimensions.get('window');
 const backgroundImage = require('../../assets/images/launch-background.jpg'); 
@@ -24,17 +25,54 @@ const SignupScreen = ({ navigation,setIsLoggedIn }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
-  const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [isEmailVerified, setIsEmailVerified] = useState(false); 
   const [showEmailVerify, setShowEmailVerify] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [loading, setLoading] = useState(false)
   const [emailSent, setEmailSent] = useState(false)
   const [confirmationCode, setConfirmationCode] = useState('');
+  const [isAddProfileImg, setIsAddProfileImg] = useState(false)
+  const [userUid, setUserUid] = useState();
+  const [email,setEmail] = useState()
 
-  
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const passwordRef = useRef(null);
   const confirmRef = useRef(null);
+
+  // Save user data to AsyncStorage
+const saveUserData = async () => {
+  const cleanedPhoneNumber = phoneNumber.replace(/\D/g, '');
+  
+  if (cleanedPhoneNumber.startsWith("0")) {
+    cleanedPhoneNumber = cleanedPhoneNumber.substring(1);
+  }
+  
+  const nameParts = fullName.trim().split(" ");
+  const userData = {
+    // Handle single-name users
+    name: nameParts[0] || "",
+    // Handle multi-part surnames
+    surname: nameParts.slice(1).join(" ") || "", 
+    fullName, 
+    phoneNumber: `+27${cleanedPhoneNumber}`,
+    email: `${emailPrefix}@student.uj.ac.za`,
+    userId: userUid
+  };
+
+  try {
+    await AsyncStorage.setItem('userData', JSON.stringify(userData));
+    console.log('User data saved:', userData);
+  } catch (error) {
+    console.error('Save failed:', error);
+  }
+};
+
+  useEffect(() => {
+    if (isEmailVerified) {
+      saveUserData();
+      
+    }
+  }, [isEmailVerified]);
 
   const LoaderOverlay = () => (
     <View style={{
@@ -128,6 +166,7 @@ async function sendVerificationEmail(email, code) {
     }
 
     try {
+      
       const email = `${emailPrefix}@student.uj.ac.za`;
       // Generate a random 6-digit code
       const code = Math.floor(1000 + Math.random() * 9000).toString();
@@ -199,7 +238,7 @@ async function sendVerificationEmail(email, code) {
               }}
             />
             <TextInput
-              // placeholder="e.g. 123456"
+              placeholder="e.g. 123456"
               placeholderTextColor="#717171"
               value={emailPrefix}
               onChangeText={setEmailPrefix}
@@ -338,11 +377,24 @@ async function sendVerificationEmail(email, code) {
               isEmailVerified={isEmailVerified}
               setIsVerifying={setIsVerifying}
               setIsLoggedIn={setIsLoggedIn}
-              confirmationCode = {confirmationCode}
+              confirmationCode={confirmationCode}
+              setIsAddProfileImg={setIsAddProfileImg}
+              password={password}
+              email={`${emailPrefix}@student.uj.ac.za`}
+              setUserUid={setUserUid}
             />
             
   </View>
-  ) : null}
+      ) : null}
+
+      {/* add profile picture */}
+      {
+        isAddProfileImg && (
+          <View style = {{position: 'absolute', zIndex: 2}}>
+            <AddInfo setIsLoggedIn={setIsLoggedIn} />
+          </View>
+        )
+      }
   
       {isVerifying && <LoaderOverlay />}
     </ImageBackground>

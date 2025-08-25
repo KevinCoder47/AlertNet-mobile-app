@@ -1,88 +1,224 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  StyleSheet,
-  Text,
   View,
+  Text,
   TouchableOpacity,
   TextInput,
-  Image,
-  ScrollView,
+  StyleSheet,
+  SafeAreaView,
+  Animated,
+  Dimensions,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+
+const { width, height } = Dimensions.get('window');
 
 const VoiceTrigger = ({ setIsVoiceTrigger, setIsSafetyResources }) => {
-  const [panicWord, setPanicWord] = useState('Tuple');
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingStep, setRecordingStep] = useState(0); // 0: not started, 1: first recording, 2: second recording, 3: third recording
+  const [triggerWord, setTriggerWord] = useState('');
+  const [waveAnimations] = useState(
+    Array.from({ length: 9 }, () => new Animated.Value(20))
+  );
+
+  // Animate waveform bars
+  const animateWaveform = () => {
+    const animations = waveAnimations.map((anim, index) => {
+      return Animated.loop(
+        Animated.sequence([
+          Animated.timing(anim, {
+            toValue: Math.random() * 60 + 20,
+            duration: 300 + Math.random() * 200,
+            useNativeDriver: false,
+          }),
+          Animated.timing(anim, {
+            toValue: 20,
+            duration: 300 + Math.random() * 200,
+            useNativeDriver: false,
+          }),
+        ]),
+        { iterations: -1 }
+      );
+    });
+
+    Animated.stagger(100, animations).start();
+  };
+
+  const stopWaveformAnimation = () => {
+    waveAnimations.forEach(anim => {
+      anim.stopAnimation();
+      Animated.timing(anim, {
+        toValue: 20,
+        duration: 200,
+        useNativeDriver: false,
+      }).start();
+    });
+  };
+
+  useEffect(() => {
+    if (isRecording) {
+      animateWaveform();
+    } else {
+      stopWaveformAnimation();
+    }
+  }, [isRecording]);
+
+  const handleRecording = () => {
+    if (!isRecording) {
+      setIsRecording(true);
+      // Simulate recording for 3 seconds
+      setTimeout(() => {
+        setIsRecording(false);
+        setRecordingStep(recordingStep + 1);
+      }, 3000);
+    }
+  };
+
+  const getRecordingButtonIcon = () => {
+    if (recordingStep === 0) return 'mic';
+    if (recordingStep === 1) return 'mic';
+    if (recordingStep === 2) return 'mic';
+    return 'checkmark';
+  };
+
+  const getInstructionText = () => {
+    if (recordingStep === 0) return 'Say "Trigger"\n3 times';
+    if (recordingStep === 1) return 'Say "Trigger"\n2 more times';
+    if (recordingStep === 2) return 'Say "Trigger"\n1 more time';
+    return 'Training complete!';
+  };
+
+  const isComplete = recordingStep >= 3;
 
   return (
-    <LinearGradient colors={['#FFE4E1', '#FF6B6B']} style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity 
-          onPress={() => {
-            setIsVoiceTrigger(false);
-            setIsSafetyResources(true);
-          }}
-          style={styles.backButton}
-        >
-          <Icon name="arrow-left" size={20} color="#000" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Voice Trigger</Text>
-      </View>
-
-      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-        <Text style={styles.subtitle}>
-          Record your chosen panic word so that your voice can be recognized to silently trigger SOS.
-        </Text>
-
-        <View style={styles.waveformContainer}>
-          <Image
-            source={require('../../images/waveform.png')}
-            style={styles.waveform}
-            resizeMode="contain"
-          />
+    <LinearGradient
+      colors={['#ff9a85', '#ff6b6b', '#e55353']}
+      style={styles.container}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+    >
+      <SafeAreaView style={styles.safeArea}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => {
+              setIsVoiceTrigger(false);
+              setIsSafetyResources(true);
+            }}
+          >
+            <Ionicons name="chevron-back" size={24} color="white" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Voice Trigger</Text>
         </View>
 
         <View style={styles.content}>
-          <View style={styles.infoBox}>
-            <View style={styles.infoIconContainer}>
-              <Icon name="info" size={16} color="#FF6B6B" />
-            </View>
-            <Text style={styles.infoText}>
-              Choose a word you wouldn't say accidental in a normal conversation
+          {/* Description */}
+          <View style={styles.descriptionContainer}>
+            <Text style={styles.description}>
+              Record your chosen phrase and we'll turn your voice can be recognized to identify your wake word.
             </Text>
           </View>
 
-          <Text style={styles.label}>Type Panic Word</Text>
+          {/* Waveform Visualization */}
+          <View style={styles.waveformContainer}>
+            <View style={styles.waveform}>
+              {waveAnimations.map((anim, index) => (
+                <Animated.View
+                  key={index}
+                  style={[
+                    styles.waveBar,
+                    {
+                      height: anim,
+                      opacity: isRecording ? 1 : 0.5,
+                    },
+                  ]}
+                />
+              ))}
+            </View>
+          </View>
+
+          {/* Input Field */}
           <TextInput
             style={styles.input}
-            placeholder="e.g Tuple"
-            placeholderTextColor="#FF9999"
-            value={panicWord}
-            onChangeText={setPanicWord}
+            placeholder="Type Wake Word"
+            placeholderTextColor="rgba(255, 255, 255, 0.7)"
+            value={triggerWord}
+            onChangeText={setTriggerWord}
           />
 
-          <Text style={styles.instructionTitle}>
-            Say "{panicWord}"
+          {/* Instruction Text */}
+          <Text style={styles.instructionText}>
+            {getInstructionText()}
           </Text>
-          <Text style={styles.instructionSubtitle}>Three Times</Text>
 
-          <View style={styles.micContainer}>
-            <TouchableOpacity style={styles.micButton}>
-              <Icon name="microphone" size={24} color="#CC4125" />
+          {/* Recording Controls */}
+          <View style={styles.recordingControls}>
+            <TouchableOpacity
+              style={[
+                styles.recordButton,
+                isRecording && styles.recordButtonActive,
+                recordingStep > 0 && styles.recordButtonProgress,
+              ]}
+              onPress={handleRecording}
+              disabled={isRecording || isComplete}
+            >
+              <Ionicons
+                name={getRecordingButtonIcon()}
+                size={30}
+                color={isRecording || recordingStep > 0 ? '#ff6b6b' : 'white'}
+              />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.micButton}>
-              <Icon name="microphone" size={24} color="#CC4125" />
+            
+            <TouchableOpacity
+              style={[
+                styles.recordButton,
+                recordingStep > 1 && styles.recordButtonProgress,
+              ]}
+              onPress={handleRecording}
+              disabled={isRecording || recordingStep < 1 || isComplete}
+            >
+              <Ionicons
+                name={recordingStep > 1 ? 'checkmark' : 'mic'}
+                size={30}
+                color={recordingStep > 1 ? '#ff6b6b' : 'white'}
+              />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.micButton}>
-              <Icon name="microphone" size={24} color="#CC4125" />
+            
+            <TouchableOpacity
+              style={[
+                styles.recordButton,
+                recordingStep > 2 && styles.recordButtonProgress,
+              ]}
+              onPress={handleRecording}
+              disabled={isRecording || recordingStep < 2 || isComplete}
+            >
+              <Ionicons
+                name={recordingStep > 2 ? 'checkmark' : 'mic'}
+                size={30}
+                color={recordingStep > 2 ? '#ff6b6b' : 'white'}
+              />
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={styles.saveButton}>
-            <Text style={styles.saveButtonText}>Save</Text>
+          {/* Save Button */}
+          <TouchableOpacity
+            style={[
+              styles.saveButton,
+              !isComplete && styles.saveButtonDisabled,
+            ]}
+            disabled={!isComplete}
+          >
+            <Text style={[
+              styles.saveButtonText,
+              !isComplete && styles.saveButtonTextDisabled,
+            ]}>
+              Save
+            </Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
+      </SafeAreaView>
     </LinearGradient>
   );
 };
@@ -91,135 +227,117 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  safeArea: {
+    flex: 1,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 50,
     paddingHorizontal: 20,
+    paddingTop: 10,
     paddingBottom: 20,
   },
   backButton: {
-    padding: 5,
+    marginRight: 15,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000',
-    flex: 1,
-    textAlign: 'center',
-    marginRight: 30, // Compensate for back button width
-  },
-  scrollContainer: {
-    alignItems: 'center',
-    paddingBottom: 40,
-    paddingHorizontal: 20,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 30,
-    lineHeight: 20,
-  },
-  waveformContainer: {
-    width: '100%',
-    height: 120,
-    marginBottom: 30,
-  },
-  waveform: {
-    width: '100%',
-    height: '100%',
+    color: 'white',
   },
   content: {
-    width: '100%',
-    alignItems: 'center',
-  },
-  infoBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: 'rgba(255, 107, 107, 0.2)',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 25,
-    width: '100%',
-  },
-  infoIconContainer: {
-    backgroundColor: '#FFF',
-    borderRadius: 12,
-    width: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-    marginTop: 2,
-  },
-  infoText: {
-    color: '#FFF',
-    fontSize: 13,
     flex: 1,
-    lineHeight: 18,
+    paddingHorizontal: 20,
+    justifyContent: 'space-between',
   },
-  label: {
-    color: '#FFF',
-    fontSize: 14,
-    alignSelf: 'flex-start',
-    marginBottom: 8,
-    fontWeight: '500',
-  },
-  input: {
-    width: '100%',
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 14,
-    color: '#333',
+  descriptionContainer: {
     marginBottom: 40,
   },
-  instructionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFF',
-    marginBottom: 5,
+  description: {
+    fontSize: 16,
+    color: 'white',
+    textAlign: 'center',
+    lineHeight: 24,
+    opacity: 0.9,
   },
-  instructionSubtitle: {
-    fontSize: 14,
-    color: '#FFF',
-    marginBottom: 30,
-  },
-  micContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '75%',
-    marginBottom: 50,
-  },
-  micButton: {
-    backgroundColor: '#E57373',
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+  waveformContainer: {
+    height: 120,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
+    marginVertical: 40,
+  },
+  waveform: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  waveBar: {
+    width: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderRadius: 2,
+  },
+  input: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 25,
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    fontSize: 16,
+    color: 'white',
+    textAlign: 'center',
+    marginBottom: 30,
+  },
+  instructionText: {
+    fontSize: 16,
+    color: 'white',
+    textAlign: 'center',
+    marginBottom: 40,
+    opacity: 0.9,
+    lineHeight: 22,
+  },
+  recordingControls: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 30,
+    marginBottom: 50,
+  },
+  recordButton: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  recordButtonActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderColor: 'white',
+  },
+  recordButtonProgress: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
   },
   saveButton: {
-    backgroundColor: '#E57373',
-    paddingVertical: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 25,
+    paddingVertical: 15,
     paddingHorizontal: 40,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
+    alignSelf: 'center',
+    marginBottom: 40,
+  },
+  saveButtonDisabled: {
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
   },
   saveButtonText: {
-    color: '#FFF',
     fontSize: 16,
     fontWeight: '600',
+    color: '#ff6b6b',
+    textAlign: 'center',
+  },
+  saveButtonTextDisabled: {
+    color: 'rgba(255, 255, 255, 0.7)',
   },
 });
 

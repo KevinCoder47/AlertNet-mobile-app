@@ -1,5 +1,5 @@
 // CORRECTED IMPORT STATEMENTS
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Text,
   View,
@@ -7,103 +7,72 @@ import {
   TouchableOpacity,
   ScrollView,
   SafeAreaView,
-  Animated,
-  Easing,
   Alert,
 } from 'react-native';
+import SOSService from '../../services/SOSService';
 // ---
 
 import Feather from '@expo/vector-icons/Feather';
 import * as Location from 'expo-location';
 
-// Reusable SOS Button Component
-const SOSBtn = ({ onPressIn, onPressOut, isPressed, isTriggered }) => {
-  const scaleValue = useRef(new Animated.Value(1)).current;
-  const pulseValue = useRef(new Animated.Value(1)).current;
 
-  useEffect(() => {
-    // Scale animation for press feedback
-    Animated.timing(scaleValue, {
-      toValue: isPressed ? 0.9 : 1,
-      duration: 200,
-      useNativeDriver: true,
-    }).start();
-  }, [isPressed]);
-
-  useEffect(() => {
-    // Pulsing animation when SOS is triggered
-    if (isTriggered) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseValue, { toValue: 1.1, duration: 500, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
-          Animated.timing(pulseValue, { toValue: 1, duration: 500, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
-        ])
-      ).start();
-    } else {
-      // Stop the animation if it's running
-      pulseValue.stopAnimation(() => pulseValue.setValue(1));
-    }
-  }, [isTriggered]);
-
-  const animatedStyle = {
-    transform: [{ scale: Animated.multiply(scaleValue, pulseValue) }],
-  };
-
-  return (
-    <TouchableOpacity onPressIn={onPressIn} onPressOut={onPressOut} activeOpacity={0.8}>
-      <Animated.View style={[styles.sosButton, animatedStyle, isTriggered && styles.sosButtonTriggered]}>
-        <Text style={styles.sosButtonText}>SOS</Text>
-      </Animated.View>
-    </TouchableOpacity>
-  );
-};
 
 export default function TestSOS({ setIsSafetyResources, setIsTestSOS }) {
-  const [isHolding, setIsHolding] = useState(false);
   const [sosTriggered, setSosTriggered] = useState(false);
   const [locationEnabled, setLocationEnabled] = useState(false);
   const [locationStatus, setLocationStatus] = useState("Checking...");
-  const timerRef = useRef(null);
 
   useEffect(() => {
     // Check for location services when the component mounts
     const checkLocation = async () => {
-      try {
-        let { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') {
-          setLocationStatus("Permission denied");
-          setLocationEnabled(false);
-          return;
-        }
-
-        let servicesEnabled = await Location.hasServicesEnabledAsync();
-        setLocationEnabled(servicesEnabled);
-        setLocationStatus(servicesEnabled ? "enabled" : "disabled");
-      } catch (error) {
-        console.error("Error checking location services:", error);
-        setLocationStatus("Error checking status");
-        setLocationEnabled(false);
-        Alert.alert("Location Error", "Could not check location services. Please ensure the app has permissions and location is turned on in your device settings.");
-      }
+      const locationCheck = await SOSService.checkLocationServices();
+      setLocationEnabled(locationCheck.enabled);
+      setLocationStatus(locationCheck.enabled ? "enabled" : "disabled");
     };
     checkLocation();
   }, []);
 
-  const handlePressIn = () => {
-    setIsHolding(true);
-    setSosTriggered(false); // Reset on new press
-    timerRef.current = setTimeout(() => {
-      setSosTriggered(true);
-      setIsHolding(false); // Stop the "holding" state once triggered
-      Alert.alert("SOS Simulated", "Your test was successful. No real alert has been sent.");
-    }, 3000); // 3-second hold
+  const handlePress = async () => {
+    setSosTriggered(true);
+    
+    // Check location services first
+    const locationCheck = await SOSService.checkLocationServices();
+    if (!locationCheck.enabled) {
+      Alert.alert(
+        "⚠️ Location Services Disabled",
+        "Your location is currently disabled. Emergency contacts will not receive your location.\n\nTo enable location:\n1. Go to Settings\n2. Find Location/Privacy\n3. Enable location for this app\n\nDo you want to continue the test without location?",
+        [
+          { text: 'Cancel', style: 'cancel', onPress: () => setSosTriggered(false) },
+          { text: 'Continue Test', onPress: () => runTest() }
+        ]
+      );
+      return;
+    }
+    
+    runTest();
   };
 
-  const handlePressOut = () => {
-    // Only clear the timer if it hasn't already triggered the SOS
-    if (isHolding) {
-      setIsHolding(false);
-      clearTimeout(timerRef.current);
+  const runTest = async () => {
+    // Simulate the emergency notification process
+    const result = await SOSService.testEmergencyNotifications();
+    
+    if (result.success) {
+      const contactsList = result.contacts.map(c => c.name).join(', ');
+      const locationInfo = result.location 
+        ? `Location: ${result.location.latitude.toFixed(4)}, ${result.location.longitude.toFixed(4)}`
+        : 'Location: Unavailable';
+      
+      Alert.alert(
+        "SOS Test Successful",
+        `Test completed successfully!\n\nContacts that would be notified: ${contactsList}\n\n${locationInfo}\n\nMessage preview:\n"${result.message.substring(0, 100)}..."\n\nNo real messages were sent.`,
+        [{ text: 'OK' }]
+      );
+    } else {
+      Alert.alert(
+        "SOS Test Failed",
+        result.error || 'Test failed. Please check your emergency contacts and location settings.',
+        [{ text: 'OK' }]
+      );
     }
   };
 
@@ -134,8 +103,8 @@ export default function TestSOS({ setIsSafetyResources, setIsTestSOS }) {
             <View style={styles.sosButton}><Text style={styles.sosButtonText}>SOS</Text></View>
           </View>
           <View style={styles.instructions}>
-            <Text style={styles.step}><Text style={styles.bold}>1.</Text> Hold the <Text style={styles.bold}>TEST NOW Button</Text> below for 3 seconds.</Text>
-            <Text style={styles.step}><Text style={styles.bold}>2.</Text> App will <Text style={styles.bold}>simulate an SOS message</Text>.</Text>
+            <Text style={styles.step}><Text style={styles.bold}>1.</Text> Press the <Text style={styles.bold}>TEST NOW Button</Text> below.</Text>
+            <Text style={styles.step}><Text style={styles.bold}>2.</Text> App will <Text style={styles.bold}>test emergency contacts and location</Text>.</Text>
             <Text style={styles.step}>
               <Text style={styles.bold}>3.</Text> Location is <Text style={[styles.bold, { color: locationEnabled ? 'green' : 'red' }]}>{locationStatus}</Text>.
             </Text>
@@ -151,14 +120,13 @@ export default function TestSOS({ setIsSafetyResources, setIsTestSOS }) {
           <Text style={styles.testNowTitle}>TEST NOW</Text>
           <Text style={styles.testNowSubtitle}>This is only a Test</Text>
           <View style={styles.redBtnWrapper}>
-            <SOSBtn
-              onPressIn={handlePressIn}
-              onPressOut={handlePressOut}
-              isPressed={isHolding}
-              isTriggered={sosTriggered}
-            />
+            <TouchableOpacity onPress={handlePress} activeOpacity={0.8}>
+              <View style={[styles.sosButton, sosTriggered && styles.sosButtonTriggered]}>
+                <Text style={styles.sosButtonText}>SOS</Text>
+              </View>
+            </TouchableOpacity>
           </View>
-          {isHolding && !sosTriggered && <Text style={styles.holdFeedback}>Keep Holding...</Text>}
+
         </View>
       </ScrollView>
     </SafeAreaView>

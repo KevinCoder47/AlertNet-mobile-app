@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import {
   PanResponder,
   Animated,
@@ -8,6 +8,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -18,8 +19,8 @@ import {
   MaterialIcons,
   Octicons,
 } from "@expo/vector-icons";
+import { contentIndex } from './contentIndex';
 
-// 1. Add setIsOfflineMap to the props here
 export default function SafetyResources({
   setIsSafetyResources,
   setIsSOS,
@@ -31,13 +32,30 @@ export default function SafetyResources({
   setIsEmergencyContacts,
   setIsLanguagePage,
   setIsSafetyVideos,
-  setIsOfflineMap, // ADD THIS,
+  setIsOfflineMap,
   setIsWalkingAloneTips,
   handleLogout,
-  setIsSubscriptionScreen, 
+  setIsSubscriptionScreen,
+  setIsSafetyZones,
+  previousScreen = "sos",
+  setIsDownloadedMaps,
+
+  backgroundContent
 }) {
-  const pan = useRef(new Animated.ValueXY()).current;
+  const screenWidth = Dimensions.get('window').width;
+  const pan = useRef(new Animated.ValueXY({ x: screenWidth * 0.9, y: 0 })).current;
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Entrance animation when component mounts
+  useEffect(() => {
+    console.log("SafetyResources Clicked from:", previousScreen);
+    Animated.spring(pan, {
+      toValue: { x: 0, y: 0 },
+      useNativeDriver: true,
+      tension: 100,
+      friction: 8,
+    }).start();
+  }, []);
 
   // PanResponder for horizontal swipe right gesture to go back
   const panResponder = useRef(
@@ -52,7 +70,9 @@ export default function SafetyResources({
       onPanResponderRelease: (_, gestureState) => {
         if (gestureState.dx > 100) {
           setIsSafetyResources(false);
-          setIsSOS(true);
+          if (previousScreen === "sos") {
+            setIsSOS(true);
+          }
         } else {
           Animated.spring(pan, {
             toValue: { x: 0, y: 0 },
@@ -114,7 +134,10 @@ export default function SafetyResources({
           icon: <Feather name="map-pin" size={18} color="#fff" />,
           text: "Finding safe zones",
           keywords: ["safe", "zones", "finding", "location", "map", "pin"],
-          onPress: () => {}
+          onPress: () => {
+            setIsSafetyResources(false);
+            setIsSafetyZones(true);
+          }
         }
       ]
     },
@@ -187,7 +210,7 @@ export default function SafetyResources({
           keywords: ["offline", "maps", "download", "navigation"],
           onPress: () => {
             setIsSafetyResources(false);
-            setIsOfflineMap(true);
+            setIsDownloadedMaps(true);
           }
         }
       ]
@@ -210,7 +233,14 @@ export default function SafetyResources({
         const keywordMatch = item.keywords.some(keyword => 
           keyword.toLowerCase().includes(query)
         );
-        return textMatch || keywordMatch;
+        
+        // Check if query matches content from the page
+        const contentMatch = contentIndex[item.text] && 
+          contentIndex[item.text].content.some(content => 
+            content.toLowerCase().includes(query)
+          );
+        
+        return textMatch || keywordMatch || contentMatch;
       });
 
       if (filteredItems.length > 0) {
@@ -246,12 +276,17 @@ export default function SafetyResources({
 
   return (
     <SafeAreaView style={styles.safeAreaContainer}>
+      {backgroundContent && (
+        <View style={styles.backgroundContent} pointerEvents="none">
+          {backgroundContent}
+        </View>
+      )}
+      <View style={styles.overlay} />
       <Animated.View
         {...panResponder.panHandlers}
         style={[
           {
             flex: 1,
-            backgroundColor: "#000",
             justifyContent: "flex-end",
             alignItems: "flex-end",
           },
@@ -350,7 +385,22 @@ export default function SafetyResources({
 const styles = StyleSheet.create({
   safeAreaContainer: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: "transparent",
+  },
+  backgroundContent: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  overlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
   },
   scrollContent: {
     padding: 20,

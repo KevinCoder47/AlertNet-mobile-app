@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View, Image, TouchableOpacity, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Polyline } from 'react-native-maps';
 import Icon from 'react-native-vector-icons/FontAwesome';
 
@@ -57,7 +58,8 @@ const PreviousWalks = ({ setIsPreviousWalks, setIsSafetyResources }) => { // 1. 
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
       <View style={styles.header}>
         {/* 2. Add onPress handler to the back button */}
         <TouchableOpacity
@@ -148,11 +150,16 @@ const PreviousWalks = ({ setIsPreviousWalks, setIsSafetyResources }) => { // 1. 
           </View>
         ))}
       </ScrollView>
-    </View>
+      </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+    safeArea: {
+        flex: 1,
+        backgroundColor: '#f5f5f5',
+    },
     container: {
         flex: 1,
         backgroundColor: '#f5f5f5',
