@@ -11,6 +11,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 
 const closeFriends = [
   {
@@ -20,7 +21,7 @@ const closeFriends = [
     status: 'Online',
     distance: '5 km away',
     battery: '4%',
-    avatar: require('../images/Unathi.jpg'),
+    avatar: require('../../images/Unathi.jpg'),
   },
   {
     id: '2',
@@ -29,7 +30,7 @@ const closeFriends = [
     status: 'Offline',
     distance: '23 km away',
     battery: '85%',
-    avatar: require('../images/Cheyenne.jpg'),
+    avatar: require('../../images/Cheyenne.jpg'),
   },
   {
     id: '3',
@@ -38,7 +39,7 @@ const closeFriends = [
     status: 'Online',
     distance: '10 km away',
     battery: '64%',
-    avatar: require('../images/Cheyenne.jpg'),
+    avatar: require('../../images/Cheyenne.jpg'),
   },
   {
     id: '4',
@@ -47,7 +48,7 @@ const closeFriends = [
     status: 'Offline',
     distance: '12 km away',
     battery: '78%',
-    avatar: require('../images/Junior.jpg'),
+    avatar: require('../../images/Junior.jpg'),
   },
 ];
 
@@ -55,26 +56,38 @@ const regularFriends = [
   {
     id: '5',
     name: 'Mpilonhle Radebe',
+    location: 'Campus Square', // Added location for consistency
     status: 'Online',
-    avatar: require('../images/Mpilo.jpg'),
+    distance: '3 km away', // Added distance for consistency
+    battery: '62%', // Added battery for consistency
+    avatar: require('../../images/Mpilo.jpg'),
   },
   {
     id: '6',
     name: 'Kuhle Mgudlwa',
+    location: 'Unknown',
     status: 'Offline',
-    avatar: require('../images/Kuhle.jpg'),
+    distance: 'Unknown',
+    battery: '74%',
+    avatar: require('../../images/Kuhle.jpg'),
   },
   {
     id: '7',
     name: 'Kevin Serakalala',
+    location: 'Campus Square',
     status: 'Online',
-    avatar: require('../images/Kevin.jpg'),
+    distance: '5 m away',
+    battery: '88%',
+    avatar: require('../../images/Kevin.jpg'),
   },
   {
     id: '8',
     name: 'Sphephile Mtshali',
+    location: 'Gold Reef City',
     status: 'Offline',
-    avatar: require('../images/Cheyenne.jpg'),
+    distance: '10 km away',
+    battery: '56%',
+    avatar: require('../../images/Cheyenne.jpg'),
   },
 ];
 
@@ -92,6 +105,7 @@ const FriendsList = ({ searchQuery = '' }) => {
   const styles = getStyles(isDark);
   const scrollRef = useRef();
   const [refreshing, setRefreshing] = useState(false);
+  const navigation = useNavigation();
 
   const filteredCloseFriends = closeFriends.filter((person) =>
     person.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -125,7 +139,11 @@ const FriendsList = ({ searchQuery = '' }) => {
         renderItem={({ item }) => {
           const statusColor = item.status === 'Online' ? '#51e651' : '#a0a0a0';
           return (
-            <View style={styles.regularFriendCard}>
+            <TouchableOpacity
+              style={styles.regularFriendCard}
+              onPress={() => navigation.navigate('Profile', { person: item })}
+              activeOpacity={0.7}
+            >
               <View style={styles.avatarWrapper}>
                 <Image source={item.avatar} style={styles.regularAvatar} />
                 <View
@@ -140,11 +158,19 @@ const FriendsList = ({ searchQuery = '' }) => {
                   ]}
                 />
               </View>
-              <Text style={styles.regularName}>{item.name}</Text>
-            </View>
+              <Text style={styles.regularName} numberOfLines={2}>
+                {item.name}
+              </Text>
+            </TouchableOpacity>
           );
         }}
       />
+
+      {/* Section Title for Close Friends */}
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Close Friends</Text>
+        <Text style={styles.sectionSubtitle}>A Circle built on Trust and Safety</Text>
+      </View>
 
       {/* Vertical Close Friends */}
       {filteredCloseFriends.map((item) => {
@@ -154,7 +180,12 @@ const FriendsList = ({ searchQuery = '' }) => {
         const statusColor = item.status === 'Online' ? '#51e651' : '#a0a0a0';
 
         return (
-          <TouchableOpacity key={item.id} style={styles.personContainer}>
+          <TouchableOpacity
+            key={item.id}
+            style={styles.personContainer}
+            onPress={() => navigation.navigate('Profile', { person: item })}
+            activeOpacity={0.7}
+          >
             <View style={styles.avatarSection}>
               <Image source={item.avatar} style={styles.avatar} />
               <View
@@ -170,21 +201,36 @@ const FriendsList = ({ searchQuery = '' }) => {
               />
               <View style={styles.batteryBelowAvatar}>
                 <Ionicons name={batteryIcon} size={12} color={batteryColor} />
-                <Text style={[styles.batteryTextUnder, { color: batteryColor }]}> {item.battery}</Text>
+                <Text style={[styles.batteryTextUnder, { color: batteryColor }]}>
+                  {item.battery}
+                </Text>
               </View>
             </View>
-            
 
             <View style={styles.infoSection}>
               <Text style={styles.personName}>{item.name}</Text>
               <Text style={styles.personLocation}>{item.location}</Text>
-              <Text style={styles.personDistance}>{item.distance}</Text>
+              <View style={styles.statusRow}>
+                <Text style={[styles.personStatus, { color: statusColor }]}>
+                  {item.status}
+                </Text>
+                <Text style={styles.divider}>•</Text>
+                <Text style={styles.personDistance}>{item.distance}</Text>
+              </View>
             </View>
 
             <Ionicons name="chevron-forward" size={18} color={isDark ? '#ccc' : '#333'} />
           </TouchableOpacity>
         );
       })}
+
+      {/* Empty State */}
+      {filteredCloseFriends.length === 0 && filteredRegularFriends.length === 0 && searchQuery && (
+        <View style={styles.emptyState}>
+          <Ionicons name="search" size={48} color={isDark ? '#555' : '#ccc'} />
+          <Text style={styles.emptyStateText}>No friends found matching "{searchQuery}"</Text>
+        </View>
+      )}
     </ScrollView>
   );
 };
@@ -194,7 +240,7 @@ const getStyles = (isDark) =>
     personContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: 10,
+      paddingVertical: 12,
       borderBottomWidth: 0.5,
       borderBottomColor: isDark ? '#444' : '#ccc',
       justifyContent: 'space-between',
@@ -239,6 +285,18 @@ const getStyles = (isDark) =>
       color: isDark ? '#b0b0b0' : '#444',
       marginBottom: 1,
     },
+    statusRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    personStatus: {
+      fontSize: 12,
+      fontWeight: '500',
+    },
+    divider: {
+      color: '#666',
+      marginHorizontal: 5,
+    },
     personDistance: {
       fontSize: 12,
       color: isDark ? '#a0a0a0' : '#555',
@@ -247,6 +305,7 @@ const getStyles = (isDark) =>
       width: 70,
       alignItems: 'center',
       marginRight: 14,
+      paddingVertical: 4,
     },
     regularAvatar: {
       width: 44,
@@ -256,13 +315,38 @@ const getStyles = (isDark) =>
     regularName: {
       fontSize: 12,
       fontWeight: '500',
-      marginTop: 4,
+      marginTop: 6,
       textAlign: 'center',
       color: isDark ? '#fff' : '#222',
     },
     avatarWrapper: {
       position: 'relative',
     },
+    sectionHeader: {
+      marginTop: 10,
+      marginBottom: 8,
+    },
+    sectionTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: isDark ? '#fff' : '#333',
+    },
+    sectionSubtitle: {
+      fontSize: 12,
+      color: isDark ? '#888' : '#666',
+      marginTop: 2,
+    },
+    emptyState: {
+      alignItems: 'center',
+      paddingVertical: 40,
+    },
+    emptyStateText: {
+      fontSize: 14,
+      color: isDark ? '#888' : '#666',
+      marginTop: 12,
+      textAlign: 'center',
+    },
   });
 
 export default FriendsList;
+

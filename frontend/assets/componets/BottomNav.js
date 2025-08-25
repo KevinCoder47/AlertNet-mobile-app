@@ -3,17 +3,15 @@ import React, { useState } from 'react';
 import SOSBtn from './SOSBtn';
 import { useMapContext } from '../contexts/MapContext';
 import Helpline from './Helpline';
-import PeopleBar from './PeopleBar';
-import PeoplePanel from './PeoplePanel';
+import PeopleBar from './People/PeopleBar';
 
 const { width, height } = Dimensions.get('window');
 
-const BottomNav = ({ isNotHome, setIsNotHome, isWalkPartner, setIsWalkPartner, setIsSOS }) => {
+const BottomNav = ({ isNotHome, setIsNotHome, isWalkPartner, setIsWalkPartner, setIsSOS, setIsPeopleActive, setIsTopBarManuallyExpanded }) => {
   const [isHome, setIsHome] = useState(true);
   const [isPeople, setIsPeople] = useState(false);
   const [isHelpLine, setIsHelpLine] = useState(false);
   const { recenterToUserLocation } = useMapContext();
-  const [isExpanded, setIsExpanded] = useState(false);
 
   const toggleHome = () => {
     setIsHome(true);
@@ -21,7 +19,8 @@ const BottomNav = ({ isNotHome, setIsNotHome, isWalkPartner, setIsWalkPartner, s
     setIsPeople(false);
     setIsHelpLine(false);
     setIsNotHome(false);
-    setIsExpanded(false);
+    setIsPeopleActive(false);
+    setIsTopBarManuallyExpanded(false);
     recenterToUserLocation();
   };
 
@@ -31,7 +30,8 @@ const BottomNav = ({ isNotHome, setIsNotHome, isWalkPartner, setIsWalkPartner, s
     setIsPeople(false);
     setIsHelpLine(false);
     setIsNotHome(true);
-    setIsExpanded(false);
+    setIsPeopleActive(false);
+    setIsTopBarManuallyExpanded(false);
   };
 
   const togglePeople = () => {
@@ -40,7 +40,8 @@ const BottomNav = ({ isNotHome, setIsNotHome, isWalkPartner, setIsWalkPartner, s
     setIsWalkPartner(false);
     setIsHelpLine(false);
     setIsNotHome(true);
-    setIsExpanded(false);
+    setIsPeopleActive(true);
+    setIsTopBarManuallyExpanded(false);
   };
 
   const toggleHelpLine = () => {
@@ -49,7 +50,8 @@ const BottomNav = ({ isNotHome, setIsNotHome, isWalkPartner, setIsWalkPartner, s
     setIsWalkPartner(false);
     setIsPeople(false);
     setIsNotHome(true);
-    setIsExpanded(false);
+    setIsPeopleActive(false);
+    setIsTopBarManuallyExpanded(false);
   };
 
   return (
@@ -77,14 +79,10 @@ const BottomNav = ({ isNotHome, setIsNotHome, isWalkPartner, setIsWalkPartner, s
             <Image source={require('../icons/phone-2.png')} style={[styles.image, { opacity: isHelpLine ? 1 : 0.5 }]} />
           </TouchableOpacity>
 
-          {/* People Panel */}
+          {/* People Bar */}
           {isPeople && (
             <View style={{ marginHorizontal: -45 }}>
-              {isExpanded ? (
-                <PeoplePanel onCollapse={() => setIsExpanded(false)} />
-              ) : (
-                <PeopleBar onExpand={() => setIsExpanded(true)} />
-              )}
+              <PeopleBar />
             </View>
           )}
 
