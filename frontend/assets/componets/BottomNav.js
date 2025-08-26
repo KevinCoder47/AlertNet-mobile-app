@@ -5,6 +5,7 @@ import { useMapContext } from '../contexts/MapContext';
 import Helpline from './Helpline';
 import PeopleBar from './People/PeopleBar';
 
+
 const { width, height } = Dimensions.get('window');
 
 const BottomNav = ({ isNotHome, setIsNotHome, isWalkPartner, setIsWalkPartner, setIsSOS, setIsPeopleActive, setIsTopBarManuallyExpanded }) => {
@@ -12,6 +13,7 @@ const BottomNav = ({ isNotHome, setIsNotHome, isWalkPartner, setIsWalkPartner, s
   const [isPeople, setIsPeople] = useState(false);
   const [isHelpLine, setIsHelpLine] = useState(false);
   const { recenterToUserLocation } = useMapContext();
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const toggleHome = () => {
     setIsHome(true);
@@ -83,10 +85,14 @@ const BottomNav = ({ isNotHome, setIsNotHome, isWalkPartner, setIsWalkPartner, s
             <Image source={require('../icons/phone-2.png')} style={[styles.image, { opacity: isHelpLine ? 1 : 0.5 }]} />
           </TouchableOpacity>
 
-          {/* People Bar */}
+          {/* People Panel */}
           {isPeople && (
             <View style={{ marginHorizontal: -45 }}>
-              <PeopleBar />
+              {isExpanded ? (
+                <PeoplePanel onCollapse={() => setIsExpanded(false)} />
+              ) : (
+                <PeopleBar onExpand={() => setIsExpanded(true)} />
+              )}
             </View>
           )}
 

@@ -61,7 +61,11 @@
     "react-native-wheel-picker-expo": "^0.5.4",
     "react-native-youtube-iframe": "^2.4.1",
     "react-redux": "^9.2.0",
-    "resend": "^4.8.0"
+    "resend": "^4.8.0",
+    "expo-sharing": "~13.1.5",
+    "react-native-view-shot": "4.0.3",
+    "expo-battery": "~9.1.4",
+    "expo-network": "~7.1.5"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
