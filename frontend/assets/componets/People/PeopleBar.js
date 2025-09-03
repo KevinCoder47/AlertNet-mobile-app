@@ -25,6 +25,7 @@ import CommunityList from './CommunityList';
 import FeedList from './FeedList';
 import NotificationBell from '../NotificationBell';
 import FriendsService from '../../services/FriendsService';
+
 const { width, height } = Dimensions.get('window');
 
 // Cross-platform safe area calculations
@@ -39,6 +40,70 @@ const getStatusBarHeight = () => {
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
+
+// Fallback static data (from main branch)
+const staticPeopleData = [
+  {
+    id: 1,
+    name: 'Unathi Gumede',
+    location: 'Helen Joseph Hospital',
+    status: 'Online',
+    distance: '5 km away',
+    battery: '4%',
+    avatar: require('../../images/Unathi.jpg'),
+    isCloseFriend: true,
+  },
+  {
+    id: 2,
+    name: 'Cheyenne Luthuli',
+    location: 'Mayfair West',
+    status: 'Offline',
+    distance: '23 km away',
+    battery: '85%',
+    avatar: require('../../images/Cheyenne.jpg'),
+    isCloseFriend: true,
+  },
+  {
+    id: 3,
+    name: 'Mpilonhle Radebe',
+    location: 'Lost Location',
+    status: 'Online',
+    distance: 'Lost Distance',
+    battery: '62%',
+    avatar: require('../../images/Mpilo.jpg'),
+    isCloseFriend: false,
+  },
+  {
+    id: 4,
+    name: 'Kuhle Mgudlwa',
+    location: 'Unknown',
+    status: 'Offline',
+    distance: 'Unknown',
+    battery: '74%',
+    avatar: require('../../images/Kuhle.jpg'),
+    isCloseFriend: false,
+  },
+  {
+    id: 5,
+    name: 'Kevin Serakalala',
+    location: 'Campus Square',
+    status: 'Online',
+    distance: '5 m away',
+    battery: '88%',
+    avatar: require('../../images/Kevin.jpg'),
+    isCloseFriend: false,
+  },
+  {
+    id: 6,
+    name: 'Sphephile Mtshali',
+    location: 'Gold Reef City',
+    status: 'Offline',
+    distance: '10 km away',
+    battery: '56%',
+    avatar: require('../../images/Cheyenne.jpg'),
+    isCloseFriend: false,
+  },
+];
 
 const getBatteryIconName = (batteryPercentStr) => {
   const percent = parseInt(batteryPercentStr);
@@ -96,6 +161,9 @@ const PeopleBar = () => {
         }
       } catch (error) {
         console.error('PeopleBar: Error initializing:', error);
+        // Fallback to static data if service fails
+        setFriendsData(staticPeopleData);
+        setLoading(false);
       }
     };
 
@@ -220,8 +288,14 @@ const PeopleBar = () => {
     setRefreshing(true);
     try {
       await FriendsService.refresh();
+      setLastUpdated(new Date());
     } catch (error) {
       console.error('PeopleBar: Error refreshing friends:', error);
+      // Fallback refresh behavior
+      setTimeout(() => {
+        setLastUpdated(new Date());
+        setRefreshing(false);
+      }, 1500);
     } finally {
       setRefreshing(false);
     }

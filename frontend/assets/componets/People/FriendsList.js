@@ -15,6 +15,93 @@ import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import FriendsService from '../../services/FriendsService';
 
+// Fallback static data (from main branch)
+const staticCloseFriends = [
+  {
+    id: '1',
+    name: 'Unathi Gumede',
+    location: 'Helen Joseph Hospital',
+    status: 'Online',
+    distance: '5 km away',
+    battery: '4%',
+    avatar: require('../../images/Unathi.jpg'),
+    isCloseFriend: true,
+  },
+  {
+    id: '2',
+    name: 'Cheyenne Luthuli',
+    location: 'Mayfair West',
+    status: 'Offline',
+    distance: '23 km away',
+    battery: '85%',
+    avatar: require('../../images/Cheyenne.jpg'),
+    isCloseFriend: true,
+  },
+  {
+    id: '3',
+    name: 'Nomusa Buthelezi',
+    location: 'Soweto',
+    status: 'Online',
+    distance: '10 km away',
+    battery: '64%',
+    avatar: require('../../images/Cheyenne.jpg'),
+    isCloseFriend: true,
+  },
+  {
+    id: '4',
+    name: 'Junior Madiba',
+    location: 'Braamfontein',
+    status: 'Offline',
+    distance: '12 km away',
+    battery: '78%',
+    avatar: require('../../images/Junior.jpg'),
+    isCloseFriend: true,
+  },
+];
+
+const staticRegularFriends = [
+  {
+    id: '5',
+    name: 'Mpilonhle Radebe',
+    location: 'Campus Square',
+    status: 'Online',
+    distance: '3 km away',
+    battery: '62%',
+    avatar: require('../../images/Mpilo.jpg'),
+    isCloseFriend: false,
+  },
+  {
+    id: '6',
+    name: 'Kuhle Mgudlwa',
+    location: 'Unknown',
+    status: 'Offline',
+    distance: 'Unknown',
+    battery: '74%',
+    avatar: require('../../images/Kuhle.jpg'),
+    isCloseFriend: false,
+  },
+  {
+    id: '7',
+    name: 'Kevin Serakalala',
+    location: 'Campus Square',
+    status: 'Online',
+    distance: '5 m away',
+    battery: '88%',
+    avatar: require('../../images/Kevin.jpg'),
+    isCloseFriend: false,
+  },
+  {
+    id: '8',
+    name: 'Sphephile Mtshali',
+    location: 'Gold Reef City',
+    status: 'Offline',
+    distance: '10 km away',
+    battery: '56%',
+    avatar: require('../../images/Cheyenne.jpg'),
+    isCloseFriend: false,
+  },
+];
+
 const getBatteryIconName = (batteryPercentStr) => {
   const percent = parseInt(batteryPercentStr);
   if (isNaN(percent)) return 'battery-dead';
@@ -45,6 +132,9 @@ const FriendsList = ({ searchQuery = '', friendsData: propFriendsData }) => {
         }
       } catch (error) {
         console.error('FriendsList: Error initializing FriendsService:', error);
+        // Fallback to static data if service fails
+        setFriendsData([...staticCloseFriends, ...staticRegularFriends]);
+        setLoading(false);
       }
     };
 
@@ -86,6 +176,10 @@ const FriendsList = ({ searchQuery = '', friendsData: propFriendsData }) => {
       await FriendsService.refresh();
     } catch (error) {
       console.error('FriendsList: Error refreshing friends:', error);
+      // Fallback refresh behavior
+      setTimeout(() => {
+        setRefreshing(false);
+      }, 1500);
     } finally {
       setRefreshing(false);
     }
