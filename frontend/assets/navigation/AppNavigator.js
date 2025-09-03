@@ -10,8 +10,12 @@ import Login from '../screens/LoginScreen';
 import Signup from '../screens/signup';
 import Home from '../screens/Home';
 import OnBoarding from '../screens/OnBoarding';
+import Profile from '../componets/People/Profile';
+import ChatScreen from '../componets/People/ChatScreen';
+
 
 const Stack = createNativeStackNavigator();
+<Stack.Screen name="Profile" component={Profile} options={{ headerShown: false }} />
 
 const AppNavigator = () => {
   const [showSplash, setShowSplash] = useState(true);
@@ -109,11 +113,27 @@ const AppNavigator = () => {
           <Stack.Screen name="Home">
                 {(props) => <Home {...props} handleLogout={handleLogout} />
                 }
-          </Stack.Screen>
+          </Stack.Screen>      
         )}
+
+
+        <Stack.Screen 
+          name="Profile" 
+          component={Profile} 
+          options={({ route }) => ({ title: route.params?.person?.name || "Profile" })} 
+        />
+        
+      <Stack.Screen 
+        name="ChatScreen" 
+        component={ChatScreen} 
+        options={{ title: "Chat" }} 
+      />
+
       </Stack.Navigator>
+
+
     </NavigationContainer>
   );
-};
+}
 
 export default AppNavigator;

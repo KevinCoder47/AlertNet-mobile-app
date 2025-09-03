@@ -13,6 +13,9 @@ import {
 } from 'react-native';
 import { YOUTUBE_API_KEY } from '@env';
 
+//AIzaSyDBNK8QP1VEveBhnwXbHMJ8ORGg1jYxd-Q
+
+
 // --- The initial data is now much simpler. We only need the videoId and category. ---
 const initialVideoData = [
   { category: 'Active Shooter Response', videoId: 'O-Wlf5jh34U' },

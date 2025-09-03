@@ -40,7 +40,7 @@
     <key>CFBundleVersion</key>
     <string>1</string>
     <key>GMSApiKey</key>
-    <string>AIzaSyDBNK8QP1VEveBhnwXbHMJ8ORGg1jYxd-Q</string>
+    <string>$(GOOGLE_MAPS_API_KEY)</string>
     <key>LSApplicationQueriesSchemes</key>
     <array>
       <string>youtube</string>
@@ -103,3 +103,4 @@
     <false/>
   </dict>
 </plist>
+

@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,8 +12,11 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import FriendsService from '../../services/FriendsService';
 
-const closeFriends = [
+// Fallback static data (from main branch)
+const staticCloseFriends = [
   {
     id: '1',
     name: 'Unathi Gumede',
@@ -22,6 +25,7 @@ const closeFriends = [
     distance: '5 km away',
     battery: '4%',
     avatar: require('../../images/Unathi.jpg'),
+    isCloseFriend: true,
   },
   {
     id: '2',
@@ -31,6 +35,7 @@ const closeFriends = [
     distance: '23 km away',
     battery: '85%',
     avatar: require('../../images/Cheyenne.jpg'),
+    isCloseFriend: true,
   },
   {
     id: '3',
@@ -40,6 +45,7 @@ const closeFriends = [
     distance: '10 km away',
     battery: '64%',
     avatar: require('../../images/Cheyenne.jpg'),
+    isCloseFriend: true,
   },
   {
     id: '4',
@@ -49,18 +55,20 @@ const closeFriends = [
     distance: '12 km away',
     battery: '78%',
     avatar: require('../../images/Junior.jpg'),
+    isCloseFriend: true,
   },
 ];
 
-const regularFriends = [
+const staticRegularFriends = [
   {
     id: '5',
     name: 'Mpilonhle Radebe',
-    location: 'Campus Square', // Added location for consistency
+    location: 'Campus Square',
     status: 'Online',
-    distance: '3 km away', // Added distance for consistency
-    battery: '62%', // Added battery for consistency
+    distance: '3 km away',
+    battery: '62%',
     avatar: require('../../images/Mpilo.jpg'),
+    isCloseFriend: false,
   },
   {
     id: '6',
@@ -70,6 +78,7 @@ const regularFriends = [
     distance: 'Unknown',
     battery: '74%',
     avatar: require('../../images/Kuhle.jpg'),
+    isCloseFriend: false,
   },
   {
     id: '7',
@@ -79,6 +88,7 @@ const regularFriends = [
     distance: '5 m away',
     battery: '88%',
     avatar: require('../../images/Kevin.jpg'),
+    isCloseFriend: false,
   },
   {
     id: '8',
@@ -88,6 +98,7 @@ const regularFriends = [
     distance: '10 km away',
     battery: '56%',
     avatar: require('../../images/Cheyenne.jpg'),
+    isCloseFriend: false,
   },
 ];
 
@@ -100,27 +111,209 @@ const getBatteryIconName = (batteryPercentStr) => {
   return 'battery-dead';
 };
 
-const FriendsList = ({ searchQuery = '' }) => {
+const FriendsList = ({ searchQuery = '', friendsData: propFriendsData }) => {
   const isDark = useColorScheme() === 'dark';
   const styles = getStyles(isDark);
   const scrollRef = useRef();
   const [refreshing, setRefreshing] = useState(false);
+  const [friendsData, setFriendsData] = useState(propFriendsData || []);
+  const [loading, setLoading] = useState(!propFriendsData);
   const navigation = useNavigation();
 
-  const filteredCloseFriends = closeFriends.filter((person) =>
-    person.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Initialize FriendsService when component mounts
+  useEffect(() => {
+    const initializeFriendsService = async () => {
+      try {
+        const jsonValue = await AsyncStorage.getItem('userData');
+        if (jsonValue) {
+          const userData = JSON.parse(jsonValue);
+          console.log('FriendsList: Initializing FriendsService with userData:', userData.uid);
+          await FriendsService.initialize(userData);
+        }
+      } catch (error) {
+        console.error('FriendsList: Error initializing FriendsService:', error);
+        // Fallback to static data if service fails
+        setFriendsData([...staticCloseFriends, ...staticRegularFriends]);
+        setLoading(false);
+      }
+    };
 
-  const filteredRegularFriends = regularFriends.filter((person) =>
-    person.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+    // Only initialize if not using prop data
+    if (!propFriendsData) {
+      initializeFriendsService();
+    }
+  }, [propFriendsData]);
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    setTimeout(() => {
+  // Subscribe to FriendsService updates
+  useEffect(() => {
+    if (propFriendsData) {
+      // If using prop data, just update when props change
+      setFriendsData(propFriendsData);
+      setLoading(false);
+      return;
+    }
+
+    console.log('FriendsList: Subscribing to FriendsService updates');
+    
+    const unsubscribe = FriendsService.subscribe((friends, isLoading) => {
+      console.log('FriendsList: Received friends update:', friends.length, 'friends, loading:', isLoading);
+      setFriendsData(friends);
+      setLoading(isLoading);
+    });
+
+    return unsubscribe;
+  }, [propFriendsData]);
+
+  const onRefresh = async () => {
+    if (propFriendsData) {
+      // If using prop data, just stop refreshing
       setRefreshing(false);
-    }, 1500);
+      return;
+    }
+
+    setRefreshing(true);
+    try {
+      await FriendsService.refresh();
+    } catch (error) {
+      console.error('FriendsList: Error refreshing friends:', error);
+      // Fallback refresh behavior
+      setTimeout(() => {
+        setRefreshing(false);
+      }, 1500);
+    } finally {
+      setRefreshing(false);
+    }
   };
+
+  // Filter friends based on search query
+  const filteredFriends = friendsData.filter((person) =>
+    person.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Separate close friends and regular friends
+  const filteredCloseFriends = filteredFriends.filter(friend => friend.isCloseFriend);
+  const filteredRegularFriends = filteredFriends.filter(friend => !friend.isCloseFriend);
+
+  const renderRegularFriendCard = ({ item }) => {
+    const statusColor = item.status === 'Online' ? '#51e651' : '#a0a0a0';
+    return (
+      <TouchableOpacity
+        style={styles.regularFriendCard}
+        onPress={() => navigation.navigate('Profile', { 
+          person: {
+            ...item,
+            id: item.id,
+            name: item.name,
+            avatar: item.avatar,
+          }
+        })}
+        activeOpacity={0.7}
+      >
+        <View style={styles.avatarWrapper}>
+          <Image source={item.avatar} style={styles.regularAvatar} />
+          <View
+            style={[
+              styles.statusDot,
+              {
+                backgroundColor: statusColor,
+                borderColor: '#fff',
+                top: 0,
+                right: 0,
+              },
+            ]}
+          />
+        </View>
+        <Text style={styles.regularName} numberOfLines={2}>
+          {item.name}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderCloseFriend = (item) => {
+    const batteryIcon = getBatteryIconName(item.battery);
+    const batteryLevel = parseInt(item.battery);
+    const batteryColor = batteryLevel < 20 ? '#ff6b6b' : '#51e651';
+    const statusColor = item.status === 'Online' ? '#51e651' : '#a0a0a0';
+
+    return (
+      <TouchableOpacity
+        key={item.id}
+        style={styles.personContainer}
+        onPress={() => navigation.navigate('Profile', { 
+          person: {
+            ...item,
+            id: item.id,
+            name: item.name,
+            avatar: item.avatar,
+          }
+        })}
+        activeOpacity={0.7}
+      >
+        <View style={styles.avatarSection}>
+          <Image source={item.avatar} style={styles.avatar} />
+          <View
+            style={[
+              styles.statusDot,
+              {
+                backgroundColor: statusColor,
+                borderColor: '#fff',
+                top: 0,
+                right: 0,
+              },
+            ]}
+          />
+          <View style={styles.batteryBelowAvatar}>
+            <Ionicons name={batteryIcon} size={12} color={batteryColor} />
+            <Text style={[styles.batteryTextUnder, { color: batteryColor }]}>
+              {item.battery}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.infoSection}>
+          <Text style={styles.personName}>{item.name}</Text>
+          <Text style={styles.personLocation}>{item.location}</Text>
+          <View style={styles.statusRow}>
+            <Text style={[styles.personStatus, { color: statusColor }]}>
+              {item.status}
+            </Text>
+            <Text style={styles.divider}>•</Text>
+            <Text style={styles.personDistance}>{item.distance}</Text>
+          </View>
+        </View>
+
+        <Ionicons name="chevron-forward" size={18} color={isDark ? '#ccc' : '#333'} />
+      </TouchableOpacity>
+    );
+  };
+
+  const renderEmptyState = () => (
+    <View style={styles.emptyState}>
+      {searchQuery ? (
+        <>
+          <Ionicons name="search" size={48} color={isDark ? '#555' : '#ccc'} />
+          <Text style={styles.emptyStateText}>No friends found matching "{searchQuery}"</Text>
+        </>
+      ) : (
+        <>
+          <Ionicons name="people-outline" size={48} color={isDark ? '#555' : '#ccc'} />
+          <Text style={styles.emptyStateText}>No friends yet</Text>
+          <Text style={styles.emptyStateSubtext}>Send friend requests to see your friends here</Text>
+        </>
+      )}
+    </View>
+  );
+
+  const renderLoadingState = () => (
+    <View style={styles.loadingState}>
+      <Text style={styles.loadingText}>Loading friends...</Text>
+    </View>
+  );
+
+  if (loading && filteredFriends.length === 0) {
+    return renderLoadingState();
+  }
 
   return (
     <ScrollView
@@ -130,107 +323,30 @@ const FriendsList = ({ searchQuery = '' }) => {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
       {/* Horizontal Regular Friends */}
-      <FlatList
-        data={filteredRegularFriends}
-        keyExtractor={(item) => item.id}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingVertical: 12 }}
-        renderItem={({ item }) => {
-          const statusColor = item.status === 'Online' ? '#51e651' : '#a0a0a0';
-          return (
-            <TouchableOpacity
-              style={styles.regularFriendCard}
-              onPress={() => navigation.navigate('Profile', { person: item })}
-              activeOpacity={0.7}
-            >
-              <View style={styles.avatarWrapper}>
-                <Image source={item.avatar} style={styles.regularAvatar} />
-                <View
-                  style={[
-                    styles.statusDot,
-                    {
-                      backgroundColor: statusColor,
-                      borderColor: '#fff',
-                      top: 0,
-                      right: 0,
-                    },
-                  ]}
-                />
-              </View>
-              <Text style={styles.regularName} numberOfLines={2}>
-                {item.name}
-              </Text>
-            </TouchableOpacity>
-          );
-        }}
-      />
+      {filteredRegularFriends.length > 0 && (
+        <FlatList
+          data={filteredRegularFriends}
+          keyExtractor={(item) => item.id}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingVertical: 12 }}
+          renderItem={renderRegularFriendCard}
+        />
+      )}
 
       {/* Section Title for Close Friends */}
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Close Friends</Text>
-        <Text style={styles.sectionSubtitle}>A Circle built on Trust and Safety</Text>
-      </View>
-
-      {/* Vertical Close Friends */}
-      {filteredCloseFriends.map((item) => {
-        const batteryIcon = getBatteryIconName(item.battery);
-        const batteryLevel = parseInt(item.battery);
-        const batteryColor = batteryLevel < 20 ? '#ff6b6b' : '#51e651';
-        const statusColor = item.status === 'Online' ? '#51e651' : '#a0a0a0';
-
-        return (
-          <TouchableOpacity
-            key={item.id}
-            style={styles.personContainer}
-            onPress={() => navigation.navigate('Profile', { person: item })}
-            activeOpacity={0.7}
-          >
-            <View style={styles.avatarSection}>
-              <Image source={item.avatar} style={styles.avatar} />
-              <View
-                style={[
-                  styles.statusDot,
-                  {
-                    backgroundColor: statusColor,
-                    borderColor: '#fff',
-                    top: 0,
-                    right: 0,
-                  },
-                ]}
-              />
-              <View style={styles.batteryBelowAvatar}>
-                <Ionicons name={batteryIcon} size={12} color={batteryColor} />
-                <Text style={[styles.batteryTextUnder, { color: batteryColor }]}>
-                  {item.battery}
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.infoSection}>
-              <Text style={styles.personName}>{item.name}</Text>
-              <Text style={styles.personLocation}>{item.location}</Text>
-              <View style={styles.statusRow}>
-                <Text style={[styles.personStatus, { color: statusColor }]}>
-                  {item.status}
-                </Text>
-                <Text style={styles.divider}>•</Text>
-                <Text style={styles.personDistance}>{item.distance}</Text>
-              </View>
-            </View>
-
-            <Ionicons name="chevron-forward" size={18} color={isDark ? '#ccc' : '#333'} />
-          </TouchableOpacity>
-        );
-      })}
-
-      {/* Empty State */}
-      {filteredCloseFriends.length === 0 && filteredRegularFriends.length === 0 && searchQuery && (
-        <View style={styles.emptyState}>
-          <Ionicons name="search" size={48} color={isDark ? '#555' : '#ccc'} />
-          <Text style={styles.emptyStateText}>No friends found matching "{searchQuery}"</Text>
+      {filteredCloseFriends.length > 0 && (
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Close Friends</Text>
+          <Text style={styles.sectionSubtitle}>A Circle built on Trust and Safety</Text>
         </View>
       )}
+
+      {/* Vertical Close Friends */}
+      {filteredCloseFriends.map(renderCloseFriend)}
+
+      {/* Empty State */}
+      {filteredFriends.length === 0 && renderEmptyState()}
     </ScrollView>
   );
 };
@@ -346,7 +462,20 @@ const getStyles = (isDark) =>
       marginTop: 12,
       textAlign: 'center',
     },
+    emptyStateSubtext: {
+      fontSize: 12,
+      color: isDark ? '#999' : '#888',
+      marginTop: 4,
+      textAlign: 'center',
+    },
+    loadingState: {
+      alignItems: 'center',
+      paddingVertical: 40,
+    },
+    loadingText: {
+      fontSize: 14,
+      color: isDark ? '#ccc' : '#666',
+    },
   });
 
 export default FriendsList;
-

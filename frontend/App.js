@@ -4,18 +4,20 @@ import { ThemeProvider, useTheme } from './assets/contexts/ColorContext';
 import AppNavigator from './assets/navigation/AppNavigator';
 import { ScheduledSlotsProvider } from './assets/contexts/ScheduledSlotsContext';
 import { LanguageProvider } from './assets/screens/SafetyResource_Screens/LanguagePage';
+import { NotificationProvider } from './assets/contexts/NotificationContext'; // Fixed path
 import './backend/Firebase/FirebaseConfig';
-
 
 export default function App() {
   return (
-    <LanguageProvider>
-      <ScheduledSlotsProvider>
-        <ThemeProvider>
-          <AppNavigator />
-        </ThemeProvider>
-      </ScheduledSlotsProvider>
-    </LanguageProvider>
+    <NotificationProvider>
+      <LanguageProvider>
+        <ScheduledSlotsProvider>
+          <ThemeProvider>
+            <AppNavigator />
+          </ThemeProvider>
+        </ScheduledSlotsProvider>
+      </LanguageProvider>
+    </NotificationProvider>
   );
 }
 

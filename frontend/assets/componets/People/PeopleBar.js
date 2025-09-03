@@ -24,6 +24,7 @@ import FriendList from './FriendsList';
 import CommunityList from './CommunityList';
 import FeedList from './FeedList';
 import NotificationBell from '../NotificationBell';
+import FriendsService from '../../services/FriendsService';
 
 const { width, height } = Dimensions.get('window');
 
@@ -40,7 +41,8 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-const peopleData = [
+// Fallback static data (from main branch)
+const staticPeopleData = [
   {
     id: 1,
     name: 'Unathi Gumede',
@@ -49,6 +51,7 @@ const peopleData = [
     distance: '5 km away',
     battery: '4%',
     avatar: require('../../images/Unathi.jpg'),
+    isCloseFriend: true,
   },
   {
     id: 2,
@@ -58,6 +61,7 @@ const peopleData = [
     distance: '23 km away',
     battery: '85%',
     avatar: require('../../images/Cheyenne.jpg'),
+    isCloseFriend: true,
   },
   {
     id: 3,
@@ -67,6 +71,7 @@ const peopleData = [
     distance: 'Lost Distance',
     battery: '62%',
     avatar: require('../../images/Mpilo.jpg'),
+    isCloseFriend: false,
   },
   {
     id: 4,
@@ -76,6 +81,7 @@ const peopleData = [
     distance: 'Unknown',
     battery: '74%',
     avatar: require('../../images/Kuhle.jpg'),
+    isCloseFriend: false,
   },
   {
     id: 5,
@@ -85,6 +91,7 @@ const peopleData = [
     distance: '5 m away',
     battery: '88%',
     avatar: require('../../images/Kevin.jpg'),
+    isCloseFriend: false,
   },
   {
     id: 6,
@@ -94,6 +101,7 @@ const peopleData = [
     distance: '10 km away',
     battery: '56%',
     avatar: require('../../images/Cheyenne.jpg'),
+    isCloseFriend: false,
   },
 ];
 
@@ -113,6 +121,8 @@ const PeopleBar = () => {
   const [phoneOverlayVisible, setPhoneOverlayVisible] = useState(false);
   const [userData, setUserData] = useState(null);
   const [activeTab, setActiveTab] = useState('friends');
+  const [friendsData, setFriendsData] = useState([]);
+  const [loading, setLoading] = useState(true);
   const navigation = useNavigation();
   
   // Responsive dimensions
@@ -135,6 +145,44 @@ const PeopleBar = () => {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const styles = getStyles(isDark);
+
+  // Initialize FriendsService when component mounts
+  useEffect(() => {
+    const initializeFriendsService = async () => {
+      try {
+        const jsonValue = await AsyncStorage.getItem('userData');
+        if (jsonValue) {
+          const user = JSON.parse(jsonValue);
+          console.log('PeopleBar: User data loaded:', user.uid);
+          setUserData(user);
+          
+          // Initialize FriendsService
+          await FriendsService.initialize(user);
+        }
+      } catch (error) {
+        console.error('PeopleBar: Error initializing:', error);
+        // Fallback to static data if service fails
+        setFriendsData(staticPeopleData);
+        setLoading(false);
+      }
+    };
+
+    initializeFriendsService();
+  }, []);
+
+  // Subscribe to FriendsService updates
+  useEffect(() => {
+    console.log('PeopleBar: Subscribing to FriendsService updates');
+    
+    const unsubscribe = FriendsService.subscribe((friends, isLoading) => {
+      console.log('PeopleBar: Received friends update:', friends.length, 'friends, loading:', isLoading);
+      setFriendsData(friends);
+      setLoading(isLoading);
+      setLastUpdated(new Date());
+    });
+
+    return unsubscribe;
+  }, []);
 
   // Gesture handler with improved touch response
   const panResponder = useRef(
@@ -217,20 +265,6 @@ const PeopleBar = () => {
     })
   ).current;
 
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const jsonValue = await AsyncStorage.getItem('userData');
-        if (jsonValue) {
-          setUserData(JSON.parse(jsonValue));
-        }
-      } catch (e) {
-        console.error('Error reading user data:', e);
-      }
-    };
-    fetchUserData();
-  }, []);
-
   const togglePanel = (expand) => {
     const targetHeight = expand ? dragState.maxHeight : dragState.minHeight;
     setIsExpanded(expand);
@@ -250,12 +284,21 @@ const PeopleBar = () => {
     ]).start();
   };
 
-  const onRefresh = () => {
+  const onRefresh = async () => {
     setRefreshing(true);
-    setTimeout(() => {
+    try {
+      await FriendsService.refresh();
       setLastUpdated(new Date());
+    } catch (error) {
+      console.error('PeopleBar: Error refreshing friends:', error);
+      // Fallback refresh behavior
+      setTimeout(() => {
+        setLastUpdated(new Date());
+        setRefreshing(false);
+      }, 1500);
+    } finally {
       setRefreshing(false);
-    }, 1500);
+    }
   };
 
   const formatTime = (date) => date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -265,13 +308,20 @@ const PeopleBar = () => {
     const batteryLevel = parseInt(person.battery);
     const batteryColor = batteryLevel < 20 ? '#ff6b6b' : '#51e651';
     const statusColor = person.status === 'Online' ? '#51e651' : '#a0a0a0';
-    const isLast = index === peopleData.length - 1;
+    const isLast = index === friendsData.length - 1;
 
     return (
       <TouchableOpacity
         key={person.id}
         style={[styles.personContainer, isLast && { borderBottomWidth: 0 }]}
-        onPress={() => navigation.navigate('Profile', { person })}
+        onPress={() => navigation.navigate('Profile', { 
+          person: {
+            ...person,
+            id: person.id,
+            name: person.name,
+            avatar: person.avatar,
+          }
+        })}
         activeOpacity={0.7}
       >
         <View style={styles.avatarSection}>
@@ -301,6 +351,12 @@ const PeopleBar = () => {
   const renderTabContent = () => {
     const TabComponents = { friends: FriendList, community: CommunityList, feed: FeedList };
     const Component = TabComponents[activeTab] || FriendList;
+    
+    // Pass friendsData to FriendList component
+    if (activeTab === 'friends') {
+      return <Component friendsData={friendsData} />;
+    }
+    
     return <Component />;
   };
 
@@ -331,6 +387,20 @@ const PeopleBar = () => {
     );
   };
 
+  const renderEmptyState = () => (
+    <View style={styles.emptyState}>
+      <Ionicons name="people-outline" size={48} color={isDark ? '#666' : '#ccc'} />
+      <Text style={styles.emptyStateText}>No friends yet</Text>
+      <Text style={styles.emptyStateSubtext}>Send friend requests to see your friends here</Text>
+    </View>
+  );
+
+  const renderLoadingState = () => (
+    <View style={styles.loadingState}>
+      <Text style={styles.loadingText}>Loading friends...</Text>
+    </View>
+  );
+
   return (
     <>
       <Animated.View style={[styles.container, { height: animatedHeight }]}>
@@ -345,7 +415,7 @@ const PeopleBar = () => {
           </View>
 
           <View style={styles.header}>
-            <Text style={styles.headerText}>People</Text>
+            <Text style={styles.headerText}>Friends ({friendsData.length})</Text>
             <View style={styles.headerRight}>
               <Text style={styles.lastUpdatedText}>
                 Last updated: {formatTime(lastUpdated)}
@@ -376,7 +446,13 @@ const PeopleBar = () => {
                 scrollEventThrottle={16}
                 nestedScrollEnabled
               >
-                {peopleData.map(renderPersonItem)}
+                {loading ? (
+                  renderLoadingState()
+                ) : friendsData.length === 0 ? (
+                  renderEmptyState()
+                ) : (
+                  friendsData.map(renderPersonItem)
+                )}
               </ScrollView>
             )}
           </View>
@@ -396,8 +472,8 @@ const PeopleBar = () => {
       <PhoneOverlay
         visible={phoneOverlayVisible}
         onClose={() => setPhoneOverlayVisible(false)}
-        myPhone={userData?.phone || userData?.phoneNumber} 
-        userEmail={userData?.email}  
+        myPhone={userData?.phone || userData?.phoneNumber || userData?.Phone} 
+        userEmail={userData?.email || userData?.Email}  
       />
     </>
   );
@@ -605,7 +681,34 @@ const getStyles = (isDark) => StyleSheet.create({
     color: isDark ? '#fff' : '#333',
     fontWeight: '600',
   },
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  emptyStateText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: isDark ? '#ccc' : '#666',
+    marginTop: 12,
+  },
+  emptyStateSubtext: {
+    fontSize: 12,
+    color: isDark ? '#999' : '#888',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  loadingState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: isDark ? '#ccc' : '#666',
+  },
 });
 
 export default PeopleBar;
-

@@ -3,8 +3,8 @@ import React, { useState } from 'react';
 import SOSBtn from './SOSBtn';
 import { useMapContext } from '../contexts/MapContext';
 import Helpline from './Helpline';
-import PeopleBar from './PeopleBar';
-import PeoplePanel from './PeoplePanel';
+import PeopleBar from './People/PeopleBar';
+
 
 const { width, height } = Dimensions.get('window');
 
