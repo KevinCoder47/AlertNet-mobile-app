@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { collection, doc, getDoc, getDocs, onSnapshot, query, where, writeBatch } from 'firebase/firestore';
-import { db } from '../../../backend/Firebase/FirebaseConfig';
+import { db } from '../../backend/Firebase/FirebaseConfig';
 
 class FriendsService {
   constructor() {
@@ -411,7 +411,7 @@ class FriendsService {
       status,
       distance,
       battery: friendData.Battery || '100%',
-      avatar: friendData.ImageURL ? { uri: friendData.ImageURL } : require('../../images/default-avatar.png'),
+      avatar: friendData.ImageURL ? { uri: friendData.ImageURL } : require('../images/default-avatar.jpg'),
       phone: friendData.Phone || '',
       email: friendData.Email || '',
       rating: friendData.Rating || 0,
