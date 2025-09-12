@@ -74,7 +74,7 @@ export const FirebaseService = {
   },
 
 /**
- * Listen to notifications for a specific user (FIXED VERSION)
+ * Listen to notifications for a specific user 
  * @param {string} userPhone - User's phone number
  * @param {Function} callback - Callback function to handle notification updates
  * @returns {Function} - Unsubscribe function
@@ -86,18 +86,13 @@ listenToNotifications: (userPhone, callback) => {
     
     const notificationsRef = collection(db, 'notifications');
     
-    // OPTION A: Simple query without ordering (no index required)
+    
     const q = query(
       notificationsRef,
       where('recipientPhone', '==', formattedPhone),
-      limit(50) // Remove orderBy to avoid index requirement
+      limit(50) 
     );
     
-    // OPTION B: Alternative with simpler ordering
-    // const q = query(
-    //   notificationsRef,
-    //   where('recipientPhone', '==', formattedPhone)
-    // );
     
     return onSnapshot(q, (snapshot) => {
       const notifications = [];
@@ -392,144 +387,186 @@ listenToNotifications: (userPhone, callback) => {
     }
   },
 
-  /**
-   * Enhanced sendFriendRequest with notifications
-   * @param {Object} friendData - { firstName, lastName, phone, senderPhone, senderEmail }
-   * @returns {Object} - { success: boolean, message: string, requestId?: string }
-   */
-  sendFriendRequest: async (friendData) => {
-    try {
-      console.log('📨 Starting friend request process...');
-      
-      const currentUser = auth.currentUser;
-      const { firstName, lastName, phone, senderPhone, senderEmail } = friendData;
-      
-      // Get sender info
-      const senderId = currentUser ? currentUser.uid : `temp_${Date.now()}`;
-      const userEmail = senderEmail || (currentUser ? currentUser.email : 'guest@alertnet.com');
-      
-      // Format phone numbers
-      const formattedRecipientPhone = FirebaseService.formatPhoneNumber(phone);
-      const formattedSenderPhone = FirebaseService.formatPhoneNumber(senderPhone);
-      
-      console.log('👤 Sender phone:', formattedSenderPhone);
-      console.log('👥 Recipient phone:', formattedRecipientPhone);
-      
-      // Step 1: Check if recipient exists
-      const userCheck = await FirebaseService.checkUserExists(formattedRecipientPhone);
-      if (userCheck.error) {
-        console.error('❌ Error checking user database');
-        return { success: false, error: 'Error checking user database' };
-      }
-      
-      if (!userCheck.exists) {
-        console.log('❌ User does not exist on platform');
-        return { 
-          success: false, 
-          error: 'This person is not on AlertNet',
-          message: 'This person is not on AlertNet'
-        };
-      }
-      
-      console.log('✅ Recipient exists on platform');
-      
-      // Step 2: Prevent self-requests (comment out for testing)
-     /* if (formattedSenderPhone === formattedRecipientPhone) {
-        console.log('❌ Self-request attempted');
-        return { 
-          success: false, 
-          error: 'You cannot send a friend request to yourself',
-          message: 'You cannot send a friend request to yourself'
-        };
-      }*/
-      
-      // Step 3: Check for existing requests
-      const existingRequest = await FirebaseService.checkExistingFriendRequest(formattedSenderPhone, formattedRecipientPhone);
-      if (existingRequest.error) {
-        console.error('❌ Error checking existing requests');
-        return { success: false, error: 'Error checking existing requests' };
-      }
-      
-      if (existingRequest.exists) {
-        if (existingRequest.direction === 'outgoing') {
-          console.log('❌ Outgoing request already exists');
-          return { 
-            success: false, 
-            error: 'Friend request already sent',
-            message: 'You have already sent a friend request to this person'
-          };
-        } else {
-          console.log('❌ Incoming request already exists');
-          return { 
-            success: false, 
-            error: 'Pending request exists',
-            message: 'This person has already sent you a friend request. Check your notifications.'
-          };
-        }
-      }
-      
-      console.log('✅ No existing requests found, proceeding...');
-      
-      // Step 4: Create the friend request
-      const friendRequest = {
-        senderId: senderId,
-        senderEmail: userEmail,
-        senderPhone: formattedSenderPhone,
-        recipientFirstName: firstName,
-        recipientLastName: lastName,
-        recipientPhone: formattedRecipientPhone,
-        status: 'pending',
-        createdAt: serverTimestamp(),
-        senderName: currentUser?.displayName || `User ${formattedSenderPhone}`,
-        recipientUserId: userCheck.userData.id
-      };
-      
-      console.log('📝 Creating friend request document...');
-      const friendRequestsRef = collection(db, 'friendRequests');
-      const docRef = await addDoc(friendRequestsRef, friendRequest);
-      
-      console.log('✅ Friend request created with ID:', docRef.id);
-      
-      // Step 5: Create notification
-      const notificationResult = await FirebaseService.createNotification({
-        userId: userCheck.userData.id,
-        recipientPhone: formattedRecipientPhone,
-        type: 'friend_request',
-        title: 'New Friend Request',
-        message: `${friendRequest.senderName} wants to connect with you on AlertNet`,
-        priority: 'normal',
-        data: {
-          requestId: docRef.id,
-          senderPhone: formattedSenderPhone,
-          senderName: friendRequest.senderName,
-          senderEmail: userEmail,
-          action: 'view_request'
-        }
-      });
-      
-      if (notificationResult.success) {
-        console.log('📱 Notification created successfully');
-      } else {
-        console.warn('⚠️ Failed to create notification:', notificationResult.error);
-      }
-      
-      return { 
-        success: true, 
-        message: 'Friend request sent successfully!',
-        requestId: docRef.id,
-        notificationSent: notificationResult.success
-      };
+// Enhanced FirebaseService.js - sendFriendRequest method
+// This replaces the existing sendFriendRequest method in your FirebaseService.js
 
-    } catch (error) {
-      console.error('❌ Error sending friend request:', error);
+// Enhanced FirebaseService.js - sendFriendRequest method
+// This replaces the existing sendFriendRequest method in your FirebaseService.js
+
+/**
+ * Enhanced sendFriendRequest with profile picture and complete user data
+ * @param {Object} friendData - { firstName, lastName, phone, senderPhone, senderEmail, senderUserData }
+ * @returns {Object} - { success: boolean, message: string, requestId?: string }
+ */
+sendFriendRequest: async (friendData) => {
+  try {
+    console.log('📨 Starting enhanced friend request process...');
+    
+    const currentUser = auth.currentUser;
+    const { firstName, lastName, phone, senderPhone, senderEmail, senderUserData } = friendData;
+    
+    // Get sender info - Enhanced to include profile data
+    const senderId = currentUser ? currentUser.uid : `temp_${Date.now()}`;
+    const userEmail = senderEmail || (currentUser ? currentUser.email : 'guest@alertnet.com');
+    
+    console.log('=== SENDER DATA DEBUG ===');
+    console.log('senderUserData received:', senderUserData);
+    console.log('senderUserData keys:', senderUserData ? Object.keys(senderUserData) : 'null');
+    
+    // Get sender's complete profile data from passed userData
+    let senderProfileData = senderUserData;
+    if (!senderProfileData) {
+      console.log('No senderUserData provided, trying to fetch from Firebase...');
+      // Fallback: try to get sender's profile from Firebase
+      const senderResult = await FirebaseService.checkUserExists(senderPhone);
+      if (senderResult.exists) {
+        senderProfileData = senderResult.userData;
+        console.log('Retrieved sender data from Firebase:', senderProfileData);
+      }
+    }
+    
+    // Extract sender's profile information with multiple fallback options
+    const senderName = senderProfileData?.name || 
+                      senderProfileData?.FirstName || 
+                      senderProfileData?.firstName ||
+                      currentUser?.displayName || 
+                      'AlertNet User';
+    const senderSurname = senderProfileData?.surname || 
+                         senderProfileData?.LastName || 
+                         senderProfileData?.lastName ||
+                         '';
+    
+    // Check multiple possible field names for profile picture
+    const senderProfilePicture = senderProfileData?.imageUrl || 
+                                senderProfileData?.localImagePath || 
+                                senderProfileData?.profilePicture ||
+                                senderProfileData?.image ||
+                                null;
+    
+    console.log('Extracted sender info:', {
+      senderName,
+      senderSurname,
+      senderProfilePicture: senderProfilePicture ? 'URL present' : 'null',
+      senderProfilePictureUrl: senderProfilePicture
+    });
+    console.log('=== END SENDER DATA DEBUG ===');
+    
+    // Format phone numbers
+    const formattedRecipientPhone = FirebaseService.formatPhoneNumber(phone);
+    const formattedSenderPhone = FirebaseService.formatPhoneNumber(senderPhone);
+    
+    console.log('👤 Sender:', senderName, senderSurname);
+    console.log('👤 Sender phone:', formattedSenderPhone);
+    console.log('👥 Recipient phone:', formattedRecipientPhone);
+    
+    // Step 1: Check if recipient exists
+    const userCheck = await FirebaseService.checkUserExists(formattedRecipientPhone);
+    if (userCheck.error) {
+      console.error('❌ Error checking user database');
+      return { success: false, error: 'Error checking user database' };
+    }
+    
+    if (!userCheck.exists) {
+      console.log('❌ User does not exist on platform');
       return { 
         success: false, 
-        error: 'Failed to send friend request',
-        message: 'Something went wrong. Please try again.'
+        error: 'This person is not on AlertNet',
+        message: 'This person is not on AlertNet'
       };
     }
-  },
+    
+    console.log('✅ Recipient exists on platform');
+    
+    // Step 2: Check for existing requests
+    const existingRequest = await FirebaseService.checkExistingFriendRequest(formattedSenderPhone, formattedRecipientPhone);
+    if (existingRequest.error) {
+      console.error('❌ Error checking existing requests');
+      return { success: false, error: 'Error checking existing requests' };
+    }
+    
+    if (existingRequest.exists) {
+      if (existingRequest.direction === 'outgoing') {
+        console.log('❌ Outgoing request already exists');
+        return { 
+          success: false, 
+          error: 'Friend request already sent',
+          message: 'You have already sent a friend request to this person'
+        };
+      } else {
+        console.log('❌ Incoming request already exists');
+        return { 
+          success: false, 
+          error: 'Pending request exists',
+          message: 'This person has already sent you a friend request. Check your notifications.'
+        };
+      }
+    }
+    
+    console.log('✅ No existing requests found, proceeding...');
+    
+    // Step 3: Create the enhanced friend request with profile data
+    const friendRequest = {
+      senderId: senderId,
+      senderEmail: userEmail,
+      senderPhone: formattedSenderPhone,
+      senderName: senderName,
+      senderSurname: senderSurname,
+      senderProfilePicture: senderProfilePicture,
+      recipientFirstName: firstName,
+      recipientLastName: lastName,
+      recipientPhone: formattedRecipientPhone,
+      recipientUserId: userCheck.userData.id,
+      status: 'pending',
+      createdAt: serverTimestamp()
+    };
+    
+    console.log('📝 Creating enhanced friend request document...');
+    const friendRequestsRef = collection(db, 'friendRequests');
+    const docRef = await addDoc(friendRequestsRef, friendRequest);
+    
+    console.log('✅ Friend request created with ID:', docRef.id);
+    
+    // Step 4: Create enhanced notification with profile data
+    const notificationResult = await FirebaseService.createNotification({
+      userId: userCheck.userData.id,
+      recipientPhone: formattedRecipientPhone,
+      type: 'friend_request',
+      title: 'New Friend Request',
+      message: `${senderName} ${senderSurname} wants to connect with you on AlertNet`,
+      priority: 'normal',
+      data: {
+        requestId: docRef.id,
+        senderPhone: formattedSenderPhone,
+        senderName: senderName,
+        senderSurname: senderSurname,
+        senderEmail: userEmail,
+        profilePicture: senderProfilePicture, // Include profile picture in notification data
+        action: 'view_request'
+      }
+    });
+    
+    if (notificationResult.success) {
+      console.log('📱 Enhanced notification created successfully');
+    } else {
+      console.warn('⚠️ Failed to create notification:', notificationResult.error);
+    }
+    
+    return { 
+      success: true, 
+      message: 'Friend request sent successfully!',
+      requestId: docRef.id,
+      notificationSent: notificationResult.success
+    };
 
+  } catch (error) {
+    console.error('❌ Error sending friend request:', error);
+    return { 
+      success: false, 
+      error: 'Failed to send friend request',
+      message: 'Something went wrong. Please try again.'
+    };
+  }
+},
   /**
    * Accept a friend request with notification
    * @param {string} requestId - Friend request document ID

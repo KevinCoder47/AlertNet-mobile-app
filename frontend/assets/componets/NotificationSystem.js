@@ -392,33 +392,72 @@ const NotificationSystem = ({ children }) => {
 
   // Render profile picture
   const renderProfilePicture = (profilePicture, senderName) => {
-    if (profilePicture) {
+    // Handle profile picture with better error handling
+    if (profilePicture && profilePicture.trim() !== '') {
       return (
         <Image
           source={{ uri: profilePicture }}
           style={styles.profilePicture}
-          defaultSource={require('../../assets/default-avatar.png')} // Add default avatar
+          onError={(error) => {
+            console.log('Profile picture failed to load in slide notification:', error.nativeEvent.error);
+            // The component will automatically fall back to default avatar
+            setImageError(true);
+          }}
+          onLoad={() => {
+            console.log('Profile picture loaded successfully in slide notification');
+            setImageError(false);
+          }}
         />
       );
     } else {
+      // Default avatar with user's initial
+      const initial = senderName ? senderName.charAt(0).toUpperCase() : 'U';
       return (
         <View style={styles.defaultProfilePicture}>
           <Text style={styles.profileInitial}>
-            {senderName ? senderName.charAt(0).toUpperCase() : 'U'}
+            {initial}
           </Text>
         </View>
       );
     }
   };
+  
 
   // Enhanced slide-down notification banner
   const renderSlideNotification = () => {
     if (!currentSlideNotification) return null;
-
+  
     const notification = currentSlideNotification;
-    const { senderName, senderSurname, profilePicture } = notification.data || {};
+    
+    // Enhanced data extraction with better fallbacks
+    const { 
+      senderName, 
+      senderSurname, 
+      profilePicture,
+      // Also check for alternative field names
+      senderFirstName,
+      senderLastName
+    } = notification.data || {};
+    
+    // Build display name with fallbacks
+    const firstName = senderName || senderFirstName || 'AlertNet User';
+    const lastName = senderSurname || senderLastName || '';
+    const displayName = `${firstName} ${lastName}`.trim();
+    
+    // Enhanced profile picture URL handling
+    const profileImageUrl = profilePicture && typeof profilePicture === 'string' 
+      ? profilePicture.trim() 
+      : null;
+    
     const isConnectionRequest = notification.type === 'friend_request';
-
+    
+    console.log('Rendering slide notification:', {
+      displayName,
+      profileImageUrl,
+      notificationType: notification.type,
+      message: notification.message
+    });
+  
     return (
       <Animated.View
         style={[
@@ -440,10 +479,10 @@ const NotificationSystem = ({ children }) => {
           <View style={styles.notificationHeader}>
             {/* Profile Picture */}
             <View style={styles.profileSection}>
-              {renderProfilePicture(profilePicture, senderName)}
+              {renderProfilePicture(profileImageUrl, firstName)}
               <View style={styles.nameSection}>
                 <Text style={styles.senderName}>
-                  {senderName} {senderSurname}
+                  {displayName}
                 </Text>
                 <Text style={styles.notificationSubtitle}>
                   {notification.message}
@@ -502,7 +541,25 @@ const NotificationSystem = ({ children }) => {
   const renderNotificationItem = ({ item: notification }) => {
     const isUnread = !notification.read;
     const timeAgo = getTimeAgo(notification.createdAt);
-    const { senderName, senderSurname, profilePicture } = notification.data || {};
+    
+    // Enhanced data extraction
+    const { 
+      senderName, 
+      senderSurname, 
+      profilePicture,
+      senderFirstName,
+      senderLastName
+    } = notification.data || {};
+    
+    // Build display name with fallbacks
+    const firstName = senderName || senderFirstName || 'AlertNet User';
+    const lastName = senderSurname || senderLastName || '';
+    const displayName = `${firstName} ${lastName}`.trim();
+    
+    // Enhanced profile picture URL handling
+    const profileImageUrl = profilePicture && typeof profilePicture === 'string' 
+      ? profilePicture.trim() 
+      : null;
     
     return (
       <TouchableOpacity
@@ -515,7 +572,7 @@ const NotificationSystem = ({ children }) => {
         <View style={styles.listItemContent}>
           {/* Profile Picture */}
           <View style={styles.listProfileSection}>
-            {renderProfilePicture(profilePicture, senderName)}
+            {renderProfilePicture(profileImageUrl, firstName)}
           </View>
           
           <View style={styles.listTextContent}>
@@ -524,7 +581,7 @@ const NotificationSystem = ({ children }) => {
                 styles.listNotificationTitle,
                 isUnread && styles.unreadText
               ]}>
-                {senderName} {senderSurname}
+                {displayName}
               </Text>
               <Text style={styles.notificationTime}>{timeAgo}</Text>
             </View>

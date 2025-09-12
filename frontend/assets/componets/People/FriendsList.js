@@ -1,106 +1,15 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   Image,
-  StyleSheet,
-  useColorScheme,
-  FlatList,
   TouchableOpacity,
-  ScrollView,
-  RefreshControl,
+  StyleSheet,
+  FlatList,
+  useColorScheme,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import FriendsService from '../../services/FriendsService';
-
-// Fallback static data (from main branch)
-const staticCloseFriends = [
-  {
-    id: '1',
-    name: 'Unathi Gumede',
-    location: 'Helen Joseph Hospital',
-    status: 'Online',
-    distance: '5 km away',
-    battery: '4%',
-    avatar: require('../../images/Unathi.jpg'),
-    isCloseFriend: true,
-  },
-  {
-    id: '2',
-    name: 'Cheyenne Luthuli',
-    location: 'Mayfair West',
-    status: 'Offline',
-    distance: '23 km away',
-    battery: '85%',
-    avatar: require('../../images/Cheyenne.jpg'),
-    isCloseFriend: true,
-  },
-  {
-    id: '3',
-    name: 'Nomusa Buthelezi',
-    location: 'Soweto',
-    status: 'Online',
-    distance: '10 km away',
-    battery: '64%',
-    avatar: require('../../images/Cheyenne.jpg'),
-    isCloseFriend: true,
-  },
-  {
-    id: '4',
-    name: 'Junior Madiba',
-    location: 'Braamfontein',
-    status: 'Offline',
-    distance: '12 km away',
-    battery: '78%',
-    avatar: require('../../images/Junior.jpg'),
-    isCloseFriend: true,
-  },
-];
-
-const staticRegularFriends = [
-  {
-    id: '5',
-    name: 'Mpilonhle Radebe',
-    location: 'Campus Square',
-    status: 'Online',
-    distance: '3 km away',
-    battery: '62%',
-    avatar: require('../../images/Mpilo.jpg'),
-    isCloseFriend: false,
-  },
-  {
-    id: '6',
-    name: 'Kuhle Mgudlwa',
-    location: 'Unknown',
-    status: 'Offline',
-    distance: 'Unknown',
-    battery: '74%',
-    avatar: require('../../images/Kuhle.jpg'),
-    isCloseFriend: false,
-  },
-  {
-    id: '7',
-    name: 'Kevin Serakalala',
-    location: 'Campus Square',
-    status: 'Online',
-    distance: '5 m away',
-    battery: '88%',
-    avatar: require('../../images/Kevin.jpg'),
-    isCloseFriend: false,
-  },
-  {
-    id: '8',
-    name: 'Sphephile Mtshali',
-    location: 'Gold Reef City',
-    status: 'Offline',
-    distance: '10 km away',
-    battery: '56%',
-    avatar: require('../../images/Cheyenne.jpg'),
-    isCloseFriend: false,
-  },
-];
 
 const getBatteryIconName = (batteryPercentStr) => {
   const percent = parseInt(batteryPercentStr);
@@ -111,371 +20,262 @@ const getBatteryIconName = (batteryPercentStr) => {
   return 'battery-dead';
 };
 
-const FriendsList = ({ searchQuery = '', friendsData: propFriendsData }) => {
-  const isDark = useColorScheme() === 'dark';
+const FriendList = ({ friendsData = [] }) => {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
   const styles = getStyles(isDark);
-  const scrollRef = useRef();
-  const [refreshing, setRefreshing] = useState(false);
-  const [friendsData, setFriendsData] = useState(propFriendsData || []);
-  const [loading, setLoading] = useState(!propFriendsData);
   const navigation = useNavigation();
 
-  // Initialize FriendsService when component mounts
-  useEffect(() => {
-    const initializeFriendsService = async () => {
-      try {
-        const jsonValue = await AsyncStorage.getItem('userData');
-        if (jsonValue) {
-          const userData = JSON.parse(jsonValue);
-          console.log('FriendsList: Initializing FriendsService with userData:', userData.uid);
-          await FriendsService.initialize(userData);
-        }
-      } catch (error) {
-        console.error('FriendsList: Error initializing FriendsService:', error);
-        // Fallback to static data if service fails
-        setFriendsData([...staticCloseFriends, ...staticRegularFriends]);
-        setLoading(false);
-      }
-    };
-
-    // Only initialize if not using prop data
-    if (!propFriendsData) {
-      initializeFriendsService();
-    }
-  }, [propFriendsData]);
-
-  // Subscribe to FriendsService updates
-  useEffect(() => {
-    if (propFriendsData) {
-      // If using prop data, just update when props change
-      setFriendsData(propFriendsData);
-      setLoading(false);
-      return;
-    }
-
-    console.log('FriendsList: Subscribing to FriendsService updates');
-    
-    const unsubscribe = FriendsService.subscribe((friends, isLoading) => {
-      console.log('FriendsList: Received friends update:', friends.length, 'friends, loading:', isLoading);
-      setFriendsData(friends);
-      setLoading(isLoading);
-    });
-
-    return unsubscribe;
-  }, [propFriendsData]);
-
-  const onRefresh = async () => {
-    if (propFriendsData) {
-      // If using prop data, just stop refreshing
-      setRefreshing(false);
-      return;
-    }
-
-    setRefreshing(true);
-    try {
-      await FriendsService.refresh();
-    } catch (error) {
-      console.error('FriendsList: Error refreshing friends:', error);
-      // Fallback refresh behavior
-      setTimeout(() => {
-        setRefreshing(false);
-      }, 1500);
-    } finally {
-      setRefreshing(false);
-    }
-  };
-
-  // Filter friends based on search query
-  const filteredFriends = friendsData.filter((person) =>
-    person.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  // Separate close friends and regular friends
-  const filteredCloseFriends = filteredFriends.filter(friend => friend.isCloseFriend);
-  const filteredRegularFriends = filteredFriends.filter(friend => !friend.isCloseFriend);
-
-  const renderRegularFriendCard = ({ item }) => {
-    const statusColor = item.status === 'Online' ? '#51e651' : '#a0a0a0';
-    return (
-      <TouchableOpacity
-        style={styles.regularFriendCard}
-        onPress={() => navigation.navigate('Profile', { 
-          person: {
-            ...item,
-            id: item.id,
-            name: item.name,
-            avatar: item.avatar,
-          }
-        })}
-        activeOpacity={0.7}
-      >
-        <View style={styles.avatarWrapper}>
-          <Image source={item.avatar} style={styles.regularAvatar} />
-          <View
-            style={[
-              styles.statusDot,
-              {
-                backgroundColor: statusColor,
-                borderColor: '#fff',
-                top: 0,
-                right: 0,
-              },
-            ]}
-          />
-        </View>
-        <Text style={styles.regularName} numberOfLines={2}>
-          {item.name}
-        </Text>
-      </TouchableOpacity>
-    );
-  };
-
-  const renderCloseFriend = (item) => {
-    const batteryIcon = getBatteryIconName(item.battery);
-    const batteryLevel = parseInt(item.battery);
+  const renderFriendItem = ({ item: friend, index }) => {
+    const batteryIcon = getBatteryIconName(friend.battery);
+    const batteryLevel = parseInt(friend.battery);
     const batteryColor = batteryLevel < 20 ? '#ff6b6b' : '#51e651';
-    const statusColor = item.status === 'Online' ? '#51e651' : '#a0a0a0';
+    const statusColor = friend.status === 'Online' ? '#51e651' : '#a0a0a0';
+    const isLast = index === friendsData.length - 1;
 
     return (
       <TouchableOpacity
-        key={item.id}
-        style={styles.personContainer}
-        onPress={() => navigation.navigate('Profile', { 
-          person: {
-            ...item,
-            id: item.id,
-            name: item.name,
-            avatar: item.avatar,
-          }
-        })}
+        style={[styles.friendContainer, isLast && { borderBottomWidth: 0 }]}
+        onPress={() => {
+          navigation.navigate('Profile', { 
+            person: {
+              ...friend,
+              id: friend.friendId || friend.id,
+              name: friend.name,
+              phone: friend.phone,
+              email: friend.email,
+              avatar: friend.avatar,
+            }
+          });
+        }}
         activeOpacity={0.7}
       >
         <View style={styles.avatarSection}>
-          <Image source={item.avatar} style={styles.avatar} />
-          <View
-            style={[
-              styles.statusDot,
-              {
-                backgroundColor: statusColor,
-                borderColor: '#fff',
-                top: 0,
-                right: 0,
-              },
-            ]}
-          />
-          <View style={styles.batteryBelowAvatar}>
+          {friend.avatar ? (
+            <Image source={{ uri: friend.avatar }} style={styles.avatar} />
+          ) : (
+            <View style={styles.defaultAvatar}>
+              <Text style={styles.avatarInitial}>
+                {friend.name ? friend.name.charAt(0).toUpperCase() : 'F'}
+              </Text>
+            </View>
+          )}
+          
+          {/* Online status indicator */}
+          <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+          
+          {/* Battery indicator */}
+          <View style={styles.batteryInfo}>
             <Ionicons name={batteryIcon} size={12} color={batteryColor} />
-            <Text style={[styles.batteryTextUnder, { color: batteryColor }]}>
-              {item.battery}
-            </Text>
+            <Text style={[styles.batteryText, { color: batteryColor }]}>{friend.battery}</Text>
           </View>
         </View>
 
         <View style={styles.infoSection}>
-          <Text style={styles.personName}>{item.name}</Text>
-          <Text style={styles.personLocation}>{item.location}</Text>
+          <Text style={styles.friendName} numberOfLines={1}>{friend.name}</Text>
+          <Text style={styles.friendLocation} numberOfLines={1}>{friend.location}</Text>
           <View style={styles.statusRow}>
-            <Text style={[styles.personStatus, { color: statusColor }]}>
-              {item.status}
-            </Text>
+            <Text style={[styles.friendStatus, { color: statusColor }]}>{friend.status}</Text>
             <Text style={styles.divider}>•</Text>
-            <Text style={styles.personDistance}>{item.distance}</Text>
+            <Text style={styles.friendDistance} numberOfLines={1}>{friend.distance}</Text>
           </View>
         </View>
 
-        <Ionicons name="chevron-forward" size={18} color={isDark ? '#ccc' : '#333'} />
+        <View style={styles.actionSection}>
+          <TouchableOpacity 
+            style={styles.messageButton}
+            onPress={() => {
+              // Navigate to messaging or call feature
+              console.log('Message friend:', friend.name);
+            }}
+          >
+            <Ionicons name="chatbubble" size={18} color={isDark ? '#007AFF' : '#007AFF'} />
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.callButton}
+            onPress={() => {
+              // Initiate call to friend
+              console.log('Call friend:', friend.phone);
+            }}
+          >
+            <Ionicons name="call" size={18} color={isDark ? '#34C759' : '#34C759'} />
+          </TouchableOpacity>
+        </View>
       </TouchableOpacity>
     );
   };
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
-      {searchQuery ? (
-        <>
-          <Ionicons name="search" size={48} color={isDark ? '#555' : '#ccc'} />
-          <Text style={styles.emptyStateText}>No friends found matching "{searchQuery}"</Text>
-        </>
-      ) : (
-        <>
-          <Ionicons name="people-outline" size={48} color={isDark ? '#555' : '#ccc'} />
-          <Text style={styles.emptyStateText}>No friends yet</Text>
-          <Text style={styles.emptyStateSubtext}>Send friend requests to see your friends here</Text>
-        </>
-      )}
+      <Ionicons name="people-outline" size={64} color={isDark ? '#666' : '#ccc'} />
+      <Text style={styles.emptyStateText}>No friends connected</Text>
+      <Text style={styles.emptyStateSubtext}>
+        Your accepted friends will appear here with their live status
+      </Text>
     </View>
   );
 
-  const renderLoadingState = () => (
-    <View style={styles.loadingState}>
-      <Text style={styles.loadingText}>Loading friends...</Text>
-    </View>
-  );
-
-  if (loading && filteredFriends.length === 0) {
-    return renderLoadingState();
+  if (friendsData.length === 0) {
+    return renderEmptyState();
   }
 
   return (
-    <ScrollView
-      ref={scrollRef}
+    <FlatList
+      data={friendsData}
+      renderItem={renderFriendItem}
+      keyExtractor={(item) => item.id || item.friendId}
       showsVerticalScrollIndicator={false}
-      style={{ paddingHorizontal: 10 }}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-    >
-      {/* Horizontal Regular Friends */}
-      {filteredRegularFriends.length > 0 && (
-        <FlatList
-          data={filteredRegularFriends}
-          keyExtractor={(item) => item.id}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingVertical: 12 }}
-          renderItem={renderRegularFriendCard}
-        />
-      )}
-
-      {/* Section Title for Close Friends */}
-      {filteredCloseFriends.length > 0 && (
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Close Friends</Text>
-          <Text style={styles.sectionSubtitle}>A Circle built on Trust and Safety</Text>
-        </View>
-      )}
-
-      {/* Vertical Close Friends */}
-      {filteredCloseFriends.map(renderCloseFriend)}
-
-      {/* Empty State */}
-      {filteredFriends.length === 0 && renderEmptyState()}
-    </ScrollView>
+      style={styles.container}
+      contentContainerStyle={styles.listContent}
+    />
   );
 };
 
-const getStyles = (isDark) =>
-  StyleSheet.create({
-    personContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: 12,
-      borderBottomWidth: 0.5,
-      borderBottomColor: isDark ? '#444' : '#ccc',
-      justifyContent: 'space-between',
-    },
-    avatarSection: {
-      position: 'relative',
-      marginRight: 12,
-      alignItems: 'center',
-    },
-    avatar: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
-    },
-    statusDot: {
-      position: 'absolute',
-      width: 10,
-      height: 10,
-      borderRadius: 5,
-      borderWidth: 1.5,
-    },
-    batteryBelowAvatar: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginTop: 4,
-    },
-    batteryTextUnder: {
-      fontSize: 11,
-      marginLeft: 4,
-    },
-    infoSection: {
-      flex: 1,
-      justifyContent: 'center',
-    },
-    personName: {
-      fontWeight: '600',
-      fontSize: 15,
-      color: isDark ? 'white' : '#111',
-    },
-    personLocation: {
-      fontSize: 12,
-      color: isDark ? '#b0b0b0' : '#444',
-      marginBottom: 1,
-    },
-    statusRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    personStatus: {
-      fontSize: 12,
-      fontWeight: '500',
-    },
-    divider: {
-      color: '#666',
-      marginHorizontal: 5,
-    },
-    personDistance: {
-      fontSize: 12,
-      color: isDark ? '#a0a0a0' : '#555',
-    },
-    regularFriendCard: {
-      width: 70,
-      alignItems: 'center',
-      marginRight: 14,
-      paddingVertical: 4,
-    },
-    regularAvatar: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
-    },
-    regularName: {
-      fontSize: 12,
-      fontWeight: '500',
-      marginTop: 6,
-      textAlign: 'center',
-      color: isDark ? '#fff' : '#222',
-    },
-    avatarWrapper: {
-      position: 'relative',
-    },
-    sectionHeader: {
-      marginTop: 10,
-      marginBottom: 8,
-    },
-    sectionTitle: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: isDark ? '#fff' : '#333',
-    },
-    sectionSubtitle: {
-      fontSize: 12,
-      color: isDark ? '#888' : '#666',
-      marginTop: 2,
-    },
-    emptyState: {
-      alignItems: 'center',
-      paddingVertical: 40,
-    },
-    emptyStateText: {
-      fontSize: 14,
-      color: isDark ? '#888' : '#666',
-      marginTop: 12,
-      textAlign: 'center',
-    },
-    emptyStateSubtext: {
-      fontSize: 12,
-      color: isDark ? '#999' : '#888',
-      marginTop: 4,
-      textAlign: 'center',
-    },
-    loadingState: {
-      alignItems: 'center',
-      paddingVertical: 40,
-    },
-    loadingText: {
-      fontSize: 14,
-      color: isDark ? '#ccc' : '#666',
-    },
-  });
+const getStyles = (isDark) => StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  listContent: {
+    paddingBottom: 10,
+  },
+  friendContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 5,
+    borderBottomWidth: 0.5,
+    borderBottomColor: isDark ? '#444' : '#e0e0e0',
+  },
+  avatarSection: {
+    position: 'relative',
+    marginRight: 12,
+    alignItems: 'center',
+  },
+  avatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    borderWidth: 2,
+    borderColor: isDark ? '#555' : '#e0e0e0',
+  },
+  defaultAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: isDark ? '#555' : '#e0e0e0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: isDark ? '#666' : '#d0d0d0',
+  },
+  avatarInitial: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: isDark ? '#fff' : '#333',
+  },
+  statusDot: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: isDark ? '#000' : '#fff',
+  },
+  batteryInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.8)',
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 8,
+  },
+  batteryText: { 
+    fontSize: 10, 
+    marginLeft: 2,
+    fontWeight: '600',
+  },
+  infoSection: { 
+    flex: 1, 
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  friendName: {
+    fontWeight: '700',
+    fontSize: 16,
+    color: isDark ? 'white' : '#111',
+    marginBottom: 3,
+  },
+  friendLocation: {
+    fontSize: 13,
+    color: isDark ? '#b0b0b0' : '#666',
+    marginBottom: 2,
+  },
+  statusRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+  friendStatus: { 
+    fontSize: 12, 
+    fontWeight: '600',
+  },
+  divider: { 
+    color: isDark ? '#777' : '#999', 
+    marginHorizontal: 6,
+    fontSize: 12,
+  },
+  friendDistance: { 
+    fontSize: 12, 
+    color: isDark ? '#a0a0a0' : '#777',
+    flex: 1,
+    fontWeight: '500',
+  },
+  actionSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  messageButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: isDark ? 'rgba(0,122,255,0.2)' : 'rgba(0,122,255,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  callButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: isDark ? 'rgba(52,199,89,0.2)' : 'rgba(52,199,89,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 20,
+  },
+  emptyStateText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: isDark ? '#ccc' : '#666',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+    color: isDark ? '#999' : '#888',
+    marginTop: 8,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+});
 
-export default FriendsList;
+export default FriendList;

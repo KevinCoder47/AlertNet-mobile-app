@@ -24,86 +24,21 @@ import FriendList from './FriendsList';
 import CommunityList from './CommunityList';
 import FeedList from './FeedList';
 import NotificationBell from '../NotificationBell';
-import FriendsService from '../../services/FriendsService';
+import { FirebaseService } from '../../../backend/Firebase/FirebaseService';
 
 const { width, height } = Dimensions.get('window');
 
 // Cross-platform safe area calculations
 const getStatusBarHeight = () => {
   if (Platform.OS === 'ios') {
-    return height >= 812 ? 44 : 20; // iPhone X+ vs older iPhones
+    return height >= 812 ? 44 : 20;
   }
   return StatusBar.currentHeight || 24;
 };
 
-// Enable layout animations on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
-
-// Fallback static data (from main branch)
-const staticPeopleData = [
-  {
-    id: 1,
-    name: 'Unathi Gumede',
-    location: 'Helen Joseph Hospital',
-    status: 'Online',
-    distance: '5 km away',
-    battery: '4%',
-    avatar: require('../../images/Unathi.jpg'),
-    isCloseFriend: true,
-  },
-  {
-    id: 2,
-    name: 'Cheyenne Luthuli',
-    location: 'Mayfair West',
-    status: 'Offline',
-    distance: '23 km away',
-    battery: '85%',
-    avatar: require('../../images/Cheyenne.jpg'),
-    isCloseFriend: true,
-  },
-  {
-    id: 3,
-    name: 'Mpilonhle Radebe',
-    location: 'Lost Location',
-    status: 'Online',
-    distance: 'Lost Distance',
-    battery: '62%',
-    avatar: require('../../images/Mpilo.jpg'),
-    isCloseFriend: false,
-  },
-  {
-    id: 4,
-    name: 'Kuhle Mgudlwa',
-    location: 'Unknown',
-    status: 'Offline',
-    distance: 'Unknown',
-    battery: '74%',
-    avatar: require('../../images/Kuhle.jpg'),
-    isCloseFriend: false,
-  },
-  {
-    id: 5,
-    name: 'Kevin Serakalala',
-    location: 'Campus Square',
-    status: 'Online',
-    distance: '5 m away',
-    battery: '88%',
-    avatar: require('../../images/Kevin.jpg'),
-    isCloseFriend: false,
-  },
-  {
-    id: 6,
-    name: 'Sphephile Mtshali',
-    location: 'Gold Reef City',
-    status: 'Offline',
-    distance: '10 km away',
-    battery: '56%',
-    avatar: require('../../images/Cheyenne.jpg'),
-    isCloseFriend: false,
-  },
-];
 
 const getBatteryIconName = (batteryPercentStr) => {
   const percent = parseInt(batteryPercentStr);
@@ -112,6 +47,22 @@ const getBatteryIconName = (batteryPercentStr) => {
   if (percent >= 50) return 'battery-half';
   if (percent >= 20) return 'battery-low';
   return 'battery-dead';
+};
+
+// Generate unique key for each friend
+const generateUniqueKey = (friend, index) => {
+  // Use multiple fallback strategies to ensure uniqueness
+  if (friend.friendId) {
+    return `friend_${friend.friendId}`;
+  }
+  if (friend.phone) {
+    return `phone_${friend.phone.replace(/\D/g, '')}`; // Remove non-digits
+  }
+  if (friend.email) {
+    return `email_${friend.email}`;
+  }
+  // Last resort: use index with timestamp
+  return `fallback_${index}_${Date.now()}`;
 };
 
 const PeopleBar = () => {
@@ -124,6 +75,9 @@ const PeopleBar = () => {
   const [friendsData, setFriendsData] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigation = useNavigation();
+  
+  // Real-time listeners
+  const friendsUnsubscribe = useRef(null);
   
   // Responsive dimensions
   const statusBarHeight = getStatusBarHeight();
@@ -146,45 +100,162 @@ const PeopleBar = () => {
   const isDark = colorScheme === 'dark';
   const styles = getStyles(isDark);
 
-  // Initialize FriendsService when component mounts
+  // Load user data and initialize friends listener
   useEffect(() => {
-    const initializeFriendsService = async () => {
+    const initializePeopleBar = async () => {
       try {
         const jsonValue = await AsyncStorage.getItem('userData');
         if (jsonValue) {
           const user = JSON.parse(jsonValue);
-          console.log('PeopleBar: User data loaded:', user.uid);
+          console.log('PeopleBar: User data loaded:', user.Phone || user.phone);
           setUserData(user);
           
-          // Initialize FriendsService
-          await FriendsService.initialize(user);
+          // Set up real-time friends listener
+          setupFriendsListener(user);
         }
       } catch (error) {
         console.error('PeopleBar: Error initializing:', error);
-        // Fallback to static data if service fails
-        setFriendsData(staticPeopleData);
         setLoading(false);
       }
     };
 
-    initializeFriendsService();
-  }, []);
-
-  // Subscribe to FriendsService updates
-  useEffect(() => {
-    console.log('PeopleBar: Subscribing to FriendsService updates');
+    initializePeopleBar();
     
-    const unsubscribe = FriendsService.subscribe((friends, isLoading) => {
-      console.log('PeopleBar: Received friends update:', friends.length, 'friends, loading:', isLoading);
-      setFriendsData(friends);
-      setLoading(isLoading);
-      setLastUpdated(new Date());
-    });
-
-    return unsubscribe;
+    // Cleanup listener on unmount
+    return () => {
+      if (friendsUnsubscribe.current) {
+        friendsUnsubscribe.current();
+      }
+    };
   }, []);
 
-  // Gesture handler with improved touch response
+  // Set up real-time friends listener
+  const setupFriendsListener = (user) => {
+    const userPhone = user.Phone || user.phone || user.phoneNumber;
+    
+    if (!userPhone) {
+      console.error('PeopleBar: No phone number found for user');
+      setLoading(false);
+      return;
+    }
+
+    console.log('PeopleBar: Setting up friends listener for:', userPhone);
+    
+    // Listen to friends changes in real-time
+    friendsUnsubscribe.current = FirebaseService.listenToFriends(
+      userPhone,
+      (friends) => {
+        console.log('PeopleBar: Friends updated:', friends.length);
+        
+        // Create a Set to track unique identifiers and prevent duplicates
+        const seenIdentifiers = new Set();
+        
+        // Transform Firebase friends data to PeopleBar format
+        const transformedFriends = friends.reduce((acc, friend, index) => {
+          // Create a unique identifier for deduplication
+          const identifier = friend.friendId || friend.friendPhone || friend.friendEmail || `index_${index}`;
+          
+          // Skip if we've already seen this friend
+          if (seenIdentifiers.has(identifier)) {
+            console.warn('PeopleBar: Duplicate friend detected, skipping:', identifier);
+            return acc;
+          }
+          
+          seenIdentifiers.add(identifier);
+          
+          const transformedFriend = {
+            id: generateUniqueKey(friend, acc.length), // Use acc.length for unique indexing
+            name: friend.friendName || 'Unknown Friend',
+            location: 'Unknown', // You can enhance this with real location data
+            status: 'Online', // You can enhance this with real status
+            distance: 'Unknown', // You can enhance this with real distance calculation
+            battery: '100%', // You can enhance this with real battery data
+            avatar: friend.avatar || null, // You can enhance this with real avatar
+            phone: friend.friendPhone,
+            email: friend.friendEmail,
+            isCloseFriend: true, // All accepted friends are close friends
+            
+            // Additional friend data
+            friendId: friend.friendId,
+            createdAt: friend.createdAt,
+            lastInteraction: friend.lastInteraction
+          };
+          
+          acc.push(transformedFriend);
+          return acc;
+        }, []);
+        
+        console.log('PeopleBar: Processed friends:', transformedFriends.length);
+        setFriendsData(transformedFriends);
+        setLoading(false);
+        setLastUpdated(new Date());
+      }
+    );
+  };
+
+  // Enhanced refresh function
+  const onRefresh = async () => {
+    setRefreshing(true);
+    
+    try {
+      if (!userData) {
+        setRefreshing(false);
+        return;
+      }
+
+      const userPhone = userData.Phone || userData.phone || userData.phoneNumber;
+      
+      // Fetch fresh friends data
+      const result = await FirebaseService.getFriendsForUser(userPhone);
+      
+      if (result.success) {
+        // Create a Set to track unique identifiers and prevent duplicates
+        const seenIdentifiers = new Set();
+        
+        // Transform the fresh data with deduplication
+        const transformedFriends = result.friends.reduce((acc, friend, index) => {
+          const identifier = friend.friendId || friend.friendPhone || friend.friendEmail || `index_${index}`;
+          
+          if (seenIdentifiers.has(identifier)) {
+            console.warn('PeopleBar: Duplicate friend detected during refresh, skipping:', identifier);
+            return acc;
+          }
+          
+          seenIdentifiers.add(identifier);
+          
+          const transformedFriend = {
+            id: generateUniqueKey(friend, acc.length),
+            name: friend.friendName || 'Unknown Friend',
+            location: 'Unknown',
+            status: 'Online',
+            distance: 'Unknown',
+            battery: '100%',
+            avatar: friend.avatar || null,
+            phone: friend.friendPhone,
+            email: friend.friendEmail,
+            isCloseFriend: true,
+            friendId: friend.friendId,
+            createdAt: friend.createdAt,
+            lastInteraction: friend.lastInteraction
+          };
+          
+          acc.push(transformedFriend);
+          return acc;
+        }, []);
+        
+        setFriendsData(transformedFriends);
+        setLastUpdated(new Date());
+      } else {
+        console.error('Error fetching friends:', result.error);
+      }
+    } catch (error) {
+      console.error('Error refreshing friends:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // Gesture handler (unchanged from your original)
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -284,25 +355,9 @@ const PeopleBar = () => {
     ]).start();
   };
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    try {
-      await FriendsService.refresh();
-      setLastUpdated(new Date());
-    } catch (error) {
-      console.error('PeopleBar: Error refreshing friends:', error);
-      // Fallback refresh behavior
-      setTimeout(() => {
-        setLastUpdated(new Date());
-        setRefreshing(false);
-      }, 1500);
-    } finally {
-      setRefreshing(false);
-    }
-  };
-
   const formatTime = (date) => date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+  // Enhanced person item renderer with real friend data and proper key handling
   const renderPersonItem = (person, index) => {
     const batteryIcon = getBatteryIconName(person.battery);
     const batteryLevel = parseInt(person.battery);
@@ -312,20 +367,34 @@ const PeopleBar = () => {
 
     return (
       <TouchableOpacity
-        key={person.id}
+        key={person.id} // Using the unique key we generated
         style={[styles.personContainer, isLast && { borderBottomWidth: 0 }]}
-        onPress={() => navigation.navigate('Profile', { 
-          person: {
-            ...person,
-            id: person.id,
-            name: person.name,
-            avatar: person.avatar,
-          }
-        })}
+        onPress={() => {
+          // Navigate to friend's profile with real data
+          navigation.navigate('Profile', { 
+            person: {
+              ...person,
+              id: person.friendId || person.id,
+              name: person.name,
+              phone: person.phone,
+              email: person.email,
+              avatar: person.avatar,
+            }
+          });
+        }}
         activeOpacity={0.7}
       >
         <View style={styles.avatarSection}>
-          <Image source={person.avatar} style={styles.avatar} />
+          {/* Enhanced avatar rendering */}
+          {person.avatar ? (
+            <Image source={{ uri: person.avatar }} style={styles.avatar} />
+          ) : (
+            <View style={styles.defaultAvatar}>
+              <Text style={styles.avatarInitial}>
+                {person.name ? person.name.charAt(0).toUpperCase() : 'F'}
+              </Text>
+            </View>
+          )}
           <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
           <View style={styles.batteryInfo}>
             <Ionicons name={batteryIcon} size={12} color={batteryColor} />
@@ -352,7 +421,6 @@ const PeopleBar = () => {
     const TabComponents = { friends: FriendList, community: CommunityList, feed: FeedList };
     const Component = TabComponents[activeTab] || FriendList;
     
-    // Pass friendsData to FriendList component
     if (activeTab === 'friends') {
       return <Component friendsData={friendsData} />;
     }
@@ -392,6 +460,12 @@ const PeopleBar = () => {
       <Ionicons name="people-outline" size={48} color={isDark ? '#666' : '#ccc'} />
       <Text style={styles.emptyStateText}>No friends yet</Text>
       <Text style={styles.emptyStateSubtext}>Send friend requests to see your friends here</Text>
+      <TouchableOpacity 
+        style={styles.addFriendsButton}
+        onPress={() => setPhoneOverlayVisible(true)}
+      >
+        <Text style={styles.addFriendsButtonText}>Add Friends</Text>
+      </TouchableOpacity>
     </View>
   );
 
@@ -472,7 +546,7 @@ const PeopleBar = () => {
       <PhoneOverlay
         visible={phoneOverlayVisible}
         onClose={() => setPhoneOverlayVisible(false)}
-        myPhone={userData?.phone || userData?.phoneNumber || userData?.Phone} 
+        myPhone={userData?.Phone || userData?.phone || userData?.phoneNumber} 
         userEmail={userData?.email || userData?.Email}  
       />
     </>
@@ -578,6 +652,19 @@ const getStyles = (isDark) => StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
+  },
+  defaultAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: isDark ? '#555' : '#ddd',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarInitial: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: isDark ? '#fff' : '#333',
   },
   statusDot: {
     position: 'absolute',
@@ -698,6 +785,18 @@ const getStyles = (isDark) => StyleSheet.create({
     color: isDark ? '#999' : '#888',
     marginTop: 4,
     textAlign: 'center',
+  },
+  addFriendsButton: {
+    marginTop: 16,
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  addFriendsButtonText: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 14,
   },
   loadingState: {
     flex: 1,
