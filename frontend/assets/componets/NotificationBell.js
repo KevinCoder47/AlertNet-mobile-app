@@ -252,97 +252,140 @@ const NotificationBell = ({ style, iconSize = 24, showProfileInfo = true }) => {
     }
   };
 
-  const renderProfilePicture = (profilePicture, senderName, size = 40) => {
-    if (profilePicture) {
-      return (
-        <Image
-          source={{ uri: profilePicture }}
-          style={[styles.profilePicture, { width: size, height: size, borderRadius: size / 2 }]}
-          defaultSource={require('../images/default-avatar.jpg')}
-        />
-      );
-    } else {
-      const initial = senderName ? senderName.charAt(0).toUpperCase() : 'U';
-      return (
-        <View style={[
-          styles.defaultProfilePicture, 
-          { width: size, height: size, borderRadius: size / 2 }
-        ]}>
-          <Text style={[styles.profileInitial, { fontSize: size * 0.4 }]}>
-            {initial}
-          </Text>
-        </View>
-      );
-    }
-  };
+// Fixed renderProfilePicture function for NotificationBell.js
+// Replace the existing renderProfilePicture function with this enhanced version
 
-  const renderNotificationItem = ({ item: notification }) => {
-    const isUnread = !notification.read;
-    const timeAgo = getTimeAgo(notification.createdAt);
-    const { senderName, senderSurname, profilePicture } = notification.data || {};
-    const displayName = `${senderName || 'Unknown'} ${senderSurname || ''}`.trim();
-    
+const renderProfilePicture = (profilePicture, senderName, size = 40) => {
+  // Handle profile picture with better fallback logic
+  if (profilePicture && profilePicture.trim() !== '') {
     return (
-      <TouchableOpacity
+      <Image
+        source={{ uri: profilePicture }}
         style={[
-          styles.notificationItem,
-          isUnread && styles.unreadNotification
+          styles.profilePicture, 
+          { width: size, height: size, borderRadius: size / 2 }
         ]}
-        onPress={() => handleNotificationPress(notification)}
-        activeOpacity={0.7}
-      >
-        <View style={styles.notificationContent}>
-          {/* Profile Section */}
-          {showProfileInfo && (
-            <View style={styles.profileSection}>
-              {renderProfilePicture(profilePicture, senderName)}
-            </View>
-          )}
-          
-          {/* Content Section */}
-          <View style={styles.contentSection}>
-            <View style={styles.headerRow}>
-              <View style={styles.titleSection}>
-                {showProfileInfo && displayName !== 'Unknown' && (
-                  <Text style={[styles.senderName, isUnread && styles.unreadText]}>
-                    {displayName}
-                  </Text>
-                )}
-                <Text style={[
-                  styles.notificationTitle,
-                  isUnread && styles.unreadText,
-                  !showProfileInfo && styles.noProfileTitle
-                ]}>
-                  {notification.title}
+        onError={(error) => {
+          console.log('Profile picture failed to load:', error.nativeEvent.error);
+          // The component will re-render and show the default avatar below
+        }}
+        onLoadStart={() => {
+          // Optional: Show loading state
+          console.log('Loading profile picture...');
+        }}
+        onLoad={() => {
+          console.log('Profile picture loaded successfully');
+        }}
+      />
+    );
+  } else {
+    // Default avatar with user's initial
+    const initial = senderName ? senderName.charAt(0).toUpperCase() : 'U';
+    return (
+      <View style={[
+        styles.defaultProfilePicture, 
+        { width: size, height: size, borderRadius: size / 2 }
+      ]}>
+        <Text style={[styles.profileInitial, { fontSize: size * 0.4 }]}>
+          {initial}
+        </Text>
+      </View>
+    );
+  }
+};
+
+// Also update the notification rendering to better handle profile data
+const renderNotificationItem = ({ item: notification }) => {
+  const isUnread = !notification.read;
+  const timeAgo = getTimeAgo(notification.createdAt);
+  
+  // Enhanced data extraction with better fallbacks
+  const { 
+    senderName, 
+    senderSurname, 
+    profilePicture,
+    // Also check for alternative field names
+    senderFirstName,
+    senderLastName
+  } = notification.data || {};
+  
+  // Build display name with fallbacks
+  const firstName = senderName || senderFirstName || 'Unknown';
+  const lastName = senderSurname || senderLastName || '';
+  const displayName = `${firstName} ${lastName}`.trim();
+  
+  // Enhanced profile picture URL handling
+  const profileImageUrl = profilePicture && typeof profilePicture === 'string' 
+    ? profilePicture.trim() 
+    : null;
+    
+  console.log('Rendering notification:', {
+    displayName,
+    profileImageUrl,
+    notificationType: notification.type
+  });
+  
+  return (
+    <TouchableOpacity
+      style={[
+        styles.notificationItem,
+        isUnread && styles.unreadNotification
+      ]}
+      onPress={() => handleNotificationPress(notification)}
+      activeOpacity={0.7}
+    >
+      <View style={styles.notificationContent}>
+        {/* Profile Section */}
+        {showProfileInfo && (
+          <View style={styles.profileSection}>
+            {renderProfilePicture(profileImageUrl, firstName)}
+          </View>
+        )}
+        
+        {/* Content Section */}
+        <View style={styles.contentSection}>
+          <View style={styles.headerRow}>
+            <View style={styles.titleSection}>
+              {showProfileInfo && displayName !== 'Unknown' && (
+                <Text style={[styles.senderName, isUnread && styles.unreadText]}>
+                  {displayName}
                 </Text>
-              </View>
-              
-              <View style={styles.metaSection}>
-                <Text style={styles.timeText}>{timeAgo}</Text>
-                {isUnread && <View style={styles.unreadDot} />}
-              </View>
+              )}
+              <Text style={[
+                styles.notificationTitle,
+                isUnread && styles.unreadText,
+                !showProfileInfo && styles.noProfileTitle
+              ]}>
+                {notification.title}
+              </Text>
             </View>
             
-            <Text style={[
-              styles.notificationMessage,
-              isUnread && styles.unreadMessageText
-            ]}>
-              {notification.message}
-            </Text>
+            <View style={styles.metaSection}>
+              <Text style={styles.timeText}>{timeAgo}</Text>
+              {isUnread && <View style={styles.unreadDot} />}
+            </View>
           </View>
           
-          {/* Icon Section */}
-          <View style={styles.iconSection}>
-            <Ionicons 
-              name={getNotificationIcon(notification.type)} 
-              size={20} 
-              color={getNotificationIconColor(notification.type)} 
-            />
-          </View>
+          <Text style={[
+            styles.notificationMessage,
+            isUnread && styles.unreadMessageText
+          ]}>
+            {notification.message}
+          </Text>
         </View>
-      </TouchableOpacity>
-    );
-  };
+        
+        {/* Icon Section */}
+        <View style={styles.iconSection}>
+          <Ionicons 
+            name={getNotificationIcon(notification.type)} 
+            size={20} 
+            color={getNotificationIconColor(notification.type)} 
+          />
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+};
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
