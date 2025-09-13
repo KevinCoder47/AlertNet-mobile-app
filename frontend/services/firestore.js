@@ -87,11 +87,15 @@ export const createUserDocument = async (userId, userData, profileImageUri = nul
       email: userData.email || "",
       friends: userData.friends || [],
       gender: userData.gender || "",
-      imageUrl: imageUrl, // Use the uploaded image URL or existing one
+      imageUrl: imageUrl,
       name: userData.name || "",
       phone: userData.phone || "",
       rating: userData.rating || 0,
       residenceAddress: userData.residenceAddress || { 
+        latitude: 0, 
+        longitude: 0 
+      },
+      schoolAddress: userData.schoolAddress || {  // Add this field
         latitude: 0, 
         longitude: 0 
       },
@@ -100,29 +104,27 @@ export const createUserDocument = async (userId, userData, profileImageUri = nul
     };
 
     // Map to Firestore schema
-    const firestoreData = {
-      Campus: safeUserData.campus,
-      CreatedAt: new Date(),
-      CurrentLocation: safeUserData.currentLocation,
-      Email: safeUserData.email,
-      Friends: safeUserData.friends.map(friend => ({
-        id: friend.uid || friend.id || '', // Use uid first, then fallback to id
-        uid: friend.uid || friend.id || '', // Also store uid separately for clarity
-        name: friend.name || '',
-        email: friend.email || '',
-        phoneNumber: friend.phoneNumber || ''
-      })),
-      Gender: safeUserData.gender,
-      ImageURL: safeUserData.imageUrl,
-      LastLogin: new Date(),
-      Name: safeUserData.name,
-      Phone: safeUserData.phone,
-      Rating: safeUserData.rating,
-      ResidenceAddress: safeUserData.residenceAddress,
-      Surname: safeUserData.surname,
-      Walks: safeUserData.walks,
-      userID: userId
-    };
+const firestoreData = {
+  Campus: safeUserData.campus,
+  CreatedAt: new Date(),
+  CurrentLocation: safeUserData.currentLocation,
+  Email: safeUserData.email,
+  Friends: safeUserData.friends,
+  Gender: safeUserData.gender,
+  ImageURL: safeUserData.imageUrl,
+  LastLogin: new Date(),
+  Name: safeUserData.name,
+  Phone: safeUserData.phone,
+  Rating: safeUserData.rating,
+  ResidenceAddress: safeUserData.residenceAddress,
+  SchoolAddress: safeUserData.schoolAddress || {  
+    latitude: 0,
+    longitude: 0
+  },
+  Surname: safeUserData.surname,
+  Walks: safeUserData.walks,
+  userID: userId
+};
 
     console.log("Creating user document with data:", firestoreData);
     await setDoc(doc(db, "users", userId), firestoreData);
@@ -152,20 +154,21 @@ export const updateUserDocument = async (userId, updates) => {
     const firestoreUpdates = {};
     
     // Direct mapping for simple fields
-    const fieldMap = {
-      campus: "Campus",
-      currentLocation: "CurrentLocation",
-      email: "Email",
-      friends: "Friends",
-      gender: "Gender",
-      imageUrl: "ImageURL",
-      name: "Name",
-      phone: "Phone",
-      rating: "Rating",
-      residenceAddress: "ResidenceAddress",
-      surname: "Surname",
-      walks: "Walks"
-    };
+const fieldMap = {
+  campus: "Campus",
+  currentLocation: "CurrentLocation",
+  email: "Email",
+  friends: "Friends",
+  gender: "Gender",
+  imageUrl: "ImageURL",
+  name: "Name",
+  phone: "Phone",
+  rating: "Rating",
+  residenceAddress: "ResidenceAddress",
+  schoolAddress: "SchoolAddress",  // Add this line
+  surname: "Surname",
+  walks: "Walks"
+};
     
     for (const [key, value] of Object.entries(updates)) {
       if (fieldMap[key]) {
@@ -196,32 +199,34 @@ export const getUserDocument = async (userId) => {
     const docRef = doc(db, "users", userId);
     const docSnap = await getDoc(docRef);
     
-  if (docSnap.exists()) {
-    // Map back to our app's naming convention
-    const data = docSnap.data();
-    return {
-      userId: data.userID,
-      campus: data.Campus,
-      createdAt: data.CreatedAt?.toDate() || null,
-      currentLocation: data.CurrentLocation || { latitude: 0, longitude: 0 },
-      email: data.Email,
-      friends: data.Friends.map(friend => ({
-        uid: friend.uid || friend.id || '', // Use uid first, then fallback to id
-        name: friend.name || '',
-        email: friend.email || '',
-        phoneNumber: friend.phoneNumber || ''
-      })),
-      gender: data.Gender,
-      imageUrl: data.ImageURL,
-      lastLogin: data.LastLogin?.toDate() || null,
-      name: data.Name,
-      phone: data.Phone,
-      rating: data.Rating,
-      residenceAddress: data.ResidenceAddress || { latitude: 0, longitude: 0 },
-      surname: data.Surname,
-      walks: data.Walks
-    };
-  }
+    if (docSnap.exists()) {
+      // Map back to our app's naming convention
+      const data = docSnap.data();
+      return {
+        userId: data.userID,
+        campus: data.Campus,
+        createdAt: data.CreatedAt?.toDate() || null,
+        currentLocation: data.CurrentLocation || { latitude: 0, longitude: 0 },
+        email: data.Email,
+        friends: data.Friends.map(friend => ({
+          uid: friend.uid || friend.id || '',
+          name: friend.name || '',
+          email: friend.email || '',
+          phoneNumber: friend.phoneNumber || ''
+        })),
+        gender: data.Gender,
+        imageUrl: data.ImageURL,
+        lastLogin: data.LastLogin?.toDate() || null,
+        name: data.Name,
+        phone: data.Phone,
+        rating: data.Rating,
+        residenceAddress: data.ResidenceAddress || { latitude: 0, longitude: 0 },
+        schoolAddress: data.SchoolAddress || { latitude: 0, longitude: 0 },  // Add this line
+        surname: data.Surname,
+        walks: data.Walks,
+        lastLocationUpdate: data.LastLocationUpdate?.toDate() || null
+      };
+    }
     return null;
   } catch (error) {
     const handledError = handleFirestoreError(error);
@@ -635,6 +640,129 @@ export const updateCurrentLocation = async (userId, location) => {
   }
 };
 
+/**
+ * Save user address to Firestore
+ * @param {string} userId - User ID
+ * @param {Object} addressData - Address data to save
+ * @returns {Promise<boolean>} - True if successful
+ */
+export const saveUserAddress = async (userId, addressData) => {
+  try {
+    // Determine which field to update based on location type
+    let field;
+    const locationType = addressData.locationType.toLowerCase();
+    
+    if (locationType.includes('home') || 
+        locationType.includes('house') || 
+        locationType.includes('residence') || 
+        locationType.includes('res') ||
+        locationType.includes('apartment') ||
+        locationType.includes('flat')) {
+      field = "ResidenceAddress";
+    } else if (locationType.includes('school') || 
+               locationType.includes('campus') || 
+               locationType.includes('college') || 
+               locationType.includes('university') ||
+               locationType.includes('uj')) {
+      field = "SchoolAddress";
+    } else {
+      // Default to ResidenceAddress if we can't determine the type
+      field = "ResidenceAddress";
+    }
+    
+    await updateDoc(doc(db, "users", userId), {
+      [field]: {
+        address: addressData.address,
+        latitude: addressData.latitude,
+        longitude: addressData.longitude,
+        timestamp: new Date()
+      }
+    });
+    return true;
+  } catch (error) {
+    const handledError = handleFirestoreError(error);
+    console.error("Error saving address:", handledError);
+    throw handledError;
+  }
+};
+
+/**
+ * Get all saved addresses for a user
+ * @param {string} userId - User ID
+ * @returns {Promise<Array>} - Array of addresses
+ */
+export const getUserAddresses = async (userId) => {
+  try {
+    const addressesRef = collection(db, "users", userId, "savedAddresses");
+    const querySnapshot = await getDocs(addressesRef);
+    const addresses = [];
+    querySnapshot.forEach((doc) => {
+      addresses.push({ id: doc.id, ...doc.data() });
+    });
+    return addresses;
+  } catch (error) {
+    const handledError = handleFirestoreError(error);
+    console.error("Error getting addresses:", handledError);
+    throw handledError;
+  }
+};
+
+/**
+ * Update existing address
+ * @param {string} userId - User ID
+ * @param {string} addressId - Address document ID
+ * @param {Object} updates - Address fields to update
+ * @returns {Promise<boolean>} - True if successful
+ */
+export const updateUserAddress = async (userId, addressId, updates) => {
+  try {
+    const addressRef = doc(db, "users", userId, "savedAddresses", addressId);
+    await updateDoc(addressRef, {
+      ...updates,
+      updatedAt: new Date()
+    });
+    return true;
+  } catch (error) {
+    const handledError = handleFirestoreError(error);
+    console.error("Error updating address:", handledError);
+    throw handledError;
+  }
+};
+
+/**
+ * Delete user address
+ * @param {string} userId - User ID
+ * @param {string} addressId - Address document ID
+ * @returns {Promise<boolean>} - True if successful
+ */
+export const deleteUserAddress = async (userId, addressId) => {
+  try {
+    const addressRef = doc(db, "users", userId, "savedAddresses", addressId);
+    await deleteDoc(addressRef);
+    return true;
+  } catch (error) {
+    const handledError = handleFirestoreError(error);
+    console.error("Error deleting address:", handledError);
+    throw handledError;
+  }
+};
+
+/**
+ * Sync addresses from Firebase to AsyncStorage
+ * @param {string} userId - User ID
+ * @returns {Promise<Array>} - Array of addresses
+ */
+export const syncAddressesFromFirebase = async (userId) => {
+  try {
+    const addresses = await getUserAddresses(userId);
+    await AsyncStorage.setItem('@saved_addresses', JSON.stringify(addresses));
+    return addresses;
+  } catch (error) {
+    console.error("Error syncing addresses from Firebase:", error);
+    throw error;
+  }
+};
+
 // Export all functions
 export default {
   createUserDocument,
@@ -657,5 +785,8 @@ export default {
   getEmergencyContacts,
   updateEmergencyContact,
   deleteEmergencyContact,
-  updateCurrentLocation
+  updateCurrentLocation,
+  saveUserAddress,
+  updateUserAddress,
+  getUserAddresses
 };

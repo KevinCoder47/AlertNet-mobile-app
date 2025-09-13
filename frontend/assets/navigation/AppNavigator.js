@@ -49,33 +49,37 @@ const AppNavigator = () => {
   }, []);
 
   // LOG OUT FUNCTION
-  const handleLogout = () => {
-    Alert.alert(
-      'Logout Confirmation',
-      'Are you sure you want to log out?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
+const handleLogout = () => {
+  Alert.alert(
+    'Logout Confirmation',
+    'Are you sure you want to log out?',
+    [
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+      {
+        text: 'Log Out',
+        onPress: async () => {
+          try {
+            await AsyncStorage.removeItem('isLoggedIn');
+            await AsyncStorage.multiRemove([
+              'userToken', 
+              'userData', 
+              '@saved_addresses' // Add this line to remove saved addresses
+            ]);
+            setIsLoggedIn(false);
+            setOnboardingComplete(false);
+          } catch (error) {
+            console.error('Logout failed:', error);
+            Alert.alert('Logout Error', 'Failed to log out. Please try again.');
+          }
         },
-        {
-          text: 'Log Out',
-          onPress: async () => {
-            try {
-              await AsyncStorage.removeItem('isLoggedIn');
-              await AsyncStorage.multiRemove(['userToken', 'userData']);
-              setIsLoggedIn(false);
-              setOnboardingComplete(false);
-            } catch (error) {
-              console.error('Logout failed:', error);
-              Alert.alert('Logout Error', 'Failed to log out. Please try again.');
-            }
-          },
-          style: 'destructive',
-        },
-      ]
-    );
-  };
+        style: 'destructive',
+      },
+    ]
+  );
+};
 
   if (showSplash) return <AnimatedSplash />;
 
