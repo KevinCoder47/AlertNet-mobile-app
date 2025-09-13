@@ -267,6 +267,7 @@ const styles = StyleSheet.create({
     top: 40,
     left: 20,
     zIndex: 100,
+    padding: 10
   },
   headerContainer: {
     marginLeft: 20,

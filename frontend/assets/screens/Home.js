@@ -411,7 +411,9 @@ useEffect(() => {
   };
 
   if (isWalkPartner) {
-    return <WalkPartner setIsWalkPartner={setIsWalkPartner} />;
+    return <WalkPartner setIsWalkPartner={setIsWalkPartner}
+      userImage = {userImage}
+    />;
   }
 
   if (isUserProfile) {
