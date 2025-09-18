@@ -1,5 +1,20 @@
 import React, {useState} from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, TextInput, Dimensions, SafeAreaView, Switch, ImageBackground, Modal } from 'react-native';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  Image, 
+  TextInput, 
+  Dimensions, 
+  SafeAreaView, 
+  Switch, 
+  ImageBackground, 
+  Modal,
+  KeyboardAvoidingView,
+  ScrollView,
+  Platform
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native'; 
 import { useTheme } from '../contexts/ColorContext';
@@ -39,172 +54,184 @@ const MyProfile = ({setIsUserProfile, userImage,userData}) => {
         <Ionicons name="chevron-back" size={24} color="white" />
       </TouchableOpacity>
       
-      <View style={styles.contentWrapper}>
-        {/* Header with Name */}
-        <View style={styles.headerContainer}>
-          <Text style={[styles.artistName, {fontSize: 40}]} numberOfLines={2}>
-            {userFullName}
-          </Text>
-          <Ionicons name="person-outline" size={20} color="white" style={styles.personIcon} />
-        </View>
-
-        {/* Info Card */}
-        <View style={[styles.infoView, {backgroundColor: colors.background, paddingTop: 20}]}>
-          {/* Full Name */}
-          <View style={styles.titleAndInfo}>
-            <View style={styles.iconContainer}>
-              <Ionicons name="person-outline" size={16} color={colors.secondary} />
-              <Text style={[styles.title, { color: colors.secondary, marginLeft: 8, fontSize: 11 }]}>FULL NAME</Text>
-            </View>
-            <TextInput
-              value={userFullName}
-              onChangeText={setUserFullName}
-              editable={isEditing}
-              style={[styles.textInput, { color: colors.text, fontSize: 13 }]}
-              placeholder="Enter your full name"
-              placeholderTextColor={colors.secondary}
-            />
-          </View>
-
-          <View style={styles.divider} />
-
-          {/* Campus Selection */}
-          <View style={styles.titleAndInfo}>
-            <View style={styles.iconContainer}>
-              <Ionicons name="business-outline" size={16} color={colors.secondary} />
-              <Text style={[styles.title, { color: colors.secondary, marginLeft: 8, fontSize: 11 }]}>CAMPUS</Text>
-            </View>
-            {isEditing ? (
-              <TouchableOpacity onPress={() => setShowCampusPicker(true)}>
-                <Text style={[styles.textInput, { color: colors.text, fontSize: 13 }]}>{userCampus || 'Select Campus'}</Text>
-              </TouchableOpacity>
-            ) : (
-              <Text style={[styles.textInput, { color: colors.text, fontSize: 13 }]}>{userCampus || 'Not selected'}</Text>
-            )}
-          </View>
-
-          <View style={styles.divider} />
-
-          {/* Phone Number */}
-          <View style={styles.titleAndInfo}>
-            <View style={styles.iconContainer}>
-              <Ionicons name="call-outline" size={16} color={colors.secondary} />
-              <Text style={[styles.title, { color: colors.secondary, marginLeft: 8, fontSize: 11 }]}>PHONE NUMBER</Text>
-            </View>
-            <TextInput
-              value={userPhoneNumber}
-              onChangeText={setUserPhoneNumber}
-              editable={isEditing}
-              style={[styles.textInput, { color: colors.text, fontSize: 13 }]}
-              placeholder="Enter your phone number"
-              placeholderTextColor={colors.secondary}
-              keyboardType="phone-pad"
-            />
-          </View>
-
-          <View style={styles.divider} />
-
-          {/* Email */}
-          <View style={styles.titleAndInfo}>
-            <View style={styles.iconContainer}>
-              <Ionicons name="mail-outline" size={16} color={colors.secondary} />
-              <Text style={[styles.title, { color: colors.secondary, marginLeft: 8, fontSize: 11 }]}>EMAIL</Text>
-            </View>
-            <TextInput
-              value={userEmail}
-              onChangeText={setUserEmail}
-              editable={isEditing}
-              style={[styles.textInput, { color: colors.text, fontSize: 13 }]}
-              placeholder="Enter your email"
-              placeholderTextColor={colors.secondary}
-              keyboardType="email-address"
-            />
-          </View>
-
-          <View style={styles.divider} />
-
-          {/* Address */}
-          <View style={styles.titleAndInfo}>
-            <View style={styles.iconContainer}>
-              <Ionicons name="location-outline" size={16} color={colors.secondary} />
-              <Text style={[styles.title, { color: colors.secondary, marginLeft: 8, fontSize: 11 }]}>RES ADDRESS</Text>
-            </View>
-            <TextInput
-              value={userAddress}
-              onChangeText={setUserAddress}
-              editable={isEditing}
-              style={[styles.textInput, { color: colors.text, fontSize: 13 }]}
-              placeholder="Enter your address"
-              placeholderTextColor={colors.secondary}
-            />
-          </View>
-
-          <View style={styles.divider} />
-
-          {/* Terms and Conditions */}
-          <View style={styles.titleAndInfo}>
-            <View style={styles.iconContainer}>
-              <Ionicons name="document-text-outline" size={16} color={colors.secondary} />
-              <Text style={[styles.title, { color: colors.secondary, marginLeft: 8, fontSize: 11 }]}>TERMS & CONDITIONS</Text>
-            </View>
-            <TouchableOpacity>
-              <Text style={[styles.buttonText, { color: colors.text, fontSize: 13 }]}>View</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.divider} />
-
-          {/* Privacy Policy */}
-          <View style={styles.titleAndInfo}>
-            <View style={styles.iconContainer}>
-              <Ionicons name="shield-checkmark-outline" size={16} color={colors.secondary} />
-              <Text style={[styles.title, { color: colors.secondary, marginLeft: 8, fontSize: 11 }]}>PRIVACY POLICY</Text>
-            </View>
-            <TouchableOpacity>
-              <Text style={[styles.buttonText, { color: colors.text, fontSize: 13 }]}>View</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.divider} />
-
-          {/* Permission */}
-          <View style={styles.titleAndInfo}>
-            <View style={styles.iconContainer}>
-              <Ionicons name="key-outline" size={16} color={colors.secondary} />
-              <Text style={[styles.title, { color: colors.secondary, marginLeft: 8, fontSize: 11 }]}>PERMISSIONS</Text>
-            </View>
-            <TouchableOpacity>
-              <Text style={[styles.buttonText, { color: colors.text, fontSize: 13 }]}>Change</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.divider} />
-
-          {/* Share Live Location with Toggle */}
-          <View style={styles.titleAndInfo}>
-            <View style={styles.iconContainer}>
-              <Ionicons name="location-outline" size={16} color={colors.secondary} />
-              <Text style={[styles.title, { color: colors.secondary, marginLeft: 8, fontSize: 11 }]}>SHARE LIVE LOCATION</Text>
-            </View>
-            <Switch
-              value={isLocationOn}
-              onValueChange={setIsLocationOn}
-              trackColor={{ false: "#767577", true: "#34C759" }}
-              thumbColor={isLocationOn ? "#fff" : "#f4f3f4"}
-            />
-          </View>
-
-          {/* Edit/Save Button */}
-          <TouchableOpacity 
-            style={[styles.editButton, { backgroundColor: isEditing ? '#FF7E30' : '#333333' }]} 
-            onPress={() => setIsEditing(!isEditing)}
-          >
-            <Text style={[styles.editButtonText, {fontSize: 13}]}>
-              {isEditing ? 'Save Changes' : 'Edit Profile'}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? -100 : -80}
+      >
+        <View style={styles.contentWrapper}>
+          {/* Header with Name */}
+          <View style={styles.headerContainer}>
+            <Text style={[styles.artistName, {fontSize: 40}]} numberOfLines={2}>
+              {userFullName}
             </Text>
-          </TouchableOpacity>
+            <Ionicons name="person-outline" size={20} color="white" style={styles.personIcon} />
+          </View>
+
+          {/* Info Card */}
+          <ScrollView 
+            style={[styles.infoView, {backgroundColor: colors.background, paddingTop: 20}]}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {/* Full Name */}
+            <View style={styles.titleAndInfo}>
+              <View style={styles.iconContainer}>
+                <Ionicons name="person-outline" size={16} color={colors.secondary} />
+                <Text style={[styles.title, { color: colors.secondary, marginLeft: 8, fontSize: 11 }]}>FULL NAME</Text>
+              </View>
+              <TextInput
+                value={userFullName}
+                onChangeText={setUserFullName}
+                editable={isEditing}
+                style={[styles.textInput, { color: colors.text, fontSize: 13 }]}
+                placeholder="Enter your full name"
+                placeholderTextColor={colors.secondary}
+              />
+            </View>
+
+            <View style={styles.divider} />
+
+            {/* Campus Selection */}
+            <View style={styles.titleAndInfo}>
+              <View style={styles.iconContainer}>
+                <Ionicons name="business-outline" size={16} color={colors.secondary} />
+                <Text style={[styles.title, { color: colors.secondary, marginLeft: 8, fontSize: 11 }]}>CAMPUS</Text>
+              </View>
+              {isEditing ? (
+                <TouchableOpacity onPress={() => setShowCampusPicker(true)}>
+                  <Text style={[styles.textInput, { color: colors.text, fontSize: 13 }]}>{userCampus || 'Select Campus'}</Text>
+                </TouchableOpacity>
+              ) : (
+                <Text style={[styles.textInput, { color: colors.text, fontSize: 13 }]}>{userCampus || 'Not selected'}</Text>
+              )}
+            </View>
+
+            <View style={styles.divider} />
+
+            {/* Phone Number */}
+            <View style={styles.titleAndInfo}>
+              <View style={styles.iconContainer}>
+                <Ionicons name="call-outline" size={16} color={colors.secondary} />
+                <Text style={[styles.title, { color: colors.secondary, marginLeft: 8, fontSize: 11 }]}>PHONE NUMBER</Text>
+              </View>
+              <TextInput
+                value={userPhoneNumber}
+                onChangeText={setUserPhoneNumber}
+                editable={isEditing}
+                style={[styles.textInput, { color: colors.text, fontSize: 13 }]}
+                placeholder="Enter your phone number"
+                placeholderTextColor={colors.secondary}
+                keyboardType="phone-pad"
+              />
+            </View>
+
+            <View style={styles.divider} />
+
+            {/* Email */}
+            <View style={styles.titleAndInfo}>
+              <View style={styles.iconContainer}>
+                <Ionicons name="mail-outline" size={16} color={colors.secondary} />
+                <Text style={[styles.title, { color: colors.secondary, marginLeft: 8, fontSize: 11 }]}>EMAIL</Text>
+              </View>
+              <TextInput
+                value={userEmail}
+                onChangeText={setUserEmail}
+                editable={isEditing}
+                style={[styles.textInput, { color: colors.text, fontSize: 13 }]}
+                placeholder="Enter your email"
+                placeholderTextColor={colors.secondary}
+                keyboardType="email-address"
+              />
+            </View>
+
+            <View style={styles.divider} />
+
+            {/* Address - Special handling for keyboard */}
+            <View style={styles.titleAndInfo}>
+              <View style={styles.iconContainer}>
+                <Ionicons name="location-outline" size={16} color={colors.secondary} />
+                <Text style={[styles.title, { color: colors.secondary, marginLeft: 8, fontSize: 11 }]}>RES ADDRESS</Text>
+              </View>
+              <TextInput
+                value={userAddress}
+                onChangeText={setUserAddress}
+                editable={isEditing}
+                style={[styles.textInput, { color: colors.text, fontSize: 13 }]}
+                placeholder="Enter your address"
+                placeholderTextColor={colors.secondary}
+                returnKeyType="done"
+                blurOnSubmit={true}
+              />
+            </View>
+
+            <View style={styles.divider} />
+
+            {/* Terms and Conditions */}
+            <View style={styles.titleAndInfo}>
+              <View style={styles.iconContainer}>
+                <Ionicons name="document-text-outline" size={16} color={colors.secondary} />
+                <Text style={[styles.title, { color: colors.secondary, marginLeft: 8, fontSize: 11 }]}>TERMS & CONDITIONS</Text>
+              </View>
+              <TouchableOpacity>
+                <Text style={[styles.buttonText, { color: colors.text, fontSize: 13 }]}>View</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.divider} />
+
+            {/* Privacy Policy */}
+            <View style={styles.titleAndInfo}>
+              <View style={styles.iconContainer}>
+                <Ionicons name="shield-checkmark-outline" size={16} color={colors.secondary} />
+                <Text style={[styles.title, { color: colors.secondary, marginLeft: 8, fontSize: 11 }]}>PRIVACY POLICY</Text>
+              </View>
+              <TouchableOpacity>
+                <Text style={[styles.buttonText, { color: colors.text, fontSize: 13 }]}>View</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.divider} />
+
+            {/* Permission */}
+            <View style={styles.titleAndInfo}>
+              <View style={styles.iconContainer}>
+                <Ionicons name="key-outline" size={16} color={colors.secondary} />
+                <Text style={[styles.title, { color: colors.secondary, marginLeft: 8, fontSize: 11 }]}>PERMISSIONS</Text>
+              </View>
+              <TouchableOpacity>
+                <Text style={[styles.buttonText, { color: colors.text, fontSize: 13 }]}>Change</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.divider} />
+
+            {/* Share Live Location with Toggle */}
+            <View style={styles.titleAndInfo}>
+              <View style={styles.iconContainer}>
+                <Ionicons name="location-outline" size={16} color={colors.secondary} />
+                <Text style={[styles.title, { color: colors.secondary, marginLeft: 8, fontSize: 11 }]}>SHARE LIVE LOCATION</Text>
+              </View>
+              <Switch
+                value={isLocationOn}
+                onValueChange={setIsLocationOn}
+                trackColor={{ false: "#767577", true: "#34C759" }}
+                thumbColor={isLocationOn ? "#fff" : "#f4f3f4"}
+              />
+            </View>
+
+            {/* Edit/Save Button */}
+            <TouchableOpacity 
+              style={[styles.editButton, { backgroundColor: isEditing ? '#FF7E30' : '#333333' }]} 
+              onPress={() => setIsEditing(!isEditing)}
+            >
+              <Text style={[styles.editButtonText, {fontSize: 13}]}>
+                {isEditing ? 'Save Changes' : 'Edit Profile'}
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
         </View>
-      </View>
+      </KeyboardAvoidingView>
 
       {/* Campus Selection Modal */}
       <Modal
@@ -258,6 +285,9 @@ const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
   },
+  keyboardView: {
+    flex: 1,
+  },
   contentWrapper: {
     flex: 1,
     paddingTop: 100,
@@ -267,6 +297,7 @@ const styles = StyleSheet.create({
     top: 40,
     left: 20,
     zIndex: 100,
+    padding: 10
   },
   headerContainer: {
     marginLeft: 20,
@@ -375,3 +406,5 @@ const styles = StyleSheet.create({
     color: '#FF7E30',
   },
 });
+
+// testing tesing

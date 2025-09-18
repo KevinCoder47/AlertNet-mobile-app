@@ -16,23 +16,23 @@ import { Ionicons } from '@expo/vector-icons';
 
 const { width, height } = Dimensions.get("window");
 
-const WalkPartnerSearchBar = ({ isTapWhere, setISTapWhere,locationName,setIsDestinationDone,setIsStartPoint,setIsStartPointDone }) => {
+const WalkPartnerSearchBar = ({
+  isTapWhere, 
+  setISTapWhere,
+  locationName, 
+  setIsDestinationDone,
+  setIsStartPoint, 
+  setIsStartPointDone,
+  dropoffLocation, 
+  setDropoffLocation,
+  onDestinationSelect // Add this prop to receive coordinates
+}) => {
   const { colors, isDark } = useTheme();
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [pickupLocation, setPickupLocation] = useState('');
-
-  // useEffect(() => {
-  //   if (!pickupLocation && userLocation) {
-  //     setPickupLocation(userLocation);
-  //   }
-  // }, [userLocation]);
-  const [dropoffLocation, setDropoffLocation] = useState('');
   const [activeInput, setActiveInput] = useState('pickup');
-
-
-  
 
   useEffect(() => {
     if (query.length > 2) {
@@ -67,21 +67,64 @@ const WalkPartnerSearchBar = ({ isTapWhere, setISTapWhere,locationName,setIsDest
     }
   };
 
-  const handlePlaceSelect = (place) => {
-    const selectedDescription = place.description;
-    if (activeInput === 'pickup') {
-      setPickupLocation(selectedDescription);
-      setIsStartPointDone(true)
-    } else {
-      setDropoffLocation(selectedDescription);
-      setIsDestinationDone(true);
-      setIsStartPoint(true);
+  // Function to get place details including coordinates
+const getPlaceDetails = async (placeId) => {
+  try {
+    const response = await fetch(
+      `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&key=${GOOGLE_MAPS_API_KEY}&fields=geometry,name`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        timeout: 10000,
+      }
+    );
+    const data = await response.json();
     
+    if (data.result && data.result.geometry) {
+      console.log('Place details response:', data.result);
+      return {
+        latitude: data.result.geometry.location.lat,
+        longitude: data.result.geometry.location.lng,
+        name: data.result.name || ''
+      };
     }
-    setQuery(selectedDescription); // Update the visible query
-    setSuggestions([]);
-    Keyboard.dismiss();
-  };
+    return null;
+  } catch (error) {
+    console.error('Error fetching place details:', error);
+    return null;
+  }
+};
+
+const handlePlaceSelect = async (place) => {
+  const selectedDescription = place.description;
+  
+  if (activeInput === 'pickup') {
+    setPickupLocation(selectedDescription);
+    setIsStartPointDone(true);
+  } else {
+    setDropoffLocation(selectedDescription);
+    setIsDestinationDone(true);
+    setIsStartPoint(true);
+    
+    // Get coordinates for the selected destination
+    const placeDetails = await getPlaceDetails(place.place_id);
+    if (placeDetails && onDestinationSelect) {
+      console.log('Sending coordinates to parent:', placeDetails);
+      onDestinationSelect({
+        latitude: placeDetails.latitude,
+        longitude: placeDetails.longitude
+      });
+    } else {
+      console.error('Failed to get coordinates for place:', place);
+    }
+  }
+  
+  setQuery(selectedDescription);
+  setSuggestions([]);
+  Keyboard.dismiss();
+};
 
   const handleInputFocus = (inputType) => {
     setActiveInput(inputType);
@@ -107,8 +150,6 @@ const WalkPartnerSearchBar = ({ isTapWhere, setISTapWhere,locationName,setIsDest
     setSuggestions([]);
     Keyboard.dismiss();
   };
-
-
 
   if (isTapWhere) {
     return (
@@ -186,12 +227,12 @@ const WalkPartnerSearchBar = ({ isTapWhere, setISTapWhere,locationName,setIsDest
                 style={[styles.suggestionItem, { borderBottomColor: colors.border }]}
                 onPress={() => handlePlaceSelect(item)}
               >
-            <Ionicons 
-              name="location" 
-              size={10}
+                <Ionicons 
+                  name="location" 
+                  size={10}
                   color={isDark ? "#D6D6D6" : "#606061ff"} 
-              style={{paddingRight: 10}}
-            />
+                  style={{paddingRight: 10}}
+                />
                 <Text 
                   style={[styles.suggestionText, { color: colors.text }]}
                   numberOfLines={1}
@@ -212,7 +253,7 @@ const WalkPartnerSearchBar = ({ isTapWhere, setISTapWhere,locationName,setIsDest
     <View style={[styles.container, {
       height: height * 0.065,
       backgroundColor: colors.background,
-      width: width ,
+      width: width,
       alignSelf: 'center',
       paddingTop: 10
     }]}>
