@@ -7,6 +7,8 @@ import {
   StyleSheet,
   FlatList,
   useColorScheme,
+  Linking,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -25,6 +27,42 @@ const FriendList = ({ friendsData = [] }) => {
   const isDark = colorScheme === 'dark';
   const styles = getStyles(isDark);
   const navigation = useNavigation();
+
+  const handleCall = async (friend) => {
+    if (!friend.phone) {
+      Alert.alert('No Phone Number', 'This friend has no phone number available.');
+      return;
+    }
+
+    // Clean the phone number (remove spaces, dashes, etc.)
+    const cleanPhoneNumber = friend.phone.replace(/[^\d+]/g, '');
+    const phoneUrl = `tel:${cleanPhoneNumber}`;
+
+    try {
+      const canOpen = await Linking.canOpenURL(phoneUrl);
+      if (canOpen) {
+        await Linking.openURL(phoneUrl);
+      } else {
+        Alert.alert('Cannot Make Call', 'Your device cannot make phone calls.');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to initiate call. Please try again.');
+      console.error('Call error:', error);
+    }
+  };
+
+  const handleMessage = (friend) => {
+    navigation.navigate('ChatScreen', {
+      person: {
+        ...friend,
+        id: friend.friendId || friend.id,
+        name: friend.name,
+        phone: friend.phone,
+        email: friend.email,
+        avatar: friend.avatar,
+      }
+    });
+  };
 
   const renderFriendItem = ({ item: friend, index }) => {
     const batteryIcon = getBatteryIconName(friend.battery);
@@ -84,20 +122,16 @@ const FriendList = ({ friendsData = [] }) => {
         <View style={styles.actionSection}>
           <TouchableOpacity 
             style={styles.messageButton}
-            onPress={() => {
-              // Navigate to messaging or call feature
-              console.log('Message friend:', friend.name);
-            }}
+            onPress={() => handleMessage(friend)}
+            activeOpacity={0.7}
           >
             <Ionicons name="chatbubble" size={18} color={isDark ? '#007AFF' : '#007AFF'} />
           </TouchableOpacity>
           
           <TouchableOpacity 
             style={styles.callButton}
-            onPress={() => {
-              // Initiate call to friend
-              console.log('Call friend:', friend.phone);
-            }}
+            onPress={() => handleCall(friend)}
+            activeOpacity={0.7}
           >
             <Ionicons name="call" size={18} color={isDark ? '#34C759' : '#34C759'} />
           </TouchableOpacity>
