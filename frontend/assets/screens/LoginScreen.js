@@ -1,9 +1,9 @@
 // screens/LoginScreen.js
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View, Text, TextInput, StyleSheet,
   TouchableOpacity, Dimensions, ImageBackground,
-  Alert
+  Alert, KeyboardAvoidingView, ScrollView, Platform
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,10 +22,24 @@ const Login = ({ setIsLoggedIn, navigation }) => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  
+  const scrollViewRef = useRef(null);
+  const emailInputRef = useRef(null);
+  const passwordInputRef = useRef(null);
 
-
-
-
+  const scrollToInput = (inputRef) => {
+    setTimeout(() => {
+      inputRef.current?.measureLayout(
+        scrollViewRef.current,
+        (x, y) => {
+          scrollViewRef.current?.scrollTo({
+            y: y - 50, // Reduced offset since we have less scrollable content
+            animated: true,
+          });
+        }
+      );
+    }, 100);
+  };
 
 const handleLogin = async () => {
   if (!emailPrefix.trim() || !password.trim()) {
@@ -70,106 +84,127 @@ const handleLogin = async () => {
 };
 
   return (
-    <ImageBackground source={backgroundImage} style={styles.background}>
-      <Text style={styles.title}>
-        <Text style={{ color: '#FE5235' }}>Hello</Text>,{"\n"}Welcome Back
-      </Text>
-
-      <View style={styles.overlay}>
-        {/* Email Field */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Student E-mail</Text>
-          <View style={styles.inputWrapper}>
-            <Ionicons
-              name='mail-outline'
-              size={16}
-              style={styles.icon}
-            />
-            <TextInput
-              // placeholder="e.g. 123456"
-              placeholderTextColor="#717171"
-              style={styles.input}
-              value={emailPrefix}
-              onChangeText={setEmailPrefix}
-            />
-            <Text style={styles.domain}>@student.uj.ac.za</Text>
-          </View>
-        </View>
-
-        {/* Password Field */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Password</Text>
-          <View style={styles.inputWrapper}>
-            <Ionicons
-              name='lock-closed-outline'
-              size={16}
-              style={styles.icon}
-            />
-            <TextInput
-              placeholder="Enter password"
-              placeholderTextColor="#717171"
-              style={[styles.input, !password && styles.placeholderText]}
-              secureTextEntry={!showPassword}
-              value={password}
-              onChangeText={setPassword}
-            />
-            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-              <Ionicons
-                name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                size={20}
-                color="#717171"
-              />
-            </TouchableOpacity>
-          </View>
-          <Text style={styles.forgot}>Forgot Password?</Text>
-        </View>
-
-        {/* Login Button */}
-        <TouchableOpacity onPress={handleLogin}>
-          <LinearGradient
-            colors={['#C84022', '#9e2d2d']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.loginBtn}
-          >
-            <Text style={styles.loginText}>Sign In</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-
-        {/* Sign Up Link */}
-        <Text style={styles.loginLink}>
-          Don't have an Account?{' '}
-          <Text
-            style={styles.loginLinkBold}
-            onPress={() => navigation.navigate('signup')}
-          >
-            Sign Up
-          </Text>
+    <View style={styles.container}>
+      {/* Fixed Background Image */}
+      <ImageBackground source={backgroundImage} style={styles.background}>
+        {/* Fixed Title */}
+        <Text style={styles.title}>
+          <Text style={{ color: '#FE5235' }}>Hello</Text>,{"\n"}Welcome Back
         </Text>
+      </ImageBackground>
 
-      </View>
-              {loading && (
-          <GeneralLoader />
-        )}
-    </ImageBackground>
+      {/* Scrollable Form Container */}
+      <KeyboardAvoidingView 
+        style={styles.keyboardContainer}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
+        <View style={styles.formContainer}>
+          <ScrollView 
+            ref={scrollViewRef}
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+          >
+            <View style={styles.overlay}>
+              {/* Email Field */}
+              <View style={styles.inputContainer} ref={emailInputRef}>
+                <Text style={styles.label}>Student E-mail</Text>
+                <View style={styles.inputWrapper}>
+                  <Ionicons
+                    name='mail-outline'
+                    size={16}
+                    style={styles.icon}
+                  />
+                  <TextInput
+                    // placeholder="e.g. 123456"
+                    placeholderTextColor="#717171"
+                    style={styles.input}
+                    value={emailPrefix}
+                    onChangeText={setEmailPrefix}
+                    onFocus={() => scrollToInput(emailInputRef)}
+                  />
+                  <Text style={styles.domain}>@student.uj.ac.za</Text>
+                </View>
+              </View>
+
+              {/* Password Field */}
+              <View style={styles.inputContainer} ref={passwordInputRef}>
+                <Text style={styles.label}>Password</Text>
+                <View style={styles.inputWrapper}>
+                  <Ionicons
+                    name='lock-closed-outline'
+                    size={16}
+                    style={styles.icon}
+                  />
+                  <TextInput
+                    placeholder="Enter password"
+                    placeholderTextColor="#717171"
+                    style={[styles.input, !password && styles.placeholderText]}
+                    secureTextEntry={!showPassword}
+                    value={password}
+                    onChangeText={setPassword}
+                    onFocus={() => scrollToInput(passwordInputRef)}
+                  />
+                  <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                    <Ionicons
+                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={20}
+                      color="#717171"
+                    />
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.forgot}>Forgot Password?</Text>
+              </View>
+
+              {/* Login Button */}
+              <TouchableOpacity onPress={handleLogin}>
+                <LinearGradient
+                  colors={['#C84022', '#9e2d2d']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.loginBtn}
+                >
+                  <Text style={styles.loginText}>Sign In</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+
+              {/* Sign Up Link */}
+              <Text style={styles.loginLink}>
+                Don't have an Account?{' '}
+                <Text
+                  style={styles.loginLinkBold}
+                  onPress={() => navigation.navigate('signup')}
+                >
+                  Sign Up
+                </Text>
+              </Text>
+            </View>
+          </ScrollView>
+        </View>
+      </KeyboardAvoidingView>
+
+      {loading && (
+        <GeneralLoader />
+      )}
+    </View>
   );
 };
 
 export default Login;
 
 const styles = StyleSheet.create({
-  background: {
+  container: {
     flex: 1,
+  },
+  background: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
     width,
     height,
-  },
-  overlay: {
-    padding: 40,
-    justifyContent: 'center',
-    backgroundColor: '#FEF7EE',
-    marginTop: 'auto',
-    height: 445,
-    borderRadius: 50
   },
   title: {
     color: '#fff',
@@ -177,6 +212,27 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 270,
     marginLeft: 17
+  },
+  keyboardContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  formContainer: {
+    height: 445,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
+  overlay: {
+    flex: 1,
+    padding: 40,
+    justifyContent: 'center',
+    backgroundColor: '#FEF7EE',
+    borderRadius: 50,
+    minHeight: 445,
   },
   label: {
     color: 'black',
