@@ -105,7 +105,7 @@ const BottomNav = ({ isNotHome, setIsNotHome, isWalkPartner, setIsWalkPartner, s
         </View>
 
         {/* SOS Button */}
-        <SOSBtn onPress={() => setIsSOS(true)} />
+        <SOSBtn onPress={setIsSOS} />
       </View>
     </View>
   );

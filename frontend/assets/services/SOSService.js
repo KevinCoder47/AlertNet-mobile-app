@@ -1,6 +1,7 @@
 import * as Location from 'expo-location';
 import * as SMS from 'expo-sms';
-import { FirebaseService } from '../../backend/Firebase/FirebaseService';
+import { Linking, Alert } from 'react-native';
+import { SOSFirebaseService } from '../../backend/Firebase/SOSFirebaseService';
 import { auth } from '../../backend/Firebase/FirebaseConfig';
 import { getEmergencyContacts, addEmergencyContact, updateEmergencyContact, deleteEmergencyContact } from '../../services/firestore';
 
@@ -94,16 +95,57 @@ class SOSService {
     }
   }
 
-  static async sendEmergencyNotifications(triggeredBy = 'manual') {
+  static async callPolice() {
+    const POLICE_NUMBER = '0638184478';
     try {
+        const phoneUrl = `tel:${POLICE_NUMBER}`;
+        const canOpen = await Linking.canOpenURL(phoneUrl);
+        if (canOpen) {
+            await Linking.openURL(phoneUrl);
+            return { success: true, number: POLICE_NUMBER };
+        } else {
+            // Don't show alert here, just return the error
+            console.warn('SOS Service: Unable to make phone calls on this device.');
+            return { success: false, error: 'Device cannot make calls' };
+        }
+    } catch (error) {
+        console.error('SOS Service: Error making phone call:', error);
+        return { success: false, error: error.message };
+    }
+  }
+
+  static async sendEmergencyNotifications(triggeredBy = 'manual') {
+    let sosSessionId = null;
+    let totalNotified = 0;
+    let smsNotified = 0;
+    let appFriendsNotified = 0;
+    let errors = [];
+
+    try {
+      // 1. Create an SOS Session to track this event
+      const sessionResult = await SOSFirebaseService.createSOSSession({
+        triggeredBy,
+        startTime: new Date(),
+      });
+
+      if (!sessionResult.success) {
+        // This is a critical failure, we cannot proceed.
+        throw new Error('Failed to create SOS session.');
+      }
+      sosSessionId = sessionResult.sessionId;
+      await SOSFirebaseService.addLogToSOSSession(sosSessionId, `SOS triggered by ${triggeredBy} action.`);
+
+      // 2. Call police and log the event
+      const policeCallResult = await this.callPolice();
+      if (policeCallResult.success) {
+        await SOSFirebaseService.addLogToSOSSession(sosSessionId, `Called Police (${policeCallResult.number})`, 'police_called');
+      } else {
+        await SOSFirebaseService.addLogToSOSSession(sosSessionId, `Failed to call police: ${policeCallResult.error}`, 'error');
+        errors.push(`Police call failed: ${policeCallResult.error}`);
+      }
+
       const contacts = await this.getEmergencyContacts();
       const location = await this.getCurrentLocation();
-      
-      let totalNotified = 0;
-      let errors = [];
-      
-      // Log the trigger method
-      console.log(`SOS triggered by: ${triggeredBy}`);
 
       // Send SMS to emergency contacts
       if (contacts.length > 0) {
@@ -115,36 +157,95 @@ class SOSService {
 
         const phoneNumbers = contacts.map(contact => contact.phoneNumber);
         
-        const isAvailable = await SMS.isAvailableAsync();
-        if (isAvailable) {
-          await SMS.sendSMSAsync(phoneNumbers, message);
-          totalNotified += contacts.length;
-        } else {
-          errors.push('SMS not available on this device');
+        try {
+          const isAvailable = await SMS.isAvailableAsync();
+          if (isAvailable) {
+            await SMS.sendSMSAsync(phoneNumbers, message);
+            smsNotified = contacts.length;
+            totalNotified += contacts.length;
+
+            // Log each SMS contact notification individually
+            for (const contact of contacts) {
+              await SOSFirebaseService.addLogToSOSSession(
+                sosSessionId, 
+                `Sent SMS to contact: "${contact.name}"`, 
+                'sms_sent', 
+                { contactName: contact.name, contactPhone: contact.phoneNumber }
+              );
+            }
+
+            console.log(`SMS sent to ${contacts.length} emergency contacts`);
+          } else {
+            errors.push('SMS not available on this device');
+            await SOSFirebaseService.addLogToSOSSession(sosSessionId, 'SMS not available on this device', 'error');
+          }
+        } catch (smsError) {
+          console.error('SMS Error:', smsError);
+          errors.push(`SMS failed: ${smsError.message}`);
+          await SOSFirebaseService.addLogToSOSSession(sosSessionId, `SMS to contacts failed: ${smsError.message}`, 'error');
         }
       }
 
-      // Send notifications to Firebase friends
-      const friendsResult = await FirebaseService.sendSOSNotifications(location);
-      if (friendsResult.success) {
-        totalNotified += friendsResult.notificationsSent;
-      } else {
-        errors.push(`Friends notification failed: ${friendsResult.error}`);
+      // Send push notifications to app friends via SOSFirebaseService
+      try {
+        const friendsResult = await SOSFirebaseService.sendSOSNotifications(location, null, sosSessionId);
+        
+        if (friendsResult.success) {
+          appFriendsNotified = friendsResult.notificationsSent;
+          totalNotified += friendsResult.notificationsSent;
+          await SOSFirebaseService.addLogToSOSSession(sosSessionId, `Sent push notifications to ${appFriendsNotified} friends.`);
+          console.log(`Firebase notifications sent to ${friendsResult.notificationsSent} friends`);
+          
+          // Log additional details
+          if (friendsResult.totalFriends) {
+            console.log(`Total friends: ${friendsResult.totalFriends}, Friends with tokens: ${friendsResult.friendsWithTokens}`);
+          }
+          
+          if (friendsResult.errors) {
+            errors.push(`Some friend notifications failed: ${friendsResult.errors.join(', ')}`);
+            await SOSFirebaseService.addLogToSOSSession(sosSessionId, `Some friend notifications failed.`, 'error');
+          }
+        } else {
+          const errorMsg = `App friends notification failed: ${friendsResult.error}`;
+          errors.push(errorMsg);
+          await SOSFirebaseService.addLogToSOSSession(sosSessionId, errorMsg, 'error');
+        }
+      } catch (firebaseError) {
+        const errorMsg = `Firebase notification error: ${firebaseError.message}`;
+        errors.push(errorMsg);
+        console.error('Firebase Error:', firebaseError);
       }
 
+      // Check if any notifications were sent
       if (totalNotified === 0) {
-        throw new Error('No contacts or friends found to notify');
+        errors.push('No contacts or friends found to notify.');
+        await SOSFirebaseService.addLogToSOSSession(sosSessionId, 'No contacts or friends found to notify.', 'warning');
       }
 
-      return { 
+      // Prepare success response
+      const response = {
         success: true, 
         contactsNotified: totalNotified,
+        smsContactsNotified: smsNotified,
+        appFriendsNotified: appFriendsNotified,
+        sosSessionId: sosSessionId, // Return the session ID
         triggeredBy,
         errors: errors.length > 0 ? errors : null
       };
+
+      console.log('SOS Notification Summary:', response);
+      return response;
+
     } catch (error) {
-      console.error('Error sending emergency notifications:', error);
-      return { success: false, error: error.message };
+      console.error('CRITICAL Error sending emergency notifications:', error);
+      return { 
+        success: false, 
+        error: error.message,
+        sosSessionId: sosSessionId, // Return session ID even on failure, if it was created
+        contactsNotified: 0,
+        smsContactsNotified: 0,
+        appFriendsNotified: 0
+      };
     }
   }
 
@@ -153,29 +254,91 @@ class SOSService {
       const contacts = await this.getEmergencyContacts();
       const location = await this.getCurrentLocation();
       
-      if (contacts.length === 0) {
-        throw new Error('No emergency contacts found');
+      // Test SMS contacts
+      let smsTestResult = null;
+      if (contacts.length > 0) {
+        const locationText = location 
+          ? `My location: https://maps.google.com/?q=${location.latitude},${location.longitude}`
+          : 'Location unavailable';
+
+        const message = `🚨 TEST EMERGENCY ALERT 🚨\n\nThis is a test message. I need immediate help! Please contact me or emergency services.\n\n${locationText}\n\nSent from AlertNet Safety App`;
+
+        smsTestResult = {
+          contactsFound: contacts.length,
+          contacts: contacts.map(c => ({ name: c.name, phone: c.phoneNumber })),
+          message: message
+        };
       }
 
-      const locationText = location 
-        ? `My location: https://maps.google.com/?q=${location.latitude},${location.longitude}`
-        : 'Location unavailable';
+      // Test app friends notifications (without actually sending)
+      let appFriendsTestResult = null;
+      try {
+        // Get friends list to test
+        const currentUser = auth.currentUser;
+        if (currentUser) {
+          const friends = await SOSFirebaseService.getUserFriends(currentUser.uid);
+          const friendIds = friends.map(friend => 
+            typeof friend === 'string' ? friend : friend.uid || friend.id
+          ).filter(id => id);
+          
+          if (friendIds.length > 0) {
+            const friendTokens = await SOSFirebaseService.getFriendsTokens(friendIds);
+            appFriendsTestResult = {
+              totalFriends: friendIds.length,
+              friendsWithTokens: friendTokens.length,
+              friends: friendTokens.map(f => ({ name: f.name, hasToken: !!f.token }))
+            };
+          }
+        }
+      } catch (error) {
+        console.error('Error testing app friends:', error);
+      }
 
-      const message = `🚨 TEST EMERGENCY ALERT 🚨\n\nThis is a test message. I need immediate help! Please contact me or emergency services.\n\n${locationText}\n\nSent from AlertNet Safety App`;
+      if (!smsTestResult && !appFriendsTestResult) {
+        throw new Error('No emergency contacts or app friends found');
+      }
 
-      // Simulate the process without actually sending SMS
       return { 
         success: true, 
-        contactsNotified: contacts.length,
-        contacts: contacts,
         location: location,
-        message: message,
+        smsTest: smsTestResult,
+        appFriendsTest: appFriendsTestResult,
         isTest: true
       };
     } catch (error) {
       console.error('Error testing emergency notifications:', error);
       return { success: false, error: error.message };
     }
+  }
+
+  // Initialize FCM for the current user
+  static async initializeFCM() {
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        console.warn('No authenticated user for FCM initialization');
+        return null;
+      }
+
+      const token = await SOSFirebaseService.initializeFCM(currentUser.uid);
+      if (token) {
+        console.log('FCM initialized successfully');
+      }
+      return token;
+    } catch (error) {
+      console.error('Error initializing FCM:', error);
+      return null;
+    }
+  }
+
+  // Set up notification listeners
+  static setupNotificationListeners() {
+    return SOSFirebaseService.setupNotificationListener();
+  }
+
+  // Remove notification listeners
+  static removeNotificationListeners(listeners) {
+    SOSFirebaseService.removeNotificationListeners(listeners);
   }
 }
 

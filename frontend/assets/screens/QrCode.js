@@ -1,25 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ImageBackground, Linking, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-
-export default function QrCode({ setIsQrCode, setIsSOS }) {
-  const contacts = [
-    {
-      id: 1,
-      name: "Lebron James",
-      distance: "5km Away",
-      phone: "067 878 976",
-      image: require("../images/Lebron_James.jpg"),
-    },
-    {
-      id: 2,
-      name: "Josh Naidoo",
-      distance: "30 km Away",
-      phone: "072 654 2234",
-      image: require("../images/josh_Naidoo.jpg"),
-    },
-  ];
-
+export default function QrCode({ setIsQrCode, setIsSOS, emergencyContacts = [], userData = {}, userImage }) {
   const handleCall = (phoneNumber) => {
     const cleanPhone = phoneNumber.replace(/\s/g, '');
     let dialerURL;
@@ -65,33 +47,38 @@ export default function QrCode({ setIsQrCode, setIsSOS }) {
 
         <View style={styles.profileSection}>
           <View style={styles.imageWrapper}>
-            <Image
-              source={require("../images/My Pic 2.0.jpg")}
-              style={styles.profileImage}
-            />
+            {userImage ? (
+              <Image
+                source={{ uri: userImage }}
+                style={styles.profileImage}
+              />
+            ) : (
+              <View style={styles.contactImagePlaceholder}>
+                <Text style={styles.contactInitial}>
+                  {userData.name ? userData.name.charAt(0).toUpperCase() : 'U'}
+                </Text>
+              </View>
+            )}
           </View>
-          <Text style={styles.nameText}>Kevin Serakalala</Text>
-          <Text style={styles.ageText}>Age : 20</Text>
-          <Text style={styles.genderText}>Gender : Male</Text>
+          <Text style={styles.nameText}>{userData.fullName || `${userData.name || ''} ${userData.surname || ''}`.trim()}</Text>
+          {userData.gender && <Text style={styles.genderText}>Gender : {userData.gender}</Text>}
         </View>
 
         <View style={styles.emergencySection}>
           <Text style={styles.emergencyTitle}>Emergency Contacts</Text>
           
-          {contacts.map((contact) => (
+          {emergencyContacts.map((contact) => (
             <View key={contact.id} style={styles.contactCard}>
-              <Image
-                source={contact.image}
-                style={styles.contactImage}
-              />
+              <View style={styles.contactImagePlaceholder}>
+                <Text style={styles.contactInitial}>{contact.name ? contact.name.charAt(0).toUpperCase() : '?'}</Text>
+              </View>
               <View style={styles.contactInfo}>
                 <Text style={styles.contactName}>{contact.name}</Text>
-                <Text style={styles.contactDistance}>{contact.distance}</Text>
-                <Text style={styles.contactPhone}>{contact.phone}</Text>
+                <Text style={styles.contactPhone}>{contact.phoneNumber}</Text>
               </View>
               <TouchableOpacity 
                 style={styles.callButton}
-                onPress={() => handleCall(contact.phone)}
+                onPress={() => handleCall(contact.phoneNumber)}
               >
                 <Ionicons name="call" size={20} color="#FFFFFF" />
               </TouchableOpacity>
@@ -138,25 +125,17 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginBottom: 20,
   },
-  profileImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
+  profileImage: { width: '100%', height: '100%', resizeMode: 'cover' },
   nameText: {
     color: '#FFFFFF',
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 8,
   },
-  ageText: {
-    color: '#AAAAAA',
-    fontSize: 14,
-    marginBottom: 4,
-  },
   genderText: {
     color: '#AAAAAA',
     fontSize: 14,
+    marginTop: 4,
   },
   emergencySection: {
     flex: 1,
@@ -175,12 +154,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 15,
   },
-  contactImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: 15,
-  },
   contactInfo: {
     flex: 1,
   },
@@ -190,16 +163,27 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 4,
   },
-  contactDistance: {
-    color: '#AAAAAA',
-    fontSize: 12,
-    marginBottom: 2,
-  },
   contactPhone: {
     color: '#AAAAAA',
     fontSize: 12,
   },
   callButton: {
     padding: 10,
+  },
+  contactImagePlaceholder: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 15,
+    backgroundColor: '#4A5568',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#718096',
+  },
+  contactInitial: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: 'bold',
   },
 });

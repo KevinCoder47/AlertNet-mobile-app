@@ -12,6 +12,7 @@ import { getUserDocument } from '../../services/firestore';
 import * as Location from 'expo-location';
 import { updateCurrentLocation } from '../../services/firestore';
 import * as TaskManager from 'expo-task-manager';
+import SOSService from '../services/SOSService';
 
 import WalkPartner from './WalkPartner';
 import SOSPage from './SOS';
@@ -37,6 +38,7 @@ const { width, height } = Dimensions.get('window');
 const Home = ({handleLogout}) => {
   const [isNotHome, setIsNotHome] = useState(false);
   const [isSOS, setIsSOS] = useState(false);
+  const [activeSosSessionId, setActiveSosSessionId] = useState(null);
   const [isWalkPartner, setIsWalkPartner] = useState(false);
   const [isQrCode, setIsQrCode] = useState(false);
   const [isSafetyResources, setIsSafetyResources] = useState(false);
@@ -67,10 +69,43 @@ const Home = ({handleLogout}) => {
   const [cachedImagePath, setCachedImagePath] = useState(null);
   const [imageError, setImageError] = useState(false);
 
-
   //USER LOCATION:
   const [userLocation, setUserLocation] = useState(null);
   const mapRef = useRef(null);
+  
+  // Initialize FCM for the current user
+  useEffect(() => {
+    const initializeUserFCM = async () => {
+      if (userData && userData.userId) {
+        try {
+          console.log('Initializing FCM for user:', userData.name);
+          const token = await SOSService.initializeFCM();
+          if (token) {
+            console.log('FCM token initialized for user');
+          }
+        } catch (error) {
+          console.error('Error initializing FCM for user:', error);
+        }
+      }
+    };
+
+    initializeUserFCM();
+  }, [userData]); // Run when userData changes
+
+  // Load emergency contacts and reload them when the management screen is closed
+  const [emergencyContacts, setEmergencyContacts] = useState([]);
+  useEffect(() => {
+    const loadEmergencyContacts = async () => {
+      // Only load if we have a user
+      if (userData?.userId) {
+        const contacts = await SOSService.getEmergencyContacts();
+        setEmergencyContacts(contacts);
+      }
+    };
+    // Reload when user is loaded, or when emergency contacts screen is closed
+    loadEmergencyContacts();
+  }, [userData, isEmergencyContacts]);
+
   useEffect(() => {
   (async () => {
     const { status } = await Location.requestForegroundPermissionsAsync();
@@ -433,12 +468,19 @@ useEffect(() => {
           if (value) setPreviousScreen('sos');
           setIsSafetyResources(value);
         }}
+        sosSessionId={activeSosSessionId}
       />
     );
   }
 
   if (isQrCode) {
-    return <QrCode setIsQrCode={setIsQrCode} setIsSOS={setIsSOS} />;
+    return <QrCode 
+      setIsQrCode={setIsQrCode} 
+      setIsSOS={setIsSOS} 
+      emergencyContacts={emergencyContacts}
+      userData={userData}
+      userImage={getImageSource()}
+    />;
   }
 
   if (isTestSOS) {
@@ -669,7 +711,10 @@ useEffect(() => {
           setIsNotHome={setIsNotHome}
           isWalkPartner={isWalkPartner}
           setIsWalkPartner={setIsWalkPartner}
-          setIsSOS={setIsSOS}
+          setIsSOS={(sessionId) => {
+            setActiveSosSessionId(sessionId);
+            setIsSOS(true);
+          }}
           setIsPeopleActive={setIsPeopleActive}
           setIsTopBarManuallyExpanded={setIsTopBarManuallyExpanded}
         />
