@@ -45,7 +45,6 @@ export default function SafetyResources({
   setIsAppearanceSettings,
   setIsFontSizeSettings,
 
-  backgroundContent
   setIsScanning,
   backgroundContent,
   onQRCodeScanned // New prop for handling QR code scan results
