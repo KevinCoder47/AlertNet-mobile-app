@@ -1,11 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import Constants from 'expo-constants';
 
 export default function Unsafe({ setIsUnsafePage, setIsSafetyResources }) {
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       <View style={styles.container}>
         {/* Back Button - Fixed position */}
         <TouchableOpacity 
@@ -136,7 +136,7 @@ export default function Unsafe({ setIsUnsafePage, setIsSafetyResources }) {
         </TouchableOpacity>
               </ScrollView>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -144,6 +144,7 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+    paddingTop: Constants.statusBarHeight,
   },
   container: {
     flex: 1,
@@ -152,14 +153,14 @@ const styles = StyleSheet.create({
   scrollContainer: {
     flex: 1,
     paddingHorizontal: 16,
-    paddingTop: 60,
+    paddingTop: 50, // Adjusted for new header positioning
   },
   scrollContent: {
     paddingBottom: 80,
   },
   backArrow: {
     position: 'absolute',
-    top: 15,
+    top: 10,
     left: 16,
     zIndex: 10,
     padding: 8,

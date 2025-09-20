@@ -6,13 +6,13 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
   Alert,
 } from 'react-native';
 import { SOSService } from '../../services/SOSService';
 
 import Feather from '@expo/vector-icons/Feather';
 import * as Location from 'expo-location';
+import Constants from 'expo-constants';
 
 
 
@@ -97,7 +97,7 @@ export default function TestSOS({ setIsSafetyResources, setIsTestSOS }) {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.container}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -149,14 +149,23 @@ export default function TestSOS({ setIsSafetyResources, setIsTestSOS }) {
 
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#fff" },
-  scrollContent: { paddingHorizontal: 20, paddingBottom: 40 },
-  headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginVertical: 20 },
+  container: { flex: 1, backgroundColor: "#fff" },
+  scrollContent: { 
+    paddingHorizontal: 20, 
+    paddingBottom: 40,
+    paddingTop: Constants.statusBarHeight,
+  },
+  headerRow: { 
+    flexDirection: "row", 
+    alignItems: "center", 
+    justifyContent: "space-between", 
+    marginBottom: 20 
+  },
   title: { fontSize: 20, fontWeight: "bold", textAlign: "center" },
   subtitle: { fontSize: 14, color: "#444", textAlign: "center", marginBottom: 20 },
   bold: { fontWeight: "bold" },

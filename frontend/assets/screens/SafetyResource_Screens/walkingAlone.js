@@ -6,9 +6,9 @@ import {
   ScrollView,
   Image,
   TouchableOpacity,
-  SafeAreaView,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather'; // Using Feather for the arrow-left icon
+import Constants from 'expo-constants';
 
 const tipsData = [
   {
@@ -52,11 +52,9 @@ const tipsData = [
 // 1. ACCEPT NAVIGATION PROPS
 const WalkingAloneTips = ({ setIsWalkingAloneTips, setIsSafetyResources }) => {
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.contentContainer}>
-        {/* 2. ADD ONPRESS HANDLER TO THE BACK BUTTON */}
+    <View style={styles.safeArea}>
+      {/* Header section is now outside the ScrollView for consistent positioning */}
+      <View style={styles.headerContainer}>
         <TouchableOpacity 
           style={styles.backButton}
           onPress={() => {
@@ -71,7 +69,13 @@ const WalkingAloneTips = ({ setIsWalkingAloneTips, setIsSafetyResources }) => {
           <Text style={styles.title}>Tips for Walking Alone</Text>
           <Text style={styles.subtitle}>Stay Alert. Stay Safe.</Text>
         </View>
+      </View>
 
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+      >
         {tipsData.map((section, index) => (
           <View key={index} style={styles.section}>
             <Text style={styles.sectionTitle}>{section.title}</Text>
@@ -95,7 +99,7 @@ const WalkingAloneTips = ({ setIsWalkingAloneTips, setIsSafetyResources }) => {
           style={styles.footerImage}
         />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -103,16 +107,20 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#f4f4f4',
+    paddingTop: Constants.statusBarHeight,
   },
   container: {
     flex: 1,
+  },
+  headerContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 10,
   },
   contentContainer: {
     paddingHorizontal: 20,
     paddingBottom: 40,
   },
   backButton: {
-    marginTop: 20,
     marginBottom: 10,
     alignSelf: 'flex-start',
   },

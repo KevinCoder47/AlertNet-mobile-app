@@ -14,8 +14,9 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
+  Image,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { FirebaseService } from '../../backend/Firebase/FirebaseService';
 
 const { width, height } = Dimensions.get('window');
@@ -106,6 +107,8 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, markN
               isUrgent: isUrgent,
               location: n.data?.location || null,
               phone: n.data?.senderPhone || null,
+              senderId: n.data?.senderId || null,
+              profilePicture: n.data?.profilePicture || null,
           };
         });
 
@@ -245,7 +248,7 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, markN
     );
   };
 
-  // Quick actions for notifications
+  // Quick actions for notifications - FIXED VERSION
   const handleQuickAction = (notification, action) => {
     Vibration.vibrate(50);
     
@@ -260,8 +263,8 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, markN
         break;
       case 'location':
         if (notification.location && onViewLocation) {
-          onViewLocation(notification.location);
-          setIsNotification(false); // Close the popup to show the map
+          onViewLocation(notification);
+          setIsNotification(false); // Close the notifications popup
         } else {
           Alert.alert('Location Unavailable', `Could not retrieve location for ${notification.name}.`);
         }
@@ -436,13 +439,20 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, markN
           
           <View style={styles.notificationContent}>
             <View style={styles.notificationLeft}>
-              <View style={[styles.iconContainer, { backgroundColor: getIconBackgroundColor(notification) }]}>
-                <Icon 
-                  name={getNotificationIcon(notification.type)} 
-                  size={16} 
-                  color={getStatusColor(notification)} 
+              {notification.profilePicture ? (
+                <Image
+                  source={{ uri: notification.profilePicture }}
+                  style={styles.profilePicture}
                 />
-              </View>
+              ) : (
+                <View style={[styles.iconContainer, { backgroundColor: getIconBackgroundColor(notification) }]}>
+                  <Icon 
+                    name={getNotificationIcon(notification.type)} 
+                    size={16} 
+                    color={getStatusColor(notification)} 
+                  />
+                </View>
+              )}
               <View style={styles.notificationText}>
                 <Text style={[styles.notificationName, { fontSize: fonts.name }]}>
                   {notification.name}: <Text style={[styles.notificationMessage, { fontSize: fonts.message }]}>{notification.message}</Text>
@@ -570,7 +580,7 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, markN
           {/* Enhanced Menu Dropdown */}
           {showMenu && (
             <View style={styles.menuDropdown}>
-              <TouchableOpacity style={styles.menuItem} onPress={markAllAsRead}>
+              <TouchableOpacity style={styles.menuItem} onPress={handleMarkAllAsRead}>
                 <Icon name="check-all" size={20} color="#FFFFFF" />
                 <Text style={styles.menuItemText}>Mark all as read</Text>
               </TouchableOpacity>
@@ -1380,6 +1390,12 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 12,
+  },
+  profilePicture: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     marginRight: 12,
   },
   notificationText: {

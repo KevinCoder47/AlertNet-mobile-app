@@ -36,6 +36,7 @@ import Subscription from './SafetyResource_Screens/Subscription';
 import DownloadedMaps from './SafetyResource_Screens/downloadedMaps';
 import NotificationsPopup from './NotificationsPopup';
 import SafetyZones from './SafetyResource_Screens/safetyZones';
+import LocationViewer from './LocationViewer';
 
 const { width, height } = Dimensions.get('window');
 
@@ -68,6 +69,7 @@ const Home = ({handleLogout}) => {
   const [isTopBarManuallyExpanded, setIsTopBarManuallyExpanded] = useState(false);
   const [userData, setUserData] = useState();
   const { activePopup, dismissPopup, unreadCount, markNotificationAsRead, markAllNotificationsAsRead } = useNotifications();
+  const [locationViewerData, setLocationViewerData] = useState(null);
   const [isScanning, setIsScanning] = useState(false);
   const [scannedUserId, setScannedUserId] = useState(null);
   const [scannedSosId, setScannedSosId] = useState(null);
@@ -82,14 +84,14 @@ const Home = ({handleLogout}) => {
   const [userLocation, setUserLocation] = useState(null);
   const mapRef = useRef(null);
   
-  const focusOnLocation = (location) => {
-    if (location && mapRef.current) {
-      mapRef.current.animateToRegion({
-        latitude: location.latitude,
-        longitude: location.longitude,
-        latitudeDelta: 0.005, // Zoom in close
-        longitudeDelta: 0.005,
-      }, 1000); // 1 second animation
+  const handleViewLocation = (notification) => {
+    if (notification && notification.location) {
+      setLocationViewerData({
+        senderLocation: notification.location,
+        senderName: notification.name,
+        senderPhone: notification.phone,
+        senderId: notification.senderId,
+      });
     }
   };
 
@@ -771,6 +773,15 @@ useEffect(() => {
     );
   }
 
+  if (locationViewerData) {
+    return (
+      <LocationViewer
+        {...locationViewerData}
+        onClose={() => setLocationViewerData(null)}
+      />
+    );
+  }
+
   return (
   <MapProvider value={{ mapRef, userLocation, setUserLocation }}>
       <View style={styles.container}>
@@ -816,7 +827,7 @@ useEffect(() => {
           <NotificationsPopup
             userData={userData}
             setIsNotification={setIsNotification}
-            onViewLocation={focusOnLocation}
+            onViewLocation={handleViewLocation}
             markNotificationAsRead={async (notificationId) => {
               console.log('📖 Manual mark as read from popup:', notificationId);
               return await markNotificationAsRead(notificationId);
@@ -854,7 +865,7 @@ useEffect(() => {
                 markNotificationAsRead(activePopup.id);
               }
             }}
-            onViewLocation={focusOnLocation}
+            onViewLocation={handleViewLocation}
           />
         )}
       </View>

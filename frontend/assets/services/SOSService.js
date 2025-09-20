@@ -277,16 +277,18 @@ export class SOSService {
       // Test app friends notifications (without actually sending)
       let appFriendsTestResult = null;
       try {
-        // Get friends list to test
         const currentUser = auth.currentUser;
         if (currentUser) {
-          const friends = await SOSFirebaseService.getUserFriends(currentUser.uid);
+          // Use the same method as Home.js to get user data, ensuring consistency
+          const userDoc = await getUserDocument(currentUser.uid);
+          const friends = userDoc?.friends || [];
+
           const friendIds = friends.map(friend => 
             typeof friend === 'string' ? friend : friend.uid || friend.id
           ).filter(id => id);
           
           if (friendIds.length > 0) {
-            const friendTokens = await SOSFirebaseService.getFriendsTokens(friendIds);
+            const friendTokens = await SOSFirebaseService.getFriendsNotificationData(friendIds);
             appFriendsTestResult = {
               totalFriends: friendIds.length,
               friendsWithTokens: friendTokens.length,

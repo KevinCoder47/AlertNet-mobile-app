@@ -8,12 +8,12 @@ import {
   TouchableOpacity,
   View,
   ScrollView,
-  StatusBar,
   ActivityIndicator,
   StyleSheet,
 } from 'react-native';
 import { SOSFirebaseService } from '../../backend/Firebase/SOSFirebaseService';
 import QRCode from 'react-native-qrcode-svg';
+import Constants from 'expo-constants';
 
 export default function SOS({ setIsSOS, setIsQrCode, setIsSafetyResources, sosSessionId, userData }) {
   const [activityLog, setActivityLog] = useState([]);
@@ -101,7 +101,6 @@ export default function SOS({ setIsSOS, setIsQrCode, setIsSafetyResources, sosSe
       >
         {/* StatusBar Fix */}
         <ExpoStatusBar style="light" translucent />
-        <View style={{ height: StatusBar.currentHeight, backgroundColor: '#0C0B0E' }} />
 
         {/* Top Header */}
         <View
@@ -110,7 +109,7 @@ export default function SOS({ setIsSOS, setIsQrCode, setIsSafetyResources, sosSe
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'space-between',
-            marginTop: 50
+            paddingTop: Constants.statusBarHeight + 10,
           }}
         >
           <TouchableOpacity
