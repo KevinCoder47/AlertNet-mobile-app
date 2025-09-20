@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   Image,
   ImageBackground,
@@ -9,60 +9,87 @@ import {
   View,
   ScrollView,
   StatusBar,
+  ActivityIndicator,
+  StyleSheet,
 } from 'react-native';
-import SafetyResources from './SafetyResource_Screens/SafetyResources';
+import { SOSFirebaseService } from '../../backend/Firebase/SOSFirebaseService';
+import QRCode from 'react-native-qrcode-svg';
 
-export default function SOS({ setIsSOS, setIsQrCode, setIsSafetyResources }) {
-  const [activityLog, setActivityLog] = useState([
-    { time: '21:44', message: 'Police called (0638184478)' },
-    { time: '21:45', message: 'Your friends have been notified' },
-    { time: '21:47', message: 'Mpilo is on the way to you' },
-    { time: '21:48', message: 'APB Security is on the way to you.' },
-  ]);
-
-  // Add voice trigger log entry if SOS was triggered by voice
-  React.useEffect(() => {
-    const checkVoiceTrigger = () => {
-      // This would be called when SOS is triggered by voice recognition
-      const now = new Date();
-      const time = now.toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
-      });
-      
-      // Add voice trigger entry to log
-      setActivityLog(prevLog => {
-        const hasVoiceTrigger = prevLog.some(entry => entry.message.includes('Voice trigger'));
-        if (!hasVoiceTrigger) {
-          return [{ time, message: 'Voice trigger detected - SOS activated' }, ...prevLog];
-        }
-        return prevLog;
-      });
-    };
-    
-    // This would be triggered by the voice recognition service
-    // For now, it's just a placeholder
-  }, []);
-
+export default function SOS({ setIsSOS, setIsQrCode, setIsSafetyResources, sosSessionId, userData }) {
+  const [activityLog, setActivityLog] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const scrollViewRef = useRef(null);
 
-  const handleSafePress = () => {
-    const now = new Date();
-    const time = now.toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
+
+  useEffect(() => {
+    if (!sosSessionId) {
+      setActivityLog([
+        { time: 'Error', message: 'SOS session could not be started. Please try again.' }
+      ]);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    const unsubscribe = SOSFirebaseService.listenToSOSActivity(sosSessionId, (data) => {
+      if (data.error) {
+        console.error("SOS Activity Listener Error:", data.error);
+        setActivityLog([
+          { id: 'error-1', time: 'Error', message: 'Could not load live activity. Please check your connection.' }
+        ]);
+        setIsLoading(false);
+        return;
+      }
+
+      const formattedLogs = data.logs.map(log => ({
+        id: log.id,
+        time: log.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        message: log.message,
+      }));
+
+      setActivityLog(formattedLogs);
+      setIsLoading(false);
+
+      // Auto-scroll to the bottom
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 200);
     });
 
-    setActivityLog((prevLog) => {
-      const updatedLog = [...prevLog, { time, message: 'You marked yourself as Safe' }];
-      return updatedLog.slice(-10); // Keep last 10 entries
-    });
+    // Cleanup listener on component unmount
+    return () => unsubscribe();
+  }, [sosSessionId]);
 
+  // Data for the QR code
+  const qrCodeData = JSON.stringify({
+    type: 'alertnet_sos', // Add a type to identify our QR codes
+    userId: userData?.userId,
+    sosSessionId: sosSessionId,
+  });
+
+  const handleSafePress = async () => {
+    if (sosSessionId) {
+      // Log "I'm Safe" to the session
+      await SOSFirebaseService.addLogToSOSSession(sosSessionId, "You marked yourself as Safe", 'user_safe');
+      
+      // Send "All Safe" broadcast and end the session
+      const result = await SOSFirebaseService.sendSafeBroadcast(sosSessionId);
+
+      if (result.success) {
+        alert(`Marked as Safe. Notified ${result.notifiedCount || 0} friends that the emergency is over.`);
+      } else {
+        // The session is still ended, but we inform the user about the notification failure.
+        alert('Marked as Safe. There was an issue notifying your friends.');
+        console.error("Safe broadcast error:", result.error);
+      }
+    } else {
+      alert('Marked as Safe');
+    }
+
+    // Navigate back to home screen after a short delay
     setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 100);
-
-    alert('Marked as Safe');
+      setIsSOS(false);
+    }, 1500);
   };
 
   return (
@@ -164,10 +191,18 @@ export default function SOS({ setIsSOS, setIsQrCode, setIsSafetyResources }) {
               setIsQrCode(true);
             }}
           >
-            <Image
-              source={require('../images/QR_Code_Updated.png')}
-              style={{ width: 200, height: 200, marginTop: 50 }}
-            />
+            {userData?.userId && sosSessionId ? (
+              <View style={styles.qrCodeContainer}>
+                <QRCode
+                  value={qrCodeData}
+                  size={200}
+                  backgroundColor="white"
+                  color="black"
+                />
+              </View>
+            ) : (
+              <Image source={require('../images/QR_Code_Updated.png')} style={{ width: 200, height: 200, marginTop: 50 }} />
+            )}
           </TouchableOpacity>
 
           {/* Safe Button */}
@@ -210,23 +245,44 @@ export default function SOS({ setIsSOS, setIsQrCode, setIsSafetyResources }) {
             ref={scrollViewRef}
             style={{ maxHeight: 130 }}
             showsVerticalScrollIndicator={true}
+            onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
           >
-            {activityLog.map((entry, index) => (
-              <Text
-                key={index}
-                style={{
-                  color: 'white',
-                  marginTop: index === 0 ? 0 : 15,
-                  fontSize: 11,
-                }}
-              >
-                <Text style={{ color: 'white' }}>{entry.time + ' '}</Text>
-                <Text style={{ color: '#FF6600' }}>{entry.message}</Text>
-              </Text>
-            ))}
+            {isLoading ? (
+              <ActivityIndicator color="#FF6600" style={{ marginTop: 20 }} />
+            ) : (
+              activityLog.map((entry, index) => (
+                <Text
+                  key={entry.id || index}
+                  style={styles.logEntry}
+                >
+                  <Text style={styles.logTime}>{entry.time + ' '}</Text>
+                  <Text style={styles.logMessage}>{entry.message}</Text>
+                </Text>
+              ))
+            )}
           </ScrollView>
         </View>
       </ImageBackground>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  qrCodeContainer: {
+    marginTop: 50,
+    padding: 10,
+    backgroundColor: 'white',
+    borderRadius: 10,
+  },
+  logEntry: {
+    color: 'white',
+    marginTop: 15,
+    fontSize: 11,
+  },
+  logTime: {
+    color: 'white',
+  },
+  logMessage: {
+    color: '#FF6600',
+  },
+});

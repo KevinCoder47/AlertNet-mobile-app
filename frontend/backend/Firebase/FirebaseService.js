@@ -17,7 +17,9 @@ import {
   updateDoc,
   onSnapshot,
   orderBy,
-  limit
+  limit,
+  writeBatch,
+  deleteDoc
 } from 'firebase/firestore';
 
 export const FirebaseService = {
@@ -40,135 +42,222 @@ export const FirebaseService = {
   createNotification: async (notificationData) => {
     try {
       const notification = {
-        userId: notificationData.userId, // User who should receive the notification
+        userId: notificationData.userId,
         recipientPhone: notificationData.recipientPhone,
-        type: notificationData.type, // 'friend_request', 'friend_accepted', 'sos', etc.
+        type: notificationData.type,
         title: notificationData.title,
         message: notificationData.message,
-        data: notificationData.data || {}, // Additional data (requestId, senderInfo, etc.)
+        data: notificationData.data || {},
         read: false,
+        deleted: false,
         createdAt: serverTimestamp(),
-        priority: notificationData.priority || 'normal' // 'high', 'normal', 'low'
+        priority: notificationData.priority || 'normal',
+        isUrgent: notificationData.isUrgent || false
       };
       
       const notificationsRef = collection(db, 'notifications');
       const docRef = await addDoc(notificationsRef, notification);
       
-      console.log('📱 Notification created with ID:', docRef.id);
+      console.log('Notification created with ID:', docRef.id);
       
-      // Optional: Try to send push notification (for future FCM integration)
+      // Optional: Try to send push notification
       try {
         await FirebaseService.sendPushNotification({
           ...notification,
           notificationId: docRef.id
         });
       } catch (pushError) {
-        console.warn('⚠️ Push notification failed (non-critical):', pushError);
+        console.warn('Push notification failed (non-critical):', pushError);
       }
       
       return { success: true, notificationId: docRef.id };
     } catch (error) {
-      console.error('❌ Error creating notification:', error);
+      console.error('Error creating notification:', error);
       return { success: false, error: error.message };
     }
   },
 
-/**
- * Listen to notifications for a specific user 
- * @param {string} userPhone - User's phone number
- * @param {Function} callback - Callback function to handle notification updates
- * @returns {Function} - Unsubscribe function
- */
-listenToNotifications: (userPhone, callback) => {
-  try {
-    const formattedPhone = FirebaseService.formatPhoneNumber(userPhone);
-    console.log('🔔 Setting up notification listener for:', formattedPhone);
-    
-    const notificationsRef = collection(db, 'notifications');
-    
-    
-    const q = query(
-      notificationsRef,
-      where('recipientPhone', '==', formattedPhone),
-      limit(50) 
-    );
-    
-    
-    return onSnapshot(q, (snapshot) => {
-      const notifications = [];
-      const changes = [];
+  /**
+   * Enhanced listenToNotifications with better read/unread tracking
+   * @param {string} userPhone - User's phone number
+   * @param {Function} callback - Callback function to handle notification updates
+   * @returns {Function} - Unsubscribe function
+   */
+  listenToNotifications: (userPhone, callback) => {
+    try {
+      const formattedPhone = FirebaseService.formatPhoneNumber(userPhone);
+      console.log('Setting up enhanced notification listener for:', formattedPhone);
       
-      snapshot.docChanges().forEach((change) => {
-        const notificationData = {
-          id: change.doc.id,
-          ...change.doc.data()
-        };
+      const notificationsRef = collection(db, 'notifications');
+      
+      const q = query(
+        notificationsRef,
+        where('recipientPhone', '==', formattedPhone),
+        where('deleted', '!=', true),
+        limit(100)
+      );
+      
+      return onSnapshot(q, (snapshot) => {
+        const notifications = [];
+        const changes = [];
+        let hasNewUnreadNotifications = false;
         
-        if (change.type === 'added') {
-          console.log('🔔 New notification received:', notificationData.title);
-          changes.push({ type: 'new', notification: notificationData });
-        } else if (change.type === 'modified') {
-          console.log('📝 Notification updated:', notificationData.title);
-          changes.push({ type: 'updated', notification: notificationData });
-        }
+        snapshot.docChanges().forEach((change) => {
+          const notificationData = {
+            id: change.doc.id,
+            ...change.doc.data()
+          };
+          
+          // Track changes for popup triggering
+          if (change.type === 'added' && !notificationData.read) {
+            console.log('New unread notification received:', notificationData.title);
+            changes.push({ type: 'new', notification: notificationData });
+            hasNewUnreadNotifications = true;
+          } else if (change.type === 'modified') {
+            console.log('Notification updated:', notificationData.title, 'Read:', notificationData.read);
+            changes.push({ type: 'updated', notification: notificationData });
+          }
+          
+          notifications.push(notificationData);
+        });
         
-        notifications.push(notificationData);
+        // Sort notifications client-side by creation time (newest first)
+        const sortedNotifications = notifications.sort((a, b) => {
+          if (!a.createdAt || !b.createdAt) return 0;
+          const aTime = a.createdAt.toMillis ? a.createdAt.toMillis() : a.createdAt;
+          const bTime = b.createdAt.toMillis ? b.createdAt.toMillis() : b.createdAt;
+          return bTime - aTime;
+        });
+        
+        // Count unread notifications accurately
+        const unreadCount = sortedNotifications.filter(n => !n.read && !n.deleted).length;
+        
+        console.log(`Processed ${sortedNotifications.length} total notifications, ${unreadCount} unread for ${formattedPhone}`);
+        
+        // Call callback with comprehensive data
+        callback({
+          notifications: sortedNotifications,
+          changes: changes,
+          unreadCount: unreadCount,
+          hasNewUnreadNotifications: hasNewUnreadNotifications
+        });
+      }, (error) => {
+        console.error('Error listening to notifications:', error);
+        callback({ 
+          notifications: [], 
+          changes: [], 
+          unreadCount: 0, 
+          hasNewUnreadNotifications: false,
+          error: error.message 
+        });
       });
       
-      // Sort notifications client-side instead of using orderBy in query
-      const sortedNotifications = notifications.sort((a, b) => {
-        if (!a.createdAt || !b.createdAt) return 0;
-        const aTime = a.createdAt.toMillis ? a.createdAt.toMillis() : a.createdAt;
-        const bTime = b.createdAt.toMillis ? b.createdAt.toMillis() : b.createdAt;
-        return bTime - aTime; // Descending order (newest first)
-      });
-      
-      console.log(`📱 Found ${sortedNotifications.length} notifications for ${formattedPhone}`);
-      
-      // Call callback with sorted notifications and recent changes
-      callback({
-        notifications: sortedNotifications,
-        changes: changes,
-        unreadCount: sortedNotifications.filter(n => !n.read).length
-      });
-    }, (error) => {
-      console.error('❌ Error listening to notifications:', error);
-      callback({ notifications: [], changes: [], unreadCount: 0, error: error.message });
-    });
-    
-  } catch (error) {
-    console.error('❌ Error setting up notification listener:', error);
-    return () => {}; // Return empty unsubscribe function
-  }
-},
+    } catch (error) {
+      console.error('Error setting up notification listener:', error);
+      return () => {};
+    }
+  },
 
   /**
-   * Mark notification as read
+   * Enhanced mark notification as read with better error handling
    * @param {string} notificationId - Notification document ID
    * @returns {Object} - { success: boolean, error?: string }
    */
   markNotificationAsRead: async (notificationId) => {
     try {
+      console.log('Marking notification as read:', notificationId);
+      
+      // First verify the notification exists
       const notificationRef = doc(db, 'notifications', notificationId);
+      const notificationDoc = await getDoc(notificationRef);
+      
+      if (!notificationDoc.exists()) {
+        console.error('Notification not found:', notificationId);
+        return { success: false, error: 'Notification not found' };
+      }
+      
+      const notificationData = notificationDoc.data();
+      
+      // Check if already read to avoid unnecessary updates
+      if (notificationData.read) {
+        console.log('Notification already marked as read:', notificationId);
+        return { success: true, message: 'Already read' };
+      }
+      
+      // Update the notification
       await updateDoc(notificationRef, {
         read: true,
-        readAt: serverTimestamp()
+        readAt: serverTimestamp(),
+        lastModified: serverTimestamp()
       });
       
-      console.log('✅ Notification marked as read:', notificationId);
+      console.log('Notification marked as read successfully:', notificationId);
       return { success: true };
     } catch (error) {
-      console.error('❌ Error marking notification as read:', error);
+      console.error('Error marking notification as read:', error);
       return { success: false, error: error.message };
     }
   },
 
   /**
-   * Mark all notifications as read for a user
+   * Enhanced mark all notifications as read with batch processing
    * @param {string} userPhone - User's phone number
    * @returns {Object} - { success: boolean, updatedCount?: number, error?: string }
    */
   markAllNotificationsAsRead: async (userPhone) => {
+    try {
+      console.log('Starting bulk mark as read for:', userPhone);
+      
+      const formattedPhone = FirebaseService.formatPhoneNumber(userPhone);
+      const notificationsRef = collection(db, 'notifications');
+      
+      // Query for unread notifications only
+      const q = query(
+        notificationsRef,
+        where('recipientPhone', '==', formattedPhone),
+        where('read', '==', false),
+        where('deleted', '!=', true)
+      );
+      
+      const querySnapshot = await getDocs(q);
+      
+      if (querySnapshot.empty) {
+        console.log('No unread notifications found');
+        return { success: true, updatedCount: 0, message: 'No unread notifications' };
+      }
+      
+      console.log(`Found ${querySnapshot.size} unread notifications to mark as read`);
+      
+      // Use Firestore batch for better performance
+      const batch = writeBatch(db);
+      const timestamp = serverTimestamp();
+      
+      querySnapshot.forEach((docSnapshot) => {
+        const docRef = doc(db, 'notifications', docSnapshot.id);
+        batch.update(docRef, {
+          read: true,
+          readAt: timestamp,
+          lastModified: timestamp
+        });
+      });
+      
+      // Execute batch update
+      await batch.commit();
+      
+      console.log(`Successfully marked ${querySnapshot.size} notifications as read`);
+      return { success: true, updatedCount: querySnapshot.size };
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Get unread notification count for a user
+   * @param {string} userPhone - User's phone number
+   * @returns {Object} - { success: boolean, count: number, error?: string }
+   */
+  getUnreadNotificationCount: async (userPhone) => {
     try {
       const formattedPhone = FirebaseService.formatPhoneNumber(userPhone);
       const notificationsRef = collection(db, 'notifications');
@@ -176,46 +265,91 @@ listenToNotifications: (userPhone, callback) => {
       const q = query(
         notificationsRef,
         where('recipientPhone', '==', formattedPhone),
-        where('read', '==', false)
+        where('read', '==', false),
+        where('deleted', '!=', true)
       );
       
       const querySnapshot = await getDocs(q);
-      const batch = [];
+      const count = querySnapshot.size;
       
-      querySnapshot.forEach((docSnapshot) => {
-        batch.push(updateDoc(doc(db, 'notifications', docSnapshot.id), {
-          read: true,
-          readAt: serverTimestamp()
-        }));
-      });
-      
-      await Promise.all(batch);
-      
-      console.log(`✅ Marked ${querySnapshot.size} notifications as read`);
-      return { success: true, updatedCount: querySnapshot.size };
+      console.log(`Unread notification count for ${formattedPhone}: ${count}`);
+      return { success: true, count };
     } catch (error) {
-      console.error('❌ Error marking all notifications as read:', error);
-      return { success: false, error: error.message };
+      console.error('Error getting unread notification count:', error);
+      return { success: false, count: 0, error: error.message };
     }
   },
 
   /**
-   * Delete a notification
+   * Soft delete a notification (mark as deleted rather than removing)
    * @param {string} notificationId - Notification document ID
    * @returns {Object} - { success: boolean, error?: string }
    */
   deleteNotification: async (notificationId) => {
     try {
+      console.log('Soft deleting notification:', notificationId);
+      
       const notificationRef = doc(db, 'notifications', notificationId);
+      const notificationDoc = await getDoc(notificationRef);
+      
+      if (!notificationDoc.exists()) {
+        return { success: false, error: 'Notification not found' };
+      }
+      
       await updateDoc(notificationRef, {
         deleted: true,
-        deletedAt: serverTimestamp()
+        deletedAt: serverTimestamp(),
+        lastModified: serverTimestamp()
       });
       
-      console.log('🗑️ Notification marked as deleted:', notificationId);
+      console.log('Notification soft deleted:', notificationId);
       return { success: true };
     } catch (error) {
-      console.error('❌ Error deleting notification:', error);
+      console.error('Error deleting notification:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Clear all notifications for a user (soft delete)
+   * @param {string} userPhone - User's phone number
+   * @returns {Object} - { success: boolean, deletedCount?: number, error?: string }
+   */
+  clearAllNotifications: async (userPhone) => {
+    try {
+      const formattedPhone = FirebaseService.formatPhoneNumber(userPhone);
+      const notificationsRef = collection(db, 'notifications');
+      
+      const q = query(
+        notificationsRef,
+        where('recipientPhone', '==', formattedPhone),
+        where('deleted', '!=', true)
+      );
+      
+      const querySnapshot = await getDocs(q);
+      
+      if (querySnapshot.empty) {
+        return { success: true, deletedCount: 0, message: 'No notifications to clear' };
+      }
+      
+      const batch = writeBatch(db);
+      const timestamp = serverTimestamp();
+      
+      querySnapshot.forEach((docSnapshot) => {
+        const docRef = doc(db, 'notifications', docSnapshot.id);
+        batch.update(docRef, {
+          deleted: true,
+          deletedAt: timestamp,
+          lastModified: timestamp
+        });
+      });
+      
+      await batch.commit();
+      
+      console.log(`Cleared ${querySnapshot.size} notifications`);
+      return { success: true, deletedCount: querySnapshot.size };
+    } catch (error) {
+      console.error('Error clearing all notifications:', error);
       return { success: false, error: error.message };
     }
   },
@@ -225,18 +359,11 @@ listenToNotifications: (userPhone, callback) => {
    * @param {Object} notificationData - Notification data
    */
   sendPushNotification: async (notificationData) => {
-    // TODO: Implement FCM push notifications here
-    // For now, this is just a placeholder
-    console.log('📲 Push notification would be sent:', {
+    console.log('Push notification would be sent:', {
       title: notificationData.title,
       body: notificationData.message,
       data: notificationData.data
     });
-    
-    // In a real implementation, you would:
-    // 1. Get the user's FCM token from the database
-    // 2. Send a push notification via FCM Admin SDK (requires Cloud Functions)
-    // 3. Handle notification delivery status
     
     return { success: true, delivered: false, reason: 'FCM not implemented yet' };
   },
@@ -251,36 +378,30 @@ listenToNotifications: (userPhone, callback) => {
    * @returns {string} - Formatted phone number
    */
   formatPhoneNumber: (phone) => {
-    console.log('📞 Formatting phone:', phone);
+    console.log('Formatting phone:', phone);
     
-    // Remove all non-digits
     const cleaned = phone.replace(/\D/g, '');
-    console.log('🧹 Cleaned:', cleaned);
+    console.log('Cleaned:', cleaned);
     
-    // Handle South African numbers
     if (cleaned.startsWith('0') && cleaned.length === 10) {
-      // Convert 0XXXXXXXXX to +27XXXXXXXXX
       const formatted = '+27' + cleaned.substring(1);
-      console.log('🇿🇦 SA local to international:', formatted);
+      console.log('SA local to international:', formatted);
       return formatted;
     }
     
-    // Handle international numbers without +
     if (cleaned.startsWith('27') && cleaned.length === 11) {
       const formatted = '+' + cleaned;
-      console.log('🌍 Added + to country code:', formatted);
+      console.log('Added + to country code:', formatted);
       return formatted;
     }
     
-    // Already international format
     if (phone.startsWith('+')) {
-      console.log('✅ Already international:', phone);
+      console.log('Already international:', phone);
       return phone;
     }
     
-    // Default: assume it needs +27
     const formatted = '+27' + cleaned;
-    console.log('🔧 Default formatting:', formatted);
+    console.log('Default formatting:', formatted);
     return formatted;
   },
 
@@ -291,23 +412,22 @@ listenToNotifications: (userPhone, callback) => {
    */
   checkUserExists: async (phone) => {
     try {
-      console.log('🔍 Original phone input:', phone);
+      console.log('Original phone input:', phone);
       
-      // Format phone number consistently
       const formattedPhone = FirebaseService.formatPhoneNumber(phone);
-      console.log('🔎 Querying for Phone ==', formattedPhone);
+      console.log('Querying for Phone ==', formattedPhone);
       
       const usersRef = collection(db, 'users');
       const q = query(usersRef, where('Phone', '==', formattedPhone));
       const querySnapshot = await getDocs(q);
       
       if (querySnapshot.empty) {
-        console.log('❌ No user found with phone:', formattedPhone);
+        console.log('No user found with phone:', formattedPhone);
         return { exists: false, userData: null };
       }
       
       const userData = querySnapshot.docs[0].data();
-      console.log('✅ Found match with formatted phone!');
+      console.log('Found match with formatted phone!');
       return { 
         exists: true, 
         userData: {
@@ -316,7 +436,7 @@ listenToNotifications: (userPhone, callback) => {
         }
       };
     } catch (error) {
-      console.error('❌ Error checking if user exists:', error);
+      console.error('Error checking if user exists:', error);
       return { exists: false, userData: null, error: error.message };
     }
   },
@@ -332,13 +452,12 @@ listenToNotifications: (userPhone, callback) => {
       const formattedSenderPhone = FirebaseService.formatPhoneNumber(senderPhone);
       const formattedRecipientPhone = FirebaseService.formatPhoneNumber(recipientPhone);
       
-      console.log('🔍 Checking existing requests between:');
+      console.log('Checking existing requests between:');
       console.log('    Sender:', formattedSenderPhone);
       console.log('    Recipient:', formattedRecipientPhone);
       
       const friendRequestsRef = collection(db, 'friendRequests');
       
-      // Check for outgoing request (current user sent to recipient)
       const q1 = query(
         friendRequestsRef,
         where('senderPhone', '==', formattedSenderPhone),
@@ -346,7 +465,6 @@ listenToNotifications: (userPhone, callback) => {
         where('status', '==', 'pending')
       );
       
-      // Check for incoming request (recipient sent to current user)
       const q2 = query(
         friendRequestsRef,
         where('senderPhone', '==', formattedRecipientPhone),
@@ -354,14 +472,14 @@ listenToNotifications: (userPhone, callback) => {
         where('status', '==', 'pending')
       );
       
-      console.log('🔎 Executing queries...');
+      console.log('Executing queries...');
       const [outgoingSnapshot, incomingSnapshot] = await Promise.all([
         getDocs(q1),
         getDocs(q2)
       ]);
       
       if (!outgoingSnapshot.empty) {
-        console.log('📤 Found outgoing request');
+        console.log('Found outgoing request');
         return { 
           exists: true, 
           requestData: { id: outgoingSnapshot.docs[0].id, ...outgoingSnapshot.docs[0].data() },
@@ -370,7 +488,7 @@ listenToNotifications: (userPhone, callback) => {
       }
       
       if (!incomingSnapshot.empty) {
-        console.log('📥 Found incoming request');
+        console.log('Found incoming request');
         return { 
           exists: true, 
           requestData: { id: incomingSnapshot.docs[0].id, ...incomingSnapshot.docs[0].data() },
@@ -378,203 +496,265 @@ listenToNotifications: (userPhone, callback) => {
         };
       }
       
-      console.log('✅ No existing requests found');
+      console.log('No existing requests found');
       return { exists: false, requestData: null };
       
     } catch (error) {
-      console.error('❌ Error checking existing friend request:', error);
+      console.error('Error checking existing friend request:', error);
       return { exists: false, requestData: null, error: error.message };
     }
   },
 
-// Enhanced FirebaseService.js - sendFriendRequest method
-// This replaces the existing sendFriendRequest method in your FirebaseService.js
-
-// Enhanced FirebaseService.js - sendFriendRequest method
-// This replaces the existing sendFriendRequest method in your FirebaseService.js
-
-/**
- * Enhanced sendFriendRequest with profile picture and complete user data
- * @param {Object} friendData - { firstName, lastName, phone, senderPhone, senderEmail, senderUserData }
- * @returns {Object} - { success: boolean, message: string, requestId?: string }
- */
-sendFriendRequest: async (friendData) => {
-  try {
-    console.log('📨 Starting enhanced friend request process...');
-    
-    const currentUser = auth.currentUser;
-    const { firstName, lastName, phone, senderPhone, senderEmail, senderUserData } = friendData;
-    
-    // Get sender info - Enhanced to include profile data
-    const senderId = currentUser ? currentUser.uid : `temp_${Date.now()}`;
-    const userEmail = senderEmail || (currentUser ? currentUser.email : 'guest@alertnet.com');
-    
-    console.log('=== SENDER DATA DEBUG ===');
-    console.log('senderUserData received:', senderUserData);
-    console.log('senderUserData keys:', senderUserData ? Object.keys(senderUserData) : 'null');
-    
-    // Get sender's complete profile data from passed userData
-    let senderProfileData = senderUserData;
-    if (!senderProfileData) {
-      console.log('No senderUserData provided, trying to fetch from Firebase...');
-      // Fallback: try to get sender's profile from Firebase
-      const senderResult = await FirebaseService.checkUserExists(senderPhone);
-      if (senderResult.exists) {
-        senderProfileData = senderResult.userData;
-        console.log('Retrieved sender data from Firebase:', senderProfileData);
+  /**
+   * Enhanced sendFriendRequest with profile picture and complete user data
+   * @param {Object} friendData - { firstName, lastName, phone, senderPhone, senderEmail, senderUserData }
+   * @returns {Object} - { success: boolean, message: string, requestId?: string }
+   */
+  sendFriendRequest: async (friendData) => {
+    try {
+      console.log('Starting enhanced friend request process...');
+      
+      const currentUser = auth.currentUser;
+      const { firstName, lastName, phone, senderPhone, senderEmail, senderUserData } = friendData;
+      
+      const senderId = currentUser ? currentUser.uid : `temp_${Date.now()}`;
+      const userEmail = senderEmail || (currentUser ? currentUser.email : 'guest@alertnet.com');
+      
+      console.log('=== SENDER DATA DEBUG ===');
+      console.log('senderUserData received:', senderUserData);
+      console.log('senderUserData keys:', senderUserData ? Object.keys(senderUserData) : 'null');
+      
+      let senderProfileData = senderUserData;
+      if (!senderProfileData) {
+        console.log('No senderUserData provided, trying to fetch from Firebase...');
+        const senderResult = await FirebaseService.checkUserExists(senderPhone);
+        if (senderResult.exists) {
+          senderProfileData = senderResult.userData;
+          console.log('Retrieved sender data from Firebase:', senderProfileData);
+        }
       }
-    }
-    
-    // Extract sender's profile information with multiple fallback options
-    const senderName = senderProfileData?.name || 
-                      senderProfileData?.FirstName || 
-                      senderProfileData?.firstName ||
-                      currentUser?.displayName || 
-                      'AlertNet User';
-    const senderSurname = senderProfileData?.surname || 
-                         senderProfileData?.LastName || 
-                         senderProfileData?.lastName ||
-                         '';
-    
-    // Check multiple possible field names for profile picture
-    const senderProfilePicture = senderProfileData?.imageUrl || 
-                                senderProfileData?.localImagePath || 
-                                senderProfileData?.profilePicture ||
-                                senderProfileData?.image ||
-                                null;
-    
-    console.log('Extracted sender info:', {
-      senderName,
-      senderSurname,
-      senderProfilePicture: senderProfilePicture ? 'URL present' : 'null',
-      senderProfilePictureUrl: senderProfilePicture
-    });
-    console.log('=== END SENDER DATA DEBUG ===');
-    
-    // Format phone numbers
-    const formattedRecipientPhone = FirebaseService.formatPhoneNumber(phone);
-    const formattedSenderPhone = FirebaseService.formatPhoneNumber(senderPhone);
-    
-    console.log('👤 Sender:', senderName, senderSurname);
-    console.log('👤 Sender phone:', formattedSenderPhone);
-    console.log('👥 Recipient phone:', formattedRecipientPhone);
-    
-    // Step 1: Check if recipient exists
-    const userCheck = await FirebaseService.checkUserExists(formattedRecipientPhone);
-    if (userCheck.error) {
-      console.error('❌ Error checking user database');
-      return { success: false, error: 'Error checking user database' };
-    }
-    
-    if (!userCheck.exists) {
-      console.log('❌ User does not exist on platform');
-      return { 
-        success: false, 
-        error: 'This person is not on AlertNet',
-        message: 'This person is not on AlertNet'
-      };
-    }
-    
-    console.log('✅ Recipient exists on platform');
-    
-    // Step 2: Check for existing requests
-    const existingRequest = await FirebaseService.checkExistingFriendRequest(formattedSenderPhone, formattedRecipientPhone);
-    if (existingRequest.error) {
-      console.error('❌ Error checking existing requests');
-      return { success: false, error: 'Error checking existing requests' };
-    }
-    
-    if (existingRequest.exists) {
-      if (existingRequest.direction === 'outgoing') {
-        console.log('❌ Outgoing request already exists');
+      
+      const senderName = senderProfileData?.name || 
+                        senderProfileData?.FirstName || 
+                        senderProfileData?.firstName ||
+                        currentUser?.displayName || 
+                        'AlertNet User';
+      const senderSurname = senderProfileData?.surname || 
+                           senderProfileData?.LastName || 
+                           senderProfileData?.lastName ||
+                           '';
+      
+      const senderProfilePicture = senderProfileData?.imageUrl || 
+                                  senderProfileData?.localImagePath || 
+                                  senderProfileData?.profilePicture ||
+                                  senderProfileData?.image ||
+                                  null;
+      
+      console.log('Extracted sender info:', {
+        senderName,
+        senderSurname,
+        senderProfilePicture: senderProfilePicture ? 'URL present' : 'null',
+        senderProfilePictureUrl: senderProfilePicture
+      });
+      console.log('=== END SENDER DATA DEBUG ===');
+      
+      const formattedRecipientPhone = FirebaseService.formatPhoneNumber(phone);
+      const formattedSenderPhone = FirebaseService.formatPhoneNumber(senderPhone);
+      
+      console.log('Sender:', senderName, senderSurname);
+      console.log('Sender phone:', formattedSenderPhone);
+      console.log('Recipient phone:', formattedRecipientPhone);
+      
+      const userCheck = await FirebaseService.checkUserExists(formattedRecipientPhone);
+      if (userCheck.error) {
+        console.error('Error checking user database');
+        return { success: false, error: 'Error checking user database' };
+      }
+      
+      if (!userCheck.exists) {
+        console.log('User does not exist on platform');
         return { 
           success: false, 
-          error: 'Friend request already sent',
-          message: 'You have already sent a friend request to this person'
-        };
-      } else {
-        console.log('❌ Incoming request already exists');
-        return { 
-          success: false, 
-          error: 'Pending request exists',
-          message: 'This person has already sent you a friend request. Check your notifications.'
+          error: 'This person is not on AlertNet',
+          message: 'This person is not on AlertNet'
         };
       }
-    }
-    
-    console.log('✅ No existing requests found, proceeding...');
-    
-    // Step 3: Create the enhanced friend request with profile data
-    const friendRequest = {
-      senderId: senderId,
-      senderEmail: userEmail,
-      senderPhone: formattedSenderPhone,
-      senderName: senderName,
-      senderSurname: senderSurname,
-      senderProfilePicture: senderProfilePicture,
-      recipientFirstName: firstName,
-      recipientLastName: lastName,
-      recipientPhone: formattedRecipientPhone,
-      recipientUserId: userCheck.userData.id,
-      status: 'pending',
-      createdAt: serverTimestamp()
-    };
-    
-    console.log('📝 Creating enhanced friend request document...');
-    const friendRequestsRef = collection(db, 'friendRequests');
-    const docRef = await addDoc(friendRequestsRef, friendRequest);
-    
-    console.log('✅ Friend request created with ID:', docRef.id);
-    
-    // Step 4: Create enhanced notification with profile data
-    const notificationResult = await FirebaseService.createNotification({
-      userId: userCheck.userData.id,
-      recipientPhone: formattedRecipientPhone,
-      type: 'friend_request',
-      title: 'New Friend Request',
-      message: `${senderName} ${senderSurname} wants to connect with you on AlertNet`,
-      priority: 'normal',
-      data: {
-        requestId: docRef.id,
+      
+      console.log('Recipient exists on platform');
+      
+      const existingRequest = await FirebaseService.checkExistingFriendRequest(formattedSenderPhone, formattedRecipientPhone);
+      if (existingRequest.error) {
+        console.error('Error checking existing requests');
+        return { success: false, error: 'Error checking existing requests' };
+      }
+      
+      if (existingRequest.exists) {
+        if (existingRequest.direction === 'outgoing') {
+          console.log('Outgoing request already exists');
+          return { 
+            success: false, 
+            error: 'Friend request already sent',
+            message: 'You have already sent a friend request to this person'
+          };
+        } else {
+          console.log('Incoming request already exists');
+          return { 
+            success: false, 
+            error: 'Pending request exists',
+            message: 'This person has already sent you a friend request. Check your notifications.'
+          };
+        }
+      }
+      
+      console.log('No existing requests found, proceeding...');
+      
+      const friendRequest = {
+        senderId: senderId,
+        senderEmail: userEmail,
         senderPhone: formattedSenderPhone,
         senderName: senderName,
         senderSurname: senderSurname,
-        senderEmail: userEmail,
-        profilePicture: senderProfilePicture, // Include profile picture in notification data
-        action: 'view_request'
+        senderProfilePicture: senderProfilePicture,
+        recipientFirstName: firstName,
+        recipientLastName: lastName,
+        recipientPhone: formattedRecipientPhone,
+        recipientUserId: userCheck.userData.id,
+        status: 'pending',
+        createdAt: serverTimestamp()
+      };
+      
+      console.log('Creating enhanced friend request document...');
+      const friendRequestsRef = collection(db, 'friendRequests');
+      const docRef = await addDoc(friendRequestsRef, friendRequest);
+      
+      console.log('Friend request created with ID:', docRef.id);
+      
+      const notificationResult = await FirebaseService.createNotification({
+        userId: userCheck.userData.id,
+        recipientPhone: formattedRecipientPhone,
+        type: 'friend_request',
+        title: 'New Friend Request',
+        message: `${senderName} ${senderSurname} wants to connect with you on AlertNet`,
+        priority: 'normal',
+        data: {
+          requestId: docRef.id,
+          senderPhone: formattedSenderPhone,
+          senderName: senderName,
+          senderSurname: senderSurname,
+          senderEmail: userEmail,
+          profilePicture: senderProfilePicture,
+          action: 'view_request'
+        }
+      });
+      
+      if (notificationResult.success) {
+        console.log('Enhanced notification created successfully');
+      } else {
+        console.warn('Failed to create notification:', notificationResult.error);
       }
-    });
-    
-    if (notificationResult.success) {
-      console.log('📱 Enhanced notification created successfully');
-    } else {
-      console.warn('⚠️ Failed to create notification:', notificationResult.error);
-    }
-    
-    return { 
-      success: true, 
-      message: 'Friend request sent successfully!',
-      requestId: docRef.id,
-      notificationSent: notificationResult.success
-    };
+      
+      return { 
+        success: true, 
+        message: 'Friend request sent successfully!',
+        requestId: docRef.id,
+        notificationSent: notificationResult.success
+      };
 
-  } catch (error) {
-    console.error('❌ Error sending friend request:', error);
-    return { 
-      success: false, 
-      error: 'Failed to send friend request',
-      message: 'Something went wrong. Please try again.'
-    };
-  }
-},
+    } catch (error) {
+      console.error('Error sending friend request:', error);
+      return { 
+        success: false, 
+        error: 'Failed to send friend request',
+        message: 'Something went wrong. Please try again.'
+      };
+    }
+  },
+
   /**
-   * Accept a friend request with notification
+   * Create bidirectional friendship after request acceptance
+   * @param {Object} friendshipData - Data for both users
+   * @returns {Object} - { success: boolean, message: string }
+   */
+  createFriendship: async (friendshipData) => {
+    try {
+      const { 
+        user1Phone, user1Name, user1Email, user1Id,
+        user2Phone, user2Name, user2Email, user2Id,
+        requestId 
+      } = friendshipData;
+      
+      console.log('Creating bidirectional friendship...');
+      
+      const friendsRef = collection(db, 'friends');
+      const timestamp = serverTimestamp();
+      
+      const friendship1 = {
+        userId: user1Id,
+        userPhone: FirebaseService.formatPhoneNumber(user1Phone),
+        userEmail: user1Email,
+        userName: user1Name,
+        friendId: user2Id,
+        friendPhone: FirebaseService.formatPhoneNumber(user2Phone),
+        friendEmail: user2Email,
+        friendName: user2Name,
+        status: 'active',
+        createdAt: timestamp,
+        requestId: requestId,
+        lastInteraction: timestamp
+      };
+      
+      const friendship2 = {
+        userId: user2Id,
+        userPhone: FirebaseService.formatPhoneNumber(user2Phone),
+        userEmail: user2Email,
+        userName: user2Name,
+        friendId: user1Id,
+        friendPhone: FirebaseService.formatPhoneNumber(user1Phone),
+        friendEmail: user1Email,
+        friendName: user1Name,
+        status: 'active',
+        createdAt: timestamp,
+        requestId: requestId,
+        lastInteraction: timestamp
+      };
+      
+      const [friend1Doc, friend2Doc] = await Promise.all([
+        addDoc(friendsRef, friendship1),
+        addDoc(friendsRef, friendship2)
+      ]);
+      
+      console.log('Friendship created:', {
+        friend1DocId: friend1Doc.id,
+        friend2DocId: friend2Doc.id
+      });
+      
+      return { 
+        success: true, 
+        message: 'Friendship created successfully!',
+        friendship1Id: friend1Doc.id,
+        friendship2Id: friend2Doc.id
+      };
+      
+    } catch (error) {
+      console.error('Error creating friendship:', error);
+      return { 
+        success: false, 
+        error: 'Failed to create friendship',
+        message: 'Something went wrong creating the friendship'
+      };
+    }
+  },
+
+  /**
+   * Enhanced accept friend request with friendship creation
    * @param {string} requestId - Friend request document ID
    * @param {string} currentUserPhone - Current user's phone number
    * @returns {Object} - { success: boolean, message: string }
    */
   acceptFriendRequest: async (requestId, currentUserPhone) => {
     try {
+      console.log('Starting enhanced friend request acceptance...');
+      
       const requestRef = doc(db, 'friendRequests', requestId);
       const requestDoc = await getDoc(requestRef);
       
@@ -585,18 +765,52 @@ sendFriendRequest: async (friendData) => {
       const requestData = requestDoc.data();
       const formattedCurrentPhone = FirebaseService.formatPhoneNumber(currentUserPhone);
       
-      // Verify the current user is the recipient
       if (requestData.recipientPhone !== formattedCurrentPhone) {
         return { success: false, error: 'Unauthorized action' };
       }
       
-      // Update request status to accepted
+      console.log('Request validation passed');
+      
+      const currentUserResult = await FirebaseService.checkUserExists(formattedCurrentPhone);
+      if (!currentUserResult.exists) {
+        return { success: false, error: 'Current user not found in database' };
+      }
+      
+      const senderResult = await FirebaseService.checkUserExists(requestData.senderPhone);
+      if (!senderResult.exists) {
+        return { success: false, error: 'Sender user not found in database' };
+      }
+      
+      console.log('Both users found in database');
+      
       await updateDoc(requestRef, {
         status: 'accepted',
         acceptedAt: serverTimestamp()
       });
       
-      // Create notification for the sender
+      console.log('Request status updated to accepted');
+      
+      const friendshipResult = await FirebaseService.createFriendship({
+        user1Phone: requestData.senderPhone,
+        user1Name: requestData.senderName || `${senderResult.userData.FirstName || ''} ${senderResult.userData.LastName || ''}`.trim(),
+        user1Email: requestData.senderEmail || senderResult.userData.Email,
+        user1Id: requestData.senderId,
+        
+        user2Phone: formattedCurrentPhone,
+        user2Name: `${requestData.recipientFirstName} ${requestData.recipientLastName}`,
+        user2Email: currentUserResult.userData.Email,
+        user2Id: currentUserResult.userData.id,
+        
+        requestId: requestId
+      });
+      
+      if (!friendshipResult.success) {
+        console.error('Failed to create friendship:', friendshipResult.error);
+        return { success: false, error: 'Failed to create friendship' };
+      }
+      
+      console.log('Friendship created successfully');
+      
       await FirebaseService.createNotification({
         userId: requestData.senderId,
         recipientPhone: requestData.senderPhone,
@@ -607,18 +821,21 @@ sendFriendRequest: async (friendData) => {
         data: {
           requestId: requestId,
           accepterPhone: formattedCurrentPhone,
-          accepterName: `${requestData.recipientFirstName} ${requestData.recipientLastName}`
+          accepterName: `${requestData.recipientFirstName} ${requestData.recipientLastName}`,
+          friendshipId: friendshipResult.friendship1Id
         }
       });
       
-      console.log('✅ Friend request accepted');
+      console.log('Acceptance notification sent');
+      
       return { 
         success: true, 
-        message: 'Friend request accepted successfully!' 
+        message: 'Friend request accepted successfully! You are now connected.',
+        friendshipCreated: true
       };
       
     } catch (error) {
-      console.error('❌ Error accepting friend request:', error);
+      console.error('Error accepting friend request:', error);
       return { 
         success: false, 
         error: 'Failed to accept friend request' 
@@ -644,25 +861,23 @@ sendFriendRequest: async (friendData) => {
       const requestData = requestDoc.data();
       const formattedCurrentPhone = FirebaseService.formatPhoneNumber(currentUserPhone);
       
-      // Verify the current user is the recipient
       if (requestData.recipientPhone !== formattedCurrentPhone) {
         return { success: false, error: 'Unauthorized action' };
       }
       
-      // Update request status to declined
       await updateDoc(requestRef, {
         status: 'declined',
         declinedAt: serverTimestamp()
       });
       
-      console.log('✅ Friend request declined');
+      console.log('Friend request declined');
       return { 
         success: true, 
         message: 'Friend request declined' 
       };
       
     } catch (error) {
-      console.error('❌ Error declining friend request:', error);
+      console.error('Error declining friend request:', error);
       return { 
         success: false, 
         error: 'Failed to decline friend request' 
@@ -692,22 +907,183 @@ sendFriendRequest: async (friendData) => {
           id: doc.id,
           ...doc.data()
         }));
-        console.log(`📨 Found ${requests.length} pending requests for ${formattedPhone}`);
+        console.log(`Found ${requests.length} pending requests for ${formattedPhone}`);
         callback(requests);
       }, (error) => {
-        console.error('❌ Error listening to friend requests:', error);
+        console.error('Error listening to friend requests:', error);
         callback([]);
       });
       
     } catch (error) {
-      console.error('❌ Error setting up friend request listener:', error);
-      return () => {}; // Return empty unsubscribe function
+      console.error('Error setting up friend request listener:', error);
+      return () => {};
     }
   },
 
+  /**
+   * Get friends for a specific user
+   * @param {string} userPhone - User's phone number
+   * @returns {Object} - { success: boolean, friends: array, error?: string }
+   */
+  getFriendsForUser: async (userPhone) => {
+    try {
+      const formattedPhone = FirebaseService.formatPhoneNumber(userPhone);
+      console.log('Getting friends for:', formattedPhone);
+      
+      const friendsRef = collection(db, 'friends');
+      const q = query(
+        friendsRef,
+        where('userPhone', '==', formattedPhone),
+        where('status', '==', 'active')
+      );
+      
+      const querySnapshot = await getDocs(q);
+      const friends = [];
+      
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        friends.push({
+          id: doc.id,
+          friendId: data.friendId,
+          friendPhone: data.friendPhone,
+          friendEmail: data.friendEmail,
+          friendName: data.friendName,
+          status: 'Online',
+          location: 'Unknown',
+          distance: 'Unknown',
+          battery: '100%',
+          avatar: null,
+          createdAt: data.createdAt,
+          lastInteraction: data.lastInteraction
+        });
+      });
+      
+      console.log(`Found ${friends.length} friends for ${formattedPhone}`);
+      
+      return { success: true, friends };
+      
+    } catch (error) {
+      console.error('Error getting friends:', error);
+      return { success: false, friends: [], error: error.message };
+    }
+  },
 
+  /**
+   * Listen to friends list changes for real-time updates
+   * @param {string} userPhone - User's phone number
+   * @param {Function} callback - Callback function to handle friends updates
+   * @returns {Function} - Unsubscribe function
+   */
+  listenToFriends: (userPhone, callback) => {
+    try {
+      const formattedPhone = FirebaseService.formatPhoneNumber(userPhone);
+      console.log('Setting up friends listener for:', formattedPhone);
+      
+      const friendsRef = collection(db, 'friends');
+      const q = query(
+        friendsRef,
+        where('userPhone', '==', formattedPhone),
+        where('status', '==', 'active')
+      );
+      
+      return onSnapshot(q, (snapshot) => {
+        const friends = [];
+        
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          friends.push({
+            id: doc.id,
+            friendId: data.friendId,
+            friendPhone: data.friendPhone,
+            friendEmail: data.friendEmail,
+            friendName: data.friendName,
+            status: 'Online',
+            location: 'Unknown',
+            distance: 'Unknown',
+            battery: '100%',
+            avatar: null,
+            createdAt: data.createdAt,
+            lastInteraction: data.lastInteraction
+          });
+        });
+        
+        console.log(`Friends list updated: ${friends.length} friends`);
+        callback(friends);
+        
+      }, (error) => {
+        console.error('Error listening to friends:', error);
+        callback([]);
+      });
+      
+    } catch (error) {
+      console.error('Error setting up friends listener:', error);
+      return () => {};
+    }
+  },
 
-  // Get friends for current user
+  /**
+   * Remove a friendship (unfriend)
+   * @param {string} userPhone - Current user's phone
+   * @param {string} friendPhone - Friend's phone to remove
+   * @returns {Object} - { success: boolean, message: string }
+   */
+  removeFriend: async (userPhone, friendPhone) => {
+    try {
+      const formattedUserPhone = FirebaseService.formatPhoneNumber(userPhone);
+      const formattedFriendPhone = FirebaseService.formatPhoneNumber(friendPhone);
+      
+      console.log('Removing friendship between:', formattedUserPhone, 'and', formattedFriendPhone);
+      
+      const friendsRef = collection(db, 'friends');
+      
+      const q1 = query(
+        friendsRef,
+        where('userPhone', '==', formattedUserPhone),
+        where('friendPhone', '==', formattedFriendPhone)
+      );
+      
+      const q2 = query(
+        friendsRef,
+        where('userPhone', '==', formattedFriendPhone),
+        where('friendPhone', '==', formattedUserPhone)
+      );
+      
+      const [snapshot1, snapshot2] = await Promise.all([
+        getDocs(q1),
+        getDocs(q2)
+      ]);
+      
+      const updates = [];
+      
+      snapshot1.forEach((doc) => {
+        updates.push(updateDoc(doc.ref, {
+          status: 'removed',
+          removedAt: serverTimestamp()
+        }));
+      });
+      
+      snapshot2.forEach((doc) => {
+        updates.push(updateDoc(doc.ref, {
+          status: 'removed',
+          removedAt: serverTimestamp()
+        }));
+      });
+      
+      await Promise.all(updates);
+      
+      console.log('Friendship removed');
+      return { success: true, message: 'Friend removed successfully' };
+      
+    } catch (error) {
+      console.error('Error removing friend:', error);
+      return { success: false, error: 'Failed to remove friend' };
+    }
+  },
+
+  /**
+   * Get friends for current user (legacy method for backward compatibility)
+   * @returns {Object} - { success: boolean, friends: array, error?: string }
+   */
   getFriends: async () => {
     try {
       const currentUser = auth.currentUser;
@@ -737,393 +1113,228 @@ sendFriendRequest: async (friendData) => {
     }
   },
 
-  // Add these methods to your FirebaseService.js
+  // ========================
+  // SOS NOTIFICATION SYSTEM
+  // ========================
 
-/**
- * Create bidirectional friendship after request acceptance
- * @param {Object} friendshipData - Data for both users
- * @returns {Object} - { success: boolean, message: string }
- */
-createFriendship: async (friendshipData) => {
-  try {
-    const { 
-      user1Phone, user1Name, user1Email, user1Id,
-      user2Phone, user2Name, user2Email, user2Id,
-      requestId 
-    } = friendshipData;
-    
-    console.log('🤝 Creating bidirectional friendship...');
-    
-    const friendsRef = collection(db, 'friends');
-    const timestamp = serverTimestamp();
-    
-    // Create friendship document for User 1 (has User 2 as friend)
-    const friendship1 = {
-      userId: user1Id,
-      userPhone: FirebaseService.formatPhoneNumber(user1Phone),
-      userEmail: user1Email,
-      userName: user1Name,
-      friendId: user2Id,
-      friendPhone: FirebaseService.formatPhoneNumber(user2Phone),
-      friendEmail: user2Email,
-      friendName: user2Name,
-      status: 'active',
-      createdAt: timestamp,
-      requestId: requestId,
-      lastInteraction: timestamp
-    };
-    
-    // Create friendship document for User 2 (has User 1 as friend)
-    const friendship2 = {
-      userId: user2Id,
-      userPhone: FirebaseService.formatPhoneNumber(user2Phone),
-      userEmail: user2Email,
-      userName: user2Name,
-      friendId: user1Id,
-      friendPhone: FirebaseService.formatPhoneNumber(user1Phone),
-      friendEmail: user1Email,
-      friendName: user1Name,
-      status: 'active',
-      createdAt: timestamp,
-      requestId: requestId,
-      lastInteraction: timestamp
-    };
-    
-    // Add both friendship documents
-    const [friend1Doc, friend2Doc] = await Promise.all([
-      addDoc(friendsRef, friendship1),
-      addDoc(friendsRef, friendship2)
-    ]);
-    
-    console.log('✅ Friendship created:', {
-      friend1DocId: friend1Doc.id,
-      friend2DocId: friend2Doc.id
-    });
-    
-    return { 
-      success: true, 
-      message: 'Friendship created successfully!',
-      friendship1Id: friend1Doc.id,
-      friendship2Id: friend2Doc.id
-    };
-    
-  } catch (error) {
-    console.error('❌ Error creating friendship:', error);
-    return { 
-      success: false, 
-      error: 'Failed to create friendship',
-      message: 'Something went wrong creating the friendship'
-    };
-  }
-},
-
-/**
- * Enhanced accept friend request with friendship creation
- * @param {string} requestId - Friend request document ID
- * @param {string} currentUserPhone - Current user's phone number
- * @returns {Object} - { success: boolean, message: string }
- */
-acceptFriendRequest: async (requestId, currentUserPhone) => {
-  try {
-    console.log('📋 Starting enhanced friend request acceptance...');
-    
-    const requestRef = doc(db, 'friendRequests', requestId);
-    const requestDoc = await getDoc(requestRef);
-    
-    if (!requestDoc.exists()) {
-      return { success: false, error: 'Friend request not found' };
-    }
-    
-    const requestData = requestDoc.data();
-    const formattedCurrentPhone = FirebaseService.formatPhoneNumber(currentUserPhone);
-    
-    // Verify the current user is the recipient
-    if (requestData.recipientPhone !== formattedCurrentPhone) {
-      return { success: false, error: 'Unauthorized action' };
-    }
-    
-    console.log('✅ Request validation passed');
-    
-    // Get current user data
-    const currentUserResult = await FirebaseService.checkUserExists(formattedCurrentPhone);
-    if (!currentUserResult.exists) {
-      return { success: false, error: 'Current user not found in database' };
-    }
-    
-    // Get sender user data
-    const senderResult = await FirebaseService.checkUserExists(requestData.senderPhone);
-    if (!senderResult.exists) {
-      return { success: false, error: 'Sender user not found in database' };
-    }
-    
-    console.log('✅ Both users found in database');
-    
-    // Update request status to accepted
-    await updateDoc(requestRef, {
-      status: 'accepted',
-      acceptedAt: serverTimestamp()
-    });
-    
-    console.log('✅ Request status updated to accepted');
-    
-    // Create bidirectional friendship
-    const friendshipResult = await FirebaseService.createFriendship({
-      user1Phone: requestData.senderPhone,
-      user1Name: requestData.senderName || `${senderResult.userData.FirstName || ''} ${senderResult.userData.LastName || ''}`.trim(),
-      user1Email: requestData.senderEmail || senderResult.userData.Email,
-      user1Id: requestData.senderId,
-      
-      user2Phone: formattedCurrentPhone,
-      user2Name: `${requestData.recipientFirstName} ${requestData.recipientLastName}`,
-      user2Email: currentUserResult.userData.Email,
-      user2Id: currentUserResult.userData.id,
-      
-      requestId: requestId
-    });
-    
-    if (!friendshipResult.success) {
-      console.error('❌ Failed to create friendship:', friendshipResult.error);
-      return { success: false, error: 'Failed to create friendship' };
-    }
-    
-    console.log('✅ Friendship created successfully');
-    
-    // Create notification for the sender
-    await FirebaseService.createNotification({
-      userId: requestData.senderId,
-      recipientPhone: requestData.senderPhone,
-      type: 'friend_accepted',
-      title: 'Friend Request Accepted',
-      message: `${requestData.recipientFirstName} ${requestData.recipientLastName} accepted your friend request!`,
-      priority: 'normal',
-      data: {
-        requestId: requestId,
-        accepterPhone: formattedCurrentPhone,
-        accepterName: `${requestData.recipientFirstName} ${requestData.recipientLastName}`,
-        friendshipId: friendshipResult.friendship1Id
-      }
-    });
-    
-    console.log('✅ Acceptance notification sent');
-    
-    return { 
-      success: true, 
-      message: 'Friend request accepted successfully! You are now connected.',
-      friendshipCreated: true
-    };
-    
-  } catch (error) {
-    console.error('❌ Error accepting friend request:', error);
-    return { 
-      success: false, 
-      error: 'Failed to accept friend request' 
-    };
-  }
-},
-
-/**
- * Get friends for a specific user
- * @param {string} userPhone - User's phone number
- * @returns {Object} - { success: boolean, friends: array, error?: string }
- */
-getFriendsForUser: async (userPhone) => {
-  try {
-    const formattedPhone = FirebaseService.formatPhoneNumber(userPhone);
-    console.log('👥 Getting friends for:', formattedPhone);
-    
-    const friendsRef = collection(db, 'friends');
-    const q = query(
-      friendsRef,
-      where('userPhone', '==', formattedPhone),
-      where('status', '==', 'active')
-    );
-    
-    const querySnapshot = await getDocs(q);
-    const friends = [];
-    
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      friends.push({
-        id: doc.id,
-        friendId: data.friendId,
-        friendPhone: data.friendPhone,
-        friendEmail: data.friendEmail,
-        friendName: data.friendName,
-        status: 'Online', // You can enhance this with real status later
-        location: 'Unknown', // You can enhance this with real location later
-        distance: 'Unknown', // You can enhance this with real distance later
-        battery: '100%', // You can enhance this with real battery later
-        avatar: null, // You can enhance this with real avatars later
-        createdAt: data.createdAt,
-        lastInteraction: data.lastInteraction
-      });
-    });
-    
-    console.log(`✅ Found ${friends.length} friends for ${formattedPhone}`);
-    
-    return { success: true, friends };
-    
-  } catch (error) {
-    console.error('❌ Error getting friends:', error);
-    return { success: false, friends: [], error: error.message };
-  }
-},
-
-/**
- * Listen to friends list changes for real-time updates
- * @param {string} userPhone - User's phone number
- * @param {Function} callback - Callback function to handle friends updates
- * @returns {Function} - Unsubscribe function
- */
-listenToFriends: (userPhone, callback) => {
-  try {
-    const formattedPhone = FirebaseService.formatPhoneNumber(userPhone);
-    console.log('👥 Setting up friends listener for:', formattedPhone);
-    
-    const friendsRef = collection(db, 'friends');
-    const q = query(
-      friendsRef,
-      where('userPhone', '==', formattedPhone),
-      where('status', '==', 'active')
-    );
-    
-    return onSnapshot(q, (snapshot) => {
-      const friends = [];
-      
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        friends.push({
-          id: doc.id,
-          friendId: data.friendId,
-          friendPhone: data.friendPhone,
-          friendEmail: data.friendEmail,
-          friendName: data.friendName,
-          status: 'Online', // Enhance later
-          location: 'Unknown', // Enhance later
-          distance: 'Unknown', // Enhance later
-          battery: '100%', // Enhance later
-          avatar: null, // Enhance later
-          createdAt: data.createdAt,
-          lastInteraction: data.lastInteraction
-        });
-      });
-      
-      console.log(`👥 Friends list updated: ${friends.length} friends`);
-      callback(friends);
-      
-    }, (error) => {
-      console.error('❌ Error listening to friends:', error);
-      callback([]);
-    });
-    
-  } catch (error) {
-    console.error('❌ Error setting up friends listener:', error);
-    return () => {}; // Return empty unsubscribe function
-  }
-},
-
-/**
- * Remove a friendship (unfriend)
- * @param {string} userPhone - Current user's phone
- * @param {string} friendPhone - Friend's phone to remove
- * @returns {Object} - { success: boolean, message: string }
- */
-removeFriend: async (userPhone, friendPhone) => {
-  try {
-    const formattedUserPhone = FirebaseService.formatPhoneNumber(userPhone);
-    const formattedFriendPhone = FirebaseService.formatPhoneNumber(friendPhone);
-    
-    console.log('💔 Removing friendship between:', formattedUserPhone, 'and', formattedFriendPhone);
-    
-    const friendsRef = collection(db, 'friends');
-    
-    // Find and remove both friendship documents
-    const q1 = query(
-      friendsRef,
-      where('userPhone', '==', formattedUserPhone),
-      where('friendPhone', '==', formattedFriendPhone)
-    );
-    
-    const q2 = query(
-      friendsRef,
-      where('userPhone', '==', formattedFriendPhone),
-      where('friendPhone', '==', formattedUserPhone)
-    );
-    
-    const [snapshot1, snapshot2] = await Promise.all([
-      getDocs(q1),
-      getDocs(q2)
-    ]);
-    
-    const updates = [];
-    
-    snapshot1.forEach((doc) => {
-      updates.push(updateDoc(doc.ref, {
-        status: 'removed',
-        removedAt: serverTimestamp()
-      }));
-    });
-    
-    snapshot2.forEach((doc) => {
-      updates.push(updateDoc(doc.ref, {
-        status: 'removed',
-        removedAt: serverTimestamp()
-      }));
-    });
-    
-    await Promise.all(updates);
-    
-    console.log('✅ Friendship removed');
-    return { success: true, message: 'Friend removed successfully' };
-    
-  } catch (error) {
-    console.error('❌ Error removing friend:', error);
-    return { success: false, error: 'Failed to remove friend' };
-  }
-},
-
-
-  // Send SOS notifications to friends
-  sendSOSNotifications: async (location) => {
+  /**
+   * Send SOS notifications to friends
+   * @param {Object} location - Location object with latitude and longitude
+   * @param {Object} userData - Current user data
+   * @param {string} sosSessionId - SOS session ID
+   * @returns {Object} - { success: boolean, notificationsSent: number, error?: string }
+   */
+  sendSOSNotifications: async (location, userData, sosSessionId) => {
     try {
       const currentUser = auth.currentUser;
-      const userId = currentUser ? currentUser.uid : `temp_${Date.now()}`;
-      const userEmail = currentUser ? currentUser.email : 'guest@alertnet.com';
+      const userId = currentUser ? currentUser.uid : userData?.userId || `temp_${Date.now()}`;
+      const userEmail = currentUser ? currentUser.email : userData?.email || 'guest@alertnet.com';
+      const userPhone = userData?.phone || userData?.phoneNumber || userData?.Phone;
 
-      const friendsResult = await FirebaseService.getFriends();
+      if (!userPhone) {
+        return { success: false, error: 'User phone number not found', notificationsSent: 0 };
+      }
+
+      // Get user's friends
+      const friendsResult = await FirebaseService.getFriendsForUser(userPhone);
       if (!friendsResult.success || friendsResult.friends.length === 0) {
+        console.log('No friends found for SOS notifications');
         return { success: false, error: 'No friends found', notificationsSent: 0 };
       }
 
       const locationText = location 
-        ? `Location: https://maps.google.com/?q=${location.latitude},${location.longitude}`
+        ? `https://maps.google.com/?q=${location.latitude},${location.longitude}`
         : 'Location unavailable';
 
-      const notifications = [];
-      for (const friend of friendsResult.friends) {
-        const notification = {
-          senderId: userId,
-          senderEmail: userEmail,
-          recipientPhone: friend.phone,
-          recipientName: `${friend.firstName} ${friend.lastName}`,
-          message: `🚨 EMERGENCY: Your friend needs help! ${locationText}`,
-          location: location,
-          createdAt: serverTimestamp(),
-          status: 'sent'
-        };
+      const userName = userData?.name || userData?.firstName || 'Your friend';
+      let notificationsSent = 0;
 
-        const docRef = await addDoc(collection(db, 'sosNotifications'), notification);
-        notifications.push({ id: docRef.id, ...notification });
+      // Send notifications to each friend
+      for (const friend of friendsResult.friends) {
+        try {
+          const notificationResult = await FirebaseService.createNotification({
+            userId: friend.friendId,
+            recipientPhone: friend.friendPhone,
+            type: 'sos',
+            title: 'EMERGENCY ALERT',
+            message: `${userName} has activated SOS and needs immediate help!`,
+            priority: 'high',
+            isUrgent: true,
+            data: {
+              sosSessionId: sosSessionId,
+              senderPhone: userPhone,
+              senderName: userName,
+              location: location,
+              locationUrl: locationText,
+              action: 'view_emergency',
+              timestamp: Date.now()
+            }
+          });
+
+          if (notificationResult.success) {
+            notificationsSent++;
+            console.log(`SOS notification sent to ${friend.friendName}`);
+          } else {
+            console.error(`Failed to send SOS notification to ${friend.friendName}:`, notificationResult.error);
+          }
+        } catch (error) {
+          console.error(`Error sending SOS notification to ${friend.friendName}:`, error);
+        }
       }
 
+      console.log(`SOS notifications sent: ${notificationsSent}/${friendsResult.friends.length}`);
+      
       return { 
         success: true, 
-        notificationsSent: notifications.length,
-        notifications 
+        notificationsSent: notificationsSent,
+        totalFriends: friendsResult.friends.length
       };
     } catch (error) {
       console.error('Error sending SOS notifications:', error);
       return { success: false, error: error.message, notificationsSent: 0 };
+    }
+  },
+
+  /**
+   * Send SOS resolved notification to friends
+   * @param {string} sosSessionId - SOS session ID
+   * @param {Object} userData - Current user data
+   * @returns {Object} - { success: boolean, notificationsSent: number }
+   */
+  sendSOSResolvedNotifications: async (sosSessionId, userData) => {
+    try {
+      const userPhone = userData?.phone || userData?.phoneNumber || userData?.Phone;
+      
+      if (!userPhone) {
+        return { success: false, error: 'User phone number not found', notificationsSent: 0 };
+      }
+
+      const friendsResult = await FirebaseService.getFriendsForUser(userPhone);
+      if (!friendsResult.success || friendsResult.friends.length === 0) {
+        return { success: false, error: 'No friends found', notificationsSent: 0 };
+      }
+
+      const userName = userData?.name || userData?.firstName || 'Your friend';
+      let notificationsSent = 0;
+
+      for (const friend of friendsResult.friends) {
+        try {
+          const notificationResult = await FirebaseService.createNotification({
+            userId: friend.friendId,
+            recipientPhone: friend.friendPhone,
+            type: 'sos_resolved',
+            title: 'Emergency Resolved',
+            message: `${userName} is now safe. The emergency has been resolved.`,
+            priority: 'normal',
+            data: {
+              sosSessionId: sosSessionId,
+              senderPhone: userPhone,
+              senderName: userName,
+              action: 'emergency_resolved',
+              timestamp: Date.now()
+            }
+          });
+
+          if (notificationResult.success) {
+            notificationsSent++;
+            console.log(`SOS resolved notification sent to ${friend.friendName}`);
+          }
+        } catch (error) {
+          console.error(`Error sending SOS resolved notification to ${friend.friendName}:`, error);
+        }
+      }
+
+      return { 
+        success: true, 
+        notificationsSent: notificationsSent,
+        totalFriends: friendsResult.friends.length
+      };
+    } catch (error) {
+      console.error('Error sending SOS resolved notifications:', error);
+      return { success: false, error: error.message, notificationsSent: 0 };
+    }
+  },
+
+  // ========================
+  // UTILITY METHODS
+  // ========================
+
+  /**
+   * Clean up old notifications (older than 30 days)
+   * @param {string} userPhone - User's phone number
+   * @returns {Object} - { success: boolean, deletedCount?: number }
+   */
+  cleanupOldNotifications: async (userPhone) => {
+    try {
+      const formattedPhone = FirebaseService.formatPhoneNumber(userPhone);
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const notificationsRef = collection(db, 'notifications');
+      const q = query(
+        notificationsRef,
+        where('recipientPhone', '==', formattedPhone),
+        where('createdAt', '<', thirtyDaysAgo)
+      );
+
+      const querySnapshot = await getDocs(q);
+      
+      if (querySnapshot.empty) {
+        return { success: true, deletedCount: 0 };
+      }
+
+      const batch = writeBatch(db);
+      querySnapshot.forEach((doc) => {
+        batch.delete(doc.ref);
+      });
+
+      await batch.commit();
+
+      console.log(`Cleaned up ${querySnapshot.size} old notifications`);
+      return { success: true, deletedCount: querySnapshot.size };
+    } catch (error) {
+      console.error('Error cleaning up old notifications:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Get notification statistics for a user
+   * @param {string} userPhone - User's phone number
+   * @returns {Object} - Statistics object
+   */
+  getNotificationStats: async (userPhone) => {
+    try {
+      const formattedPhone = FirebaseService.formatPhoneNumber(userPhone);
+      const notificationsRef = collection(db, 'notifications');
+      
+      const q = query(
+        notificationsRef,
+        where('recipientPhone', '==', formattedPhone),
+        where('deleted', '!=', true)
+      );
+
+      const querySnapshot = await getDocs(q);
+      const notifications = querySnapshot.docs.map(doc => doc.data());
+
+      const stats = {
+        total: notifications.length,
+        unread: notifications.filter(n => !n.read).length,
+        read: notifications.filter(n => n.read).length,
+        urgent: notifications.filter(n => n.isUrgent || n.priority === 'high').length,
+        byType: {}
+      };
+
+      // Count by type
+      notifications.forEach(notification => {
+        const type = notification.type || 'unknown';
+        stats.byType[type] = (stats.byType[type] || 0) + 1;
+      });
+
+      return { success: true, stats };
+    } catch (error) {
+      console.error('Error getting notification stats:', error);
+      return { success: false, error: error.message };
     }
   }
 };

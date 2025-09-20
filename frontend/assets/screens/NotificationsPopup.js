@@ -10,15 +10,40 @@ import {
   SafeAreaView,
   TextInput,
   Animated,
-  PanGesturer,
   Vibration,
-  Alert
+  Alert,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { FirebaseService } from '../../backend/Firebase/FirebaseService';
 
 const { width, height } = Dimensions.get('window');
 
-const NotificationsPopup = ({ setIsNotification }) => {
+const formatTimeAgo = (timestamp) => {
+  if (!timestamp) return '';
+  const now = Date.now();
+  const seconds = Math.floor((now - timestamp) / 1000);
+
+  if (seconds < 60) return 'Now';
+  
+  const intervals = { yr: 31536000, mo: 2592000, d: 86400, hr: 3600, min: 60 };
+  for (const [unit, secondsInUnit] of Object.entries(intervals)) {
+    const interval = seconds / secondsInUnit;
+    if (interval > 1) {
+      return `${Math.floor(interval)}${unit} ago`;
+    }
+  }
+  return `${Math.floor(seconds)}s ago`;
+};
+
+const tabCategories = {
+  closeFriends: ['sos', 'sos_resolved', 'friend_request', 'friend_accepted', 'safety_request', 'check_in', 'danger_zone', 'inactive', 'location_stop'],
+  feed: ['utilities_issues', 'fire_alert', 'protest_alert', 'safety_crime', 'lost_found', 'help_request'],
+  system: ['info', 'beta', 'subscription', 'updates', 'reports', 'welcome']
+};
+
+const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, markNotificationAsRead, markAllNotificationsAsRead }) => {
   const [activeTab, setActiveTab] = React.useState('closeFriends');
   const [showCalendar, setShowCalendar] = React.useState(false);
   const [selectedDate, setSelectedDate] = React.useState(21);
@@ -42,154 +67,79 @@ const NotificationsPopup = ({ setIsNotification }) => {
     emergency: { enabled: true, sound: 'urgent' },
     general: { enabled: true, sound: 'normal' }
   });
-  const [readNotifications, setReadNotifications] = React.useState([]);
   const [showFilters, setShowFilters] = React.useState(false);
   const [fontSize, setFontSize] = React.useState('medium'); // 'small', 'medium', 'large'
   
-  const notifications = [
-    {
-      id: 1,
-      type: 'safety_request',
-      category: 'safety',
-      name: 'Unathi',
-      message: 'Sent a safety request',
-      time: 'Now',
-      timestamp: Date.now(),
-      status: 'new',
-      isUrgent: false,
-      location: { lat: -26.2041, lng: 28.0473 }
-    },
-    {
-      id: 2,
-      type: 'check_in',
-      category: 'safety',
-      name: 'Okuhle',
-      message: 'Want to know if you are safe',
-      time: '2min',
-      timestamp: Date.now() - 120000,
-      status: 'new', 
-      isUrgent: false
-    },
-    {
-      id: 3,
-      type: 'sos',
-      category: 'emergency',
-      name: "Nomusa",
-      message: "Emergency SOS Alert",
-      time: '5min',
-      timestamp: Date.now() - 300000,
-      status: 'contacted_sms',
-      isUrgent: true,
-      location: { lat: -26.2041, lng: 28.0473 },
-      phone: '+27123456789'
-    },
-    {
-      id: 4,
-      type: 'danger_zone',
-      category: 'safety',
-      name: 'Kevin',
-      message: 'Entered a danger zone',
-      time: '8min',
-      timestamp: Date.now() - 480000,
-      status: 'read',
-      isUrgent: false,
-      location: { lat: -26.2041, lng: 28.0473 }
-    },
-    {
-      id: 5,
-      type: 'inactive',
-      category: 'safety',
-      name: 'Sphephile',
-      message: 'Has not moved from current location for over 1 hour',
-      time: '1hr',
-      timestamp: Date.now() - 3600000,
-      status: 'read',
-      isUrgent: false
-    },
-    {
-      id: 6,
-      type: 'location_stop',
-      category: 'general',
-      name: 'Junior',
-      message: 'Stopped sharing location with you',
-      time: '2hr',
-      timestamp: Date.now() - 7200000,
-      status: 'read',
-      isUrgent: false
-    }
-  ];
+  // State for real notifications
+  const [allNotifications, setAllNotifications] = React.useState([]);
+  const [closeFriendsNotifications, setCloseFriendsNotifications] = React.useState([]);
+  const [feedNotifications, setFeedNotifications] = React.useState([]);
+  const [systemNotifications, setSystemNotifications] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
 
-  const feedNotifications = [
-    {
-      id: 1,
-      type: 'utilities_issues',
-      category: 'general',
-      name: 'Mbali shared',
-      message: 'Utilities Issues',
-      time: 'Now',
-      timestamp: Date.now(),
-      status: 'new',
-      isUrgent: false
-    },
-    {
-      id: 2,
-      type: 'fire_alert',
-      category: 'emergency',
-      name: 'Amatle shared',
-      message: 'Fire alert',
-      time: 'New',
-      timestamp: Date.now() - 60000,
-      status: 'new',
-      isUrgent: true,
-      location: { lat: -26.2041, lng: 28.0473 }
-    },
-    {
-      id: 3,
-      type: 'protest_alert',
-      category: 'safety',
-      name: 'Franklin shared',
-      message: 'Protest Alert',
-      time: '2 min',
-      timestamp: Date.now() - 120000,
-      status: 'read',
-      isUrgent: false
-    },
-    {
-      id: 4,
-      type: 'safety_crime',
-      category: 'safety',
-      name: 'Tracy shared',
-      message: 'Safety & Crime',
-      time: '2 min',
-      timestamp: Date.now() - 120000,
-      status: 'read',
-      isUrgent: false
-    },
-    {
-      id: 5,
-      type: 'lost_found',
-      category: 'general',
-      name: 'Armanda shared',
-      message: 'Lost & Found',
-      time: '3 min',
-      timestamp: Date.now() - 180000,
-      status: 'new',
-      isUrgent: true
-    },
-    {
-      id: 6,
-      type: 'help_request',
-      category: 'emergency',
-      name: 'Thato shared',
-      message: 'Help Request',
-      time: '2 min',
-      timestamp: Date.now() - 120000,
-      status: 'new',
-      isUrgent: true,
-      phone: '+27987654321'
-    }
-  ];
+  // Listen for notifications from Firebase
+  React.useEffect(() => {
+    if (userData && (userData.phone || userData.Phone || userData.phoneNumber)) {
+      const userPhone = userData.phone || userData.Phone || userData.phoneNumber;
+      setLoading(true);
+      
+      const unsubscribe = FirebaseService.listenToNotifications(userPhone, ({ notifications, error }) => {
+        if (error) {
+          console.error("Error fetching notifications:", error);
+          setLoading(false);
+          return;
+        }
+        
+        const transformedNotifications = notifications.map(n => {
+          const isUrgent = n.priority === 'high';
+          const timestamp = n.createdAt?.toDate ? n.createdAt.toDate().getTime() : Date.now();
+          
+          return {
+              id: n.id,
+              type: n.type,
+              category: n.data?.category || 'general',
+              name: n.data?.senderName || n.title,
+              message: n.message,
+              time: formatTimeAgo(timestamp),
+              timestamp: timestamp,
+              status: n.read ? 'read' : 'new',
+              isUrgent: isUrgent,
+              location: n.data?.location || null,
+              phone: n.data?.senderPhone || null,
+          };
+        });
 
+        const friends = [];
+        const feed = [];
+        const system = [];
+
+        transformedNotifications.forEach(n => {
+          if (tabCategories.feed.includes(n.type)) {
+            feed.push(n);
+          } else if (tabCategories.system.includes(n.type)) {
+            system.push(n);
+          } else { // Default to friends
+            friends.push(n);
+          }
+        });
+        
+        setAllNotifications(transformedNotifications);
+        setCloseFriendsNotifications(friends);
+        setFeedNotifications(feed);
+        setSystemNotifications(system);
+        setLoading(false);
+      });
+
+      return () => {
+        if (unsubscribe) {
+          unsubscribe();
+        }
+      };
+    } else {
+      setLoading(false);
+    }
+  }, [userData]);
+  
   const systemContent = [
     { id: 1, title: 'Learn about the App', subtitle: 'Get started with safety features', type: 'info' },
     { id: 2, title: 'Beta Test', subtitle: 'Help us improve the app', type: 'beta' },
@@ -197,7 +147,6 @@ const NotificationsPopup = ({ setIsNotification }) => {
     { id: 4, title: 'Updates', subtitle: 'Latest app improvements', type: 'updates' },
     { id: 5, title: 'Reports', subtitle: 'View your safety reports', type: 'reports' }
   ];
-// testing line
 
   // Enhanced filtering and sorting functions
   const filterNotifications = (notifs) => {
@@ -227,8 +176,8 @@ const NotificationsPopup = ({ setIsNotification }) => {
         break;
       case 'unread':
         filtered = filtered.sort((a, b) => {
-          const aRead = readNotifications.includes(a.id) || a.status === 'read';
-          const bRead = readNotifications.includes(b.id) || b.status === 'read';
+          const aRead = a.status === 'read';
+          const bRead = b.status === 'read';
           if (!aRead && bRead) return -1;
           if (aRead && !bRead) return 1;
           return b.timestamp - a.timestamp;
@@ -243,13 +192,9 @@ const NotificationsPopup = ({ setIsNotification }) => {
 
   // Get notification counts for badges
   const getNotificationCounts = () => {
-    const closeFriendsUnread = notifications.filter(n => 
-      !readNotifications.includes(n.id) && n.status === 'new'
-    ).length;
+    const closeFriendsUnread = closeFriendsNotifications.filter(n => n.status === 'new').length;
     
-    const feedUnread = feedNotifications.filter(n => 
-      !readNotifications.includes(n.id) && n.status === 'new'
-    ).length;
+    const feedUnread = feedNotifications.filter(n => n.status === 'new').length;
     
     return { closeFriends: closeFriendsUnread, feed: feedUnread, system: 0 };
   };
@@ -266,22 +211,19 @@ const NotificationsPopup = ({ setIsNotification }) => {
   };
 
   // Mark notification as read
-  const markAsRead = (notificationId) => {
-    if (!readNotifications.includes(notificationId)) {
-      setReadNotifications([...readNotifications, notificationId]);
+  const handleMarkAsRead = (notificationId) => {
+    if (markNotificationAsRead) {
+      markNotificationAsRead(notificationId);
       Vibration.vibrate(30);
     }
   };
 
   // Mark all as read
-  const markAllAsRead = () => {
-    const currentNotifs = activeTab === 'closeFriends' ? notifications : feedNotifications;
-    const unreadIds = currentNotifs.filter(n => 
-      !readNotifications.includes(n.id) && n.status === 'new'
-    ).map(n => n.id);
-    
-    setReadNotifications([...readNotifications, ...unreadIds]);
-    Vibration.vibrate(50);
+  const handleMarkAllAsRead = () => {
+    if (markAllNotificationsAsRead) {
+      markAllNotificationsAsRead();
+      Vibration.vibrate(50);
+    }
   };
 
   // Delete notification
@@ -317,12 +259,15 @@ const NotificationsPopup = ({ setIsNotification }) => {
         Alert.alert('Quick Response', 'Response sent!');
         break;
       case 'location':
-        if (notification.location) {
-          Alert.alert('Location', `Viewing ${notification.name}'s location`);
+        if (notification.location && onViewLocation) {
+          onViewLocation(notification.location);
+          setIsNotification(false); // Close the popup to show the map
+        } else {
+          Alert.alert('Location Unavailable', `Could not retrieve location for ${notification.name}.`);
         }
         break;
       case 'dismiss':
-        markAsRead(notification.id);
+        handleMarkAsRead(notification.id);
         break;
     }
   };
@@ -340,7 +285,9 @@ const NotificationsPopup = ({ setIsNotification }) => {
   const handleBulkAction = (action) => {
     switch (action) {
       case 'markRead':
-        setReadNotifications([...readNotifications, ...selectedNotifications]);
+        if (markNotificationAsRead) {
+          selectedNotifications.forEach(id => markNotificationAsRead(id));
+        }
         break;
       case 'delete':
         // Delete selected notifications
@@ -422,6 +369,7 @@ const NotificationsPopup = ({ setIsNotification }) => {
       case 'safety_request': return 'shield-alert';
       case 'check_in': return 'account-question';
       case 'sos': return 'alert-circle';
+      case 'sos_resolved': return 'shield-check';
       case 'danger_zone': return 'map-marker-alert';
       case 'inactive': return 'clock-alert';
       case 'location_stop': return 'map-marker-off';
@@ -437,7 +385,7 @@ const NotificationsPopup = ({ setIsNotification }) => {
 
   const getStatusColor = (notification) => {
     if (notification.isUrgent) return '#FF4444';
-    if (readNotifications.includes(notification.id) || notification.status === 'read') return '#888888';
+    if (notification.status === 'read') return '#888888';
     return '#FF6B35';
   };
 
@@ -448,11 +396,11 @@ const NotificationsPopup = ({ setIsNotification }) => {
 
   const counts = getNotificationCounts();
   const currentNotifications = activeTab === 'closeFriends' 
-    ? filterNotifications(notifications) 
+    ? filterNotifications(closeFriendsNotifications) 
     : filterNotifications(feedNotifications);
 
   const renderNotificationItem = (notification) => {
-    const isRead = readNotifications.includes(notification.id) || notification.status === 'read';
+    const isRead = notification.status === 'read';
     const isSelected = selectedNotifications.includes(notification.id);
     const fonts = getFontSize();
 
@@ -468,7 +416,7 @@ const NotificationsPopup = ({ setIsNotification }) => {
             if (isSelectionMode) {
               toggleSelection(notification.id);
             } else {
-              markAsRead(notification.id);
+              handleMarkAsRead(notification.id);
             }
           }}
           onLongPress={() => {
@@ -554,7 +502,7 @@ const NotificationsPopup = ({ setIsNotification }) => {
       animationType="slide"
       transparent={true}
       visible={true}
-      onRequestClose={() => setIsNotifications(false)}
+      onRequestClose={() => setIsNotification(false)}
     >
       <View style={styles.modalOverlay}>
         <TouchableOpacity 
@@ -885,88 +833,69 @@ const NotificationsPopup = ({ setIsNotification }) => {
             style={styles.notificationsList} 
             showsVerticalScrollIndicator={false}
             onScrollBeginDrag={handleRefresh}
+            refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor="#FF6B35" />}
           >
-            {activeTab === 'closeFriends' || activeTab === 'feed' ? (
-              <>
-                {currentNotifications.length === 0 ? (
-                  <View style={styles.emptyState}>
-                    <Icon name="bell-outline" size={48} color="#888888" />
-                    <Text style={styles.emptyStateTitle}>No notifications</Text>
-                    <Text style={styles.emptyStateText}>
-                      {searchQuery ? 'No notifications match your search' : 'You\'re all caught up!'}
-                    </Text>
-                  </View>
-                ) : (
-                  <>
-                    {/* New Section */}
-                    {currentNotifications.filter(n => !readNotifications.includes(n.id) && n.status === 'new').length > 0 && (
-                      <>
-                        <View style={styles.sectionHeader}>
-                          <Text style={styles.sectionTitle}>New</Text>
-                          <TouchableOpacity 
-                            style={styles.markAllButton}
-                            onPress={markAllAsRead}
-                          >
-                            <Text style={styles.markAllText}>Mark all read</Text>
-                          </TouchableOpacity>
-                        </View>
-                        {currentNotifications
-                          .filter(n => !readNotifications.includes(n.id) && n.status === 'new')
-                          .map(renderNotificationItem)}
-                      </>
-                    )}
+            {loading ? (
+              <ActivityIndicator size="large" color="#FF6B35" style={{ marginTop: 50 }} />
+            ) : activeTab === 'closeFriends' || activeTab === 'feed' ? (
+                <>
+                  {currentNotifications.length === 0 ? (
+                    <View style={styles.emptyState}>
+                      <Icon name="bell-outline" size={48} color="#888888" />
+                      <Text style={styles.emptyStateTitle}>No notifications</Text>
+                      <Text style={styles.emptyStateText}>
+                        {searchQuery ? 'No notifications match your search' : 'You\'re all caught up!'}
+                      </Text>
+                    </View>
+                  ) : (
+                    <>
+                      {/* New Section */}
+                      {currentNotifications.filter(n => n.status === 'new').length > 0 && (
+                        <>
+                          <View style={styles.sectionHeader}>
+                            <Text style={styles.sectionTitle}>New</Text>
+                            <TouchableOpacity 
+                              style={styles.markAllButton}
+                              onPress={handleMarkAllAsRead}
+                            >
+                              <Text style={styles.markAllText}>Mark all read</Text>
+                            </TouchableOpacity>
+                          </View>
+                          {currentNotifications
+                            .filter(n => n.status === 'new')
+                            .map(renderNotificationItem)}
+                        </>
+                      )}
 
-                    {/* Urgent Section */}
-                    {currentNotifications.filter(n => n.isUrgent).length > 0 && (
-                      <>
-                        <Text style={[styles.sectionTitle, { marginTop: 20, color: '#FF4444' }]}>
-                          🚨 Urgent
-                        </Text>
-                        {currentNotifications
-                          .filter(n => n.isUrgent)
-                          .map(renderNotificationItem)}
-                      </>
-                    )}
+                      {/* Urgent Section */}
+                      {currentNotifications.filter(n => n.isUrgent).length > 0 && (
+                        <>
+                          <Text style={[styles.sectionTitle, { marginTop: 20, color: '#FF4444' }]}>Urgent</Text>
+                          {currentNotifications
+                            .filter(n => n.isUrgent)
+                            .map(renderNotificationItem)}
+                        </>
+                      )}
 
-                    {/* Afternoon Section */}
-                    {currentNotifications.filter(n => 
-                      !n.isUrgent && 
-                      (readNotifications.includes(n.id) || n.status === 'contacted_sms' || n.status === 'read') &&
-                      (Date.now() - n.timestamp) < 6 * 60 * 60 * 1000 // Last 6 hours
-                    ).length > 0 && (
-                      <>
-                        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Afternoon</Text>
-                        {currentNotifications
-                          .filter(n => 
-                            !n.isUrgent && 
-                            (readNotifications.includes(n.id) || n.status === 'contacted_sms' || n.status === 'read') &&
-                            (Date.now() - n.timestamp) < 6 * 60 * 60 * 1000
-                          )
-                          .map(renderNotificationItem)}
-                      </>
-                    )}
-
-                    {/* Morning Section */}
-                    {currentNotifications.filter(n => 
-                      !n.isUrgent && 
-                      (readNotifications.includes(n.id) || n.status === 'read') &&
-                      (Date.now() - n.timestamp) >= 6 * 60 * 60 * 1000
-                    ).length > 0 && (
-                      <>
-                        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Morning</Text>
-                        {currentNotifications
-                          .filter(n => 
-                            !n.isUrgent && 
-                            (readNotifications.includes(n.id) || n.status === 'read') &&
-                            (Date.now() - n.timestamp) >= 6 * 60 * 60 * 1000
-                          )
-                          .map(renderNotificationItem)}
-                      </>
-                    )}
-                  </>
-                )}
-              </>
-            ) : (
+                      {/* Earlier Section */}
+                      {currentNotifications.filter(n => 
+                        !n.isUrgent && 
+                        n.status === 'read'
+                      ).length > 0 && (
+                        <>
+                          <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Earlier</Text>
+                          {currentNotifications
+                            .filter(n => 
+                              !n.isUrgent && 
+                              n.status === 'read'
+                            )
+                            .map(renderNotificationItem)}
+                        </>
+                      )}
+                    </>
+                  )}
+                </>
+              ) : (
               <>
                 {/* System Content */}
                 <View style={styles.systemContentContainer}>
@@ -1284,6 +1213,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 10,
     gap: 8,
+  },
+  refreshControl: {
+    // For iOS, you can style the tint color
+    tintColor: '#FF6B35',
+    // For Android, you can style the background color and the spinner color
+    colors: ['#FF6B35'],
   },
   refreshingText: {
     color: '#FF6B35',

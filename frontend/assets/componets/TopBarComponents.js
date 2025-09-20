@@ -4,12 +4,13 @@ import { View as SafeView } from 'react-native'
 import TopBarSearch from './TopBarSearch'
 import { useTheme } from '../contexts/ColorContext'
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const TopBarComponents = ({
   isNotHome, setIsUserProfile,
   setIsSafetyResources, userImage,
-  setIsNotification, renderProfileImage,
+  setIsNotification, renderProfileImage, unreadCount,
   userLocation
 }) => {
   const [userName, setUserName] = useState("Guest");
@@ -84,8 +85,13 @@ useEffect(() => {
         
         {/* Notification bell */}
         <View style = {{marginLeft: "auto", marginHorizontal: 5, flexDirection: "row"}}>
-          <TouchableOpacity onPress={() => setIsNotification(true)} style = {{width: 20, height: 20, marginRight: 20}}>
+          <TouchableOpacity onPress={() => setIsNotification(true)} style={styles.notificationButton}>
             <Image source={isDark ? require('../icons/notification-dark.png') : require('../icons/notification-light.png')} style = {{width: 20, height: 20}} />
+            {unreadCount > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+              </View>
+            )}
           </TouchableOpacity>
           
           {/* More menu */}
@@ -133,5 +139,29 @@ const styles = StyleSheet.create({
   },
   text: {
     fontSize: 16,
-  }
+  },
+  notificationButton: {
+    width: 24,
+    height: 24,
+    marginRight: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  badge: {
+    position: 'absolute',
+    top: -5,
+    right: -8,
+    backgroundColor: '#FF3B30',
+    borderRadius: 9,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 5,
+  },
+  badgeText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
 })

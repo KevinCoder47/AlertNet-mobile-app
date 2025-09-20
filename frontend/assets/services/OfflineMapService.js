@@ -5,7 +5,8 @@ import { auth } from '../../backend/Firebase/FirebaseConfig';
 
 class OfflineMapService {
   static TILE_SIZE = 256;
-  static ZOOM_LEVEL = 15;
+  static MIN_ZOOM_LEVEL = 14;
+  static MAX_ZOOM_LEVEL = 16;
   static MAP_TILES_DIR = `${FileSystem.documentDirectory}offline_maps/`;
   static MAX_RETRIES = 3;
   static RETRY_DELAY = 1000;
@@ -46,20 +47,24 @@ class OfflineMapService {
   }
 
   static calculateTileCount(region) {
-    const { latitude, longitude, latitudeDelta, longitudeDelta } = region;
-    
-    const northLat = latitude + latitudeDelta / 2;
-    const southLat = latitude - latitudeDelta / 2;
-    const eastLon = longitude + longitudeDelta / 2;
-    const westLon = longitude - longitudeDelta / 2;
+    let totalTiles = 0;
+    for (let zoom = this.MIN_ZOOM_LEVEL; zoom <= this.MAX_ZOOM_LEVEL; zoom++) {
+      const { latitude, longitude, latitudeDelta, longitudeDelta } = region;
+      
+      const northLat = latitude + latitudeDelta / 2;
+      const southLat = latitude - latitudeDelta / 2;
+      const eastLon = longitude + longitudeDelta / 2;
+      const westLon = longitude - longitudeDelta / 2;
 
-    const topLeft = this.deg2num(northLat, westLon, this.ZOOM_LEVEL);
-    const bottomRight = this.deg2num(southLat, eastLon, this.ZOOM_LEVEL);
+      const topLeft = this.deg2num(northLat, westLon, zoom);
+      const bottomRight = this.deg2num(southLat, eastLon, zoom);
 
-    const tilesX = Math.abs(bottomRight.x - topLeft.x) + 1;
-    const tilesY = Math.abs(bottomRight.y - topLeft.y) + 1;
-    
-    return tilesX * tilesY;
+      const tilesX = Math.abs(bottomRight.x - topLeft.x) + 1;
+      const tilesY = Math.abs(bottomRight.y - topLeft.y) + 1;
+      
+      totalTiles += tilesX * tilesY;
+    }
+    return totalTiles;
   }
 
   static calculateDownloadSize(region) {
@@ -77,78 +82,78 @@ class OfflineMapService {
       return { success: false, error: 'No network connectivity. Please check your internet connection.' };
     }
     
-    const { latitude, longitude, latitudeDelta, longitudeDelta } = region;
-    
-    const northLat = latitude + latitudeDelta / 2;
-    const southLat = latitude - latitudeDelta / 2;
-    const eastLon = longitude + longitudeDelta / 2;
-    const westLon = longitude - longitudeDelta / 2;
-
-    const topLeft = this.deg2num(northLat, westLon, this.ZOOM_LEVEL);
-    const bottomRight = this.deg2num(southLat, eastLon, this.ZOOM_LEVEL);
-
     const totalTiles = this.calculateTileCount(region);
     let downloadedTiles = 0;
     let failedTiles = 0;
 
-    const mapId = `map_${Date.now()}`;
-    const mapDir = `${this.MAP_TILES_DIR}${mapId}/`;
-    await FileSystem.makeDirectoryAsync(mapDir, { intermediates: true });
+    const mapId = `map_${Date.now()}`; // Unique ID for this map download
 
-    console.log(`Starting download: ${totalTiles} tiles for region:`, region);
-    console.log(`Tile bounds: x(${Math.min(topLeft.x, bottomRight.x)}-${Math.max(topLeft.x, bottomRight.x)}), y(${Math.min(topLeft.y, bottomRight.y)}-${Math.max(topLeft.y, bottomRight.y)})`);
-    console.log(`Using OpenStreetMap tiles at zoom level ${this.ZOOM_LEVEL}`);
+    console.log(`Starting download: ${totalTiles} tiles for region:`, region, `across zoom levels ${this.MIN_ZOOM_LEVEL}-${this.MAX_ZOOM_LEVEL}`);
 
     try {
-      for (let x = Math.min(topLeft.x, bottomRight.x); x <= Math.max(topLeft.x, bottomRight.x); x++) {
-        for (let y = Math.min(topLeft.y, bottomRight.y); y <= Math.max(topLeft.y, bottomRight.y); y++) {
-          // Use OpenStreetMap tiles instead of Google Maps
-          const tileUrl = `https://tile.openstreetmap.org/${this.ZOOM_LEVEL}/${x}/${y}.png`;
-          const tileFile = `${mapDir}${x}_${y}.png`;
-          
-          try {
-            console.log(`Downloading tile: ${x}_${y} from ${tileUrl}`);
+      for (let zoom = this.MIN_ZOOM_LEVEL; zoom <= this.MAX_ZOOM_LEVEL; zoom++) {
+        const { latitude, longitude, latitudeDelta, longitudeDelta } = region;
+        const northLat = latitude + latitudeDelta / 2;
+        const southLat = latitude - latitudeDelta / 2;
+        const eastLon = longitude + longitudeDelta / 2;
+        const westLon = longitude - longitudeDelta / 2;
+
+        const topLeft = this.deg2num(northLat, westLon, zoom);
+        const bottomRight = this.deg2num(southLat, eastLon, zoom);
+
+        console.log(`Downloading for zoom level ${zoom}: x(${topLeft.x}-${bottomRight.x}), y(${topLeft.y}-${bottomRight.y})`);
+
+        const xRange = Array.from({ length: Math.abs(bottomRight.x - topLeft.x) + 1 }, (_, i) => Math.min(topLeft.x, bottomRight.x) + i);
+        const yRange = Array.from({ length: Math.abs(bottomRight.y - topLeft.y) + 1 }, (_, i) => Math.min(topLeft.y, bottomRight.y) + i);
+
+        for (const x of xRange) {
+          for (const y of yRange) {
+            const tileUrl = `https://tile.openstreetmap.org/${zoom}/${x}/${y}.png`;
+            const tileDir = `${this.MAP_TILES_DIR}${mapId}/${zoom}/${x}/`;
+            const tileFile = `${tileDir}${y}.png`;
             
-            const downloadResult = await FileSystem.downloadAsync(tileUrl, tileFile);
-            
-            // Validate the downloaded file
-            const fileInfo = await FileSystem.getInfoAsync(tileFile);
-            if (fileInfo.exists && fileInfo.size > 0) {
-              downloadedTiles++;
-              console.log(`Successfully downloaded tile ${x}_${y}, size: ${fileInfo.size} bytes`);
-            } else {
+            try {
+              await FileSystem.makeDirectoryAsync(tileDir, { intermediates: true });
+              console.log(`Downloading tile: ${zoom}/${x}/${y} from ${tileUrl}`);
+              
+              await FileSystem.downloadAsync(tileUrl, tileFile);
+              
+              const fileInfo = await FileSystem.getInfoAsync(tileFile);
+              if (fileInfo.exists && fileInfo.size > 0) {
+                downloadedTiles++;
+                console.log(`Successfully downloaded tile ${zoom}/${x}/${y}, size: ${fileInfo.size} bytes`);
+              } else {
+                failedTiles++;
+                console.error(`Downloaded tile ${zoom}/${x}/${y} is empty or doesn't exist`);
+              }
+              
+              if (onProgress) {
+                onProgress({
+                  downloaded: downloadedTiles,
+                  failed: failedTiles,
+                  total: totalTiles,
+                  percentage: Math.round(((downloadedTiles + failedTiles) / totalTiles) * 100)
+                });
+              }
+              
+              await new Promise(resolve => setTimeout(resolve, 50)); // Reduced delay
+              
+            } catch (error) {
               failedTiles++;
-              console.error(`Downloaded tile ${x}_${y} is empty or doesn't exist`);
-            }
-            
-            if (onProgress) {
-              onProgress({
-                downloaded: downloadedTiles,
-                failed: failedTiles,
-                total: totalTiles,
-                percentage: Math.round(((downloadedTiles + failedTiles) / totalTiles) * 100)
-              });
-            }
-            
-            // Add small delay to avoid overwhelming the server
-            await new Promise(resolve => setTimeout(resolve, 100));
-            
-          } catch (error) {
-            failedTiles++;
-            console.error(`Failed to download tile ${x}_${y}:`, error.message);
-            
-            if (onProgress) {
-              onProgress({
-                downloaded: downloadedTiles,
-                failed: failedTiles,
-                total: totalTiles,
-                percentage: Math.round(((downloadedTiles + failedTiles) / totalTiles) * 100)
-              });
+              console.error(`Failed to download tile ${zoom}/${x}/${y}:`, error.message);
+              
+              if (onProgress) {
+                onProgress({
+                  downloaded: downloadedTiles,
+                  failed: failedTiles,
+                  total: totalTiles,
+                  percentage: Math.round(((downloadedTiles + failedTiles) / totalTiles) * 100)
+                });
+              }
             }
           }
         }
       }
-
       console.log(`Download complete: ${downloadedTiles} successful, ${failedTiles} failed`);
 
       if (downloadedTiles === 0) {
@@ -162,7 +167,9 @@ class OfflineMapService {
         downloadDate: new Date().toISOString(),
         tileCount: downloadedTiles,
         failedTiles,
-        size: this.calculateDownloadSize(region)
+        size: this.calculateDownloadSize(region),
+        minZoom: this.MIN_ZOOM_LEVEL,
+        maxZoom: this.MAX_ZOOM_LEVEL,
       };
 
       await this.saveOfflineMap(mapData);
