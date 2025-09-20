@@ -22,7 +22,7 @@ import { useNavigation } from '@react-navigation/native';
 import PhoneOverlay from './PhoneOverlay';
 import FriendList from './FriendsList';
 import CommunityList from './CommunityList';
-import FeedList from './FeedList';
+import FeedList from './Feed/FeedList';
 import NotificationBell from '../NotificationBell';
 import { FirebaseService } from '../../../backend/Firebase/FirebaseService';
 
