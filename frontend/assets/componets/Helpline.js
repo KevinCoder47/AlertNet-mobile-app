@@ -1,6 +1,6 @@
-import { StyleSheet, Text, View, Dimensions, TouchableOpacity, ScrollView, Modal, TextInput, Alert, Linking } from 'react-native'
+import { StyleSheet, Text, View, Dimensions, TouchableOpacity, ScrollView, Modal, TextInput, Alert, Linking, Animated, PanResponder } from 'react-native'
 import { useTheme } from '../contexts/ColorContext';
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Clipboard from 'expo-clipboard';
 
@@ -13,8 +13,23 @@ const Helpline = ({ onClose = () => console.log('Close button pressed - please i
   const [favorites, setFavorites] = useState([])
   const [newContact, setNewContact] = useState({ name: '', number: '', description: '' })
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+  const [isExpanded, setIsExpanded] = useState(false)
 
-  // Load saved contacts and favorites on mount
+  // Enhanced animation system like PeopleBar
+  const baseHeight = height * 0.35;
+  const maxHeight = Math.min(height * 0.65, height - 100);
+  
+  const animatedHeight = useRef(new Animated.Value(baseHeight)).current;
+  const animatedOpacity = useRef(new Animated.Value(1)).current;
+  
+  // Drag configuration
+  const dragState = useRef({
+    isDragging: false,
+    startHeight: baseHeight,
+    minHeight: baseHeight,
+    maxHeight,
+  }).current;
+
   useEffect(() => {
     AsyncStorage.getItem('customContacts').then(data => {
       if (data) setCustomContacts(JSON.parse(data));
@@ -24,17 +39,14 @@ const Helpline = ({ onClose = () => console.log('Close button pressed - please i
     });
   }, []);
 
-  // Save custom contacts when they change
   useEffect(() => {
     AsyncStorage.setItem('customContacts', JSON.stringify(customContacts));
   }, [customContacts]);
 
-  // Save favorites when they change
   useEffect(() => {
     AsyncStorage.setItem('favoriteContacts', JSON.stringify(favorites));
   }, [favorites]);
 
-  // Update time every minute
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
@@ -52,6 +64,107 @@ const Helpline = ({ onClose = () => console.log('Close button pressed - please i
   ];
 
   const allServices = [...emergencyServices, ...customContacts];
+
+  // Enhanced PanResponder system from PeopleBar
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dy) > Math.abs(gestureState.dx) && Math.abs(gestureState.dy) > 3;
+      },
+      onPanResponderGrant: (_, gestureState) => {
+        dragState.isDragging = true;
+        dragState.startHeight = animatedHeight._value;
+        animatedHeight.stopAnimation();
+        animatedOpacity.stopAnimation();
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (!dragState.isDragging) return;
+        
+        const newHeight = Math.max(
+          dragState.minHeight,
+          Math.min(dragState.maxHeight, dragState.startHeight - gestureState.dy)
+        );
+        
+        animatedHeight.setValue(newHeight);
+        
+        const heightProgress = (newHeight - dragState.minHeight) / (dragState.maxHeight - dragState.minHeight);
+        animatedOpacity.setValue(1 - heightProgress);
+        
+        const midPoint = (dragState.minHeight + dragState.maxHeight) / 2;
+        const shouldExpand = newHeight > midPoint;
+        if (shouldExpand !== isExpanded) {
+          setIsExpanded(shouldExpand);
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        dragState.isDragging = false;
+        
+        const currentHeight = animatedHeight._value;
+        const velocity = gestureState.vy;
+        const midPoint = (dragState.minHeight + dragState.maxHeight) / 2;
+        
+        let targetHeight, targetExpanded;
+        
+        if (Math.abs(velocity) > 0.5) {
+          targetHeight = velocity < 0 ? dragState.maxHeight : dragState.minHeight;
+          targetExpanded = velocity < 0;
+        } else {
+          targetHeight = currentHeight > midPoint ? dragState.maxHeight : dragState.minHeight;
+          targetExpanded = currentHeight > midPoint;
+        }
+        
+        setIsExpanded(targetExpanded);
+        Animated.parallel([
+          Animated.spring(animatedHeight, {
+            toValue: targetHeight,
+            useNativeDriver: false,
+            tension: 100,
+            friction: 8,
+          }),
+          Animated.timing(animatedOpacity, {
+            toValue: targetExpanded ? 0 : 1,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      },
+      onPanResponderTerminate: () => {
+        dragState.isDragging = false;
+        const currentHeight = animatedHeight._value;
+        const midPoint = (dragState.minHeight + dragState.maxHeight) / 2;
+        const targetHeight = currentHeight > midPoint ? dragState.maxHeight : dragState.minHeight;
+        const targetExpanded = currentHeight > midPoint;
+        
+        setIsExpanded(targetExpanded);
+        Animated.parallel([
+          Animated.spring(animatedHeight, { toValue: targetHeight, useNativeDriver: false }),
+          Animated.timing(animatedOpacity, { toValue: targetExpanded ? 0 : 1, duration: 200, useNativeDriver: true }),
+        ]).start();
+      },
+      onPanResponderTerminationRequest: () => false,
+    })
+  ).current;
+
+  // Function to toggle panel programmatically
+  const togglePanel = (expand) => {
+    const targetHeight = expand ? dragState.maxHeight : dragState.minHeight;
+    setIsExpanded(expand);
+    
+    Animated.parallel([
+      Animated.spring(animatedHeight, {
+        toValue: targetHeight,
+        useNativeDriver: false,
+        tension: 100,
+        friction: 8,
+      }),
+      Animated.timing(animatedOpacity, {
+        toValue: expand ? 0 : 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
 
   const copyToClipboard = async (text) => {
     await Clipboard.setStringAsync(text);
@@ -82,12 +195,29 @@ const Helpline = ({ onClose = () => console.log('Close button pressed - please i
 
   const handleLongPress = (service, index) => {
     if (service.isAddButton) return
-    Alert.alert('Quick Actions', `${service.title} - ${service.number}`, [
+    
+    // Check if this is a custom contact (added after the default emergency services)
+    const isCustomContact = index >= emergencyServices.length
+    
+    const actions = [
       { text: 'Call Now', onPress: () => handleCall(service) },
       { text: 'Copy Number', onPress: () => copyToClipboard(service.number) },
       { text: favorites.includes(index) ? 'Remove from Favorites' : 'Add to Favorites', onPress: () => toggleFavorite(index) },
-      { text: 'Cancel', style: 'cancel' }
-    ])
+    ]
+    
+    // Add delete option only for custom contacts
+    if (isCustomContact) {
+      const customContactIndex = index - emergencyServices.length
+      actions.push({ 
+        text: 'Delete Contact', 
+        style: 'destructive', 
+        onPress: () => handleDeleteContact(customContactIndex) 
+      })
+    }
+    
+    actions.push({ text: 'Cancel', style: 'cancel' })
+    
+    Alert.alert('Quick Actions', `${service.title} - ${service.number}`, actions)
   }
 
   const toggleFavorite = (index) => {
@@ -98,16 +228,42 @@ const Helpline = ({ onClose = () => console.log('Close button pressed - please i
     }
   }
 
-  const handleDeleteContact = (index) => {
-    if (index < 0) return;
-    Alert.alert('Delete Contact', 'Are you sure you want to delete this emergency contact?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => {
-        const updated = customContacts.filter((_, i) => i !== index)
-        setCustomContacts(updated)
-        Alert.alert('Deleted', 'Emergency contact removed')
-      }}
-    ])
+  const handleDeleteContact = (customContactIndex) => {
+    if (customContactIndex < 0 || customContactIndex >= customContacts.length) return;
+    
+    const contactToDelete = customContacts[customContactIndex]
+    
+    Alert.alert(
+      'Delete Contact', 
+      `Are you sure you want to delete "${contactToDelete.title}"?`, 
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive', 
+          onPress: () => {
+            const updatedContacts = customContacts.filter((_, i) => i !== customContactIndex)
+            setCustomContacts(updatedContacts)
+            
+            // Also update favorites list to remove any references to deleted contacts
+            const totalEmergencyServices = emergencyServices.length
+            const deletedContactGlobalIndex = totalEmergencyServices + customContactIndex
+            const updatedFavorites = favorites
+              .filter(favIndex => favIndex !== deletedContactGlobalIndex)
+              .map(favIndex => {
+                // Adjust indices for contacts that come after the deleted one
+                if (favIndex > deletedContactGlobalIndex) {
+                  return favIndex - 1
+                }
+                return favIndex
+              })
+            setFavorites(updatedFavorites)
+            
+            Alert.alert('Deleted', `"${contactToDelete.title}" has been removed from your emergency contacts.`)
+          }
+        }
+      ]
+    )
   }
 
   const handleAddContact = () => {
@@ -132,511 +288,349 @@ const Helpline = ({ onClose = () => console.log('Close button pressed - please i
 
   return (
     <>
-      <View style={styles.container}>
-        <TouchableOpacity style={styles.closeButton} onPress={() => onClose()} activeOpacity={0.7} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Text style={styles.closeButtonText}>✕</Text>
-        </TouchableOpacity>
-
-        <View style={styles.headerSection}>
-          <View style={styles.titleRow}>
-            <View style={styles.emergencyBadge}><View style={styles.statusDot} /><Text style={styles.badgeText}>LIVE</Text></View>
-            <Text style={styles.mainTitle}>Emergency Services</Text>
-          </View>
-          <Text style={styles.subtitle}>🚨 Professional emergency response • Available 24/7 • Immediate assistance</Text>
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}><Text style={styles.statNumber}>{allServices.length}</Text><Text style={styles.statLabel}>Services</Text></View>
-            <View style={styles.statItem}><Text style={styles.statNumber}>24/7</Text><Text style={styles.statLabel}>Available</Text></View>
-            <View style={styles.statItem}><Text style={styles.statNumber}>5s</Text><Text style={styles.statLabel}>Response</Text></View>
-            <View style={styles.statItem}><Text style={styles.statNumber}>{currentTime}</Text><Text style={styles.statLabel}>Current</Text></View>
-          </View>
+      <Animated.View style={[styles.container, { height: animatedHeight }]}>
+        {/* Enhanced drag handle with PeopleBar styling */}
+        <View {...panResponder.panHandlers} style={styles.dragHandleContainer}>
+          <View style={styles.dragHandle} />
+          <Animated.Text style={[styles.swipeHint, { opacity: animatedOpacity }]}>
+            {isExpanded ? 'Swipe down to collapse' : 'Swipe up to expand'}
+          </Animated.Text>
+          {isExpanded && (
+            <Text style={styles.dragDownHint}>
+              Drag down to collapse
+            </Text>
+          )}
         </View>
 
-        <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-          {allServices.map((service, index) => {
-            const isCustomContact = !emergencyServices.includes(service);
-            const customIndex = customContacts.findIndex(c => c.title === service.title && c.number === service.number);
-            return (
-              <TouchableOpacity
-                key={`${service.title}-${index}`}
-                style={[styles.serviceButton, { borderLeftColor: service.color }]}
-                activeOpacity={0.8}
-                onPress={() => handleCall(service)}
-                onLongPress={() => handleLongPress(service, index)}
-                delayLongPress={800}
+        <View style={styles.headerInfo}>
+          <View style={styles.headerRow}>
+            <Text style={styles.headerTitle}>🚨 Emergency Services</Text>
+            {isExpanded && (
+              <TouchableOpacity 
+                onPress={() => togglePanel(false)} 
+                style={styles.collapseButton}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <View style={styles.serviceContent}>
-                  <View style={[styles.iconSection, { backgroundColor: service.color + '20' }]}>
-                    <Text style={styles.serviceIcon}>{service.icon}</Text>
-                    <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(service.priority) }]}>
-                      <Text style={styles.priorityText}>{service.priority}</Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.infoSection}>
-                    <Text style={styles.serviceTitle}>{service.title}</Text>
-                    <Text style={styles.serviceDescription}>{service.description}</Text>
-                    <Text style={[styles.serviceNumber, { color: service.color }]}>{service.number}</Text>
-                  </View>
-
-                  <View style={styles.actionSection}>
-                    {isCustomContact && <TouchableOpacity style={styles.deleteButton} onPress={() => handleDeleteContact(customIndex)}>
-                      <Text style={styles.deleteButtonText}>🗑️</Text>
-                    </TouchableOpacity>}
-                    <View style={[styles.callButton, { backgroundColor: service.color }]}><Text style={styles.callButtonText}>{service.isAddButton ? '✨' : '📞'}</Text></View>
-                  </View>
-                </View>
-                {!service.isAddButton && <View style={styles.quickHint}><Text style={styles.quickHintText}>Hold for quick actions</Text></View>}
+                <Text style={styles.collapseButtonText}>✕</Text>
               </TouchableOpacity>
-            )
-          })}
-        </ScrollView>
-
-        <View style={styles.footerSection}>
-          <View style={styles.footerRow}>
-            <View style={styles.systemStatus}><View style={styles.statusIndicator} /><Text style={styles.statusText}>All systems operational</Text></View>
-            <Text style={styles.lastUpdated}>Updated {currentTime}</Text>
+            )}
           </View>
-          <View style={styles.emergencyTip}><Text style={styles.emergencyTipText}>💡 Tip: Hold any service for quick actions • Swipe for more options</Text></View>
-          <View style={styles.legalDisclaimer}><Text style={styles.disclaimerText}>⚠️ For immediate life-threatening emergencies, call emergency services directly</Text></View>
+          <Text style={styles.headerSubtitle}>Tap to call • Long press for options</Text>
+          <Text style={styles.timeText}>Current time: {currentTime}</Text>
         </View>
-      </View>
 
-      <Modal visible={showAddContact} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowAddContact(false)}>
+        <ScrollView 
+          style={styles.scrollContainer} 
+          showsVerticalScrollIndicator={true} 
+          contentContainerStyle={styles.scrollContent}
+          nestedScrollEnabled={true}
+        >
+          {allServices.map((service, index) => (
+            <TouchableOpacity 
+              key={index} 
+              style={[styles.card, { borderLeftColor: service.color }]} 
+              onPress={() => handleCall(service)} 
+              onLongPress={() => handleLongPress(service, index)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.leftSection}>
+                <Text style={styles.cardIcon}>{service.icon}</Text>
+                {favorites.includes(index) && (
+                  <View style={styles.favoriteIndicator}>
+                    <Text style={styles.favoriteStar}>⭐</Text>
+                  </View>
+                )}
+              </View>
+              <View style={styles.cardContent}>
+                <View style={styles.titleRow}>
+                  <Text style={styles.cardTitle}>{service.title}</Text>
+                  {favorites.includes(index) && (
+                    <Text style={styles.favoriteStarInline}>★</Text>
+                  )}
+                </View>
+                <Text style={styles.cardDesc}>{service.description}</Text>
+                <Text style={styles.cardNumber}>{service.number}</Text>
+              </View>
+              <View style={styles.rightSection}>
+                <View style={[styles.priorityTag, { backgroundColor: getPriorityColor(service.priority) }]}>
+                  <Text style={styles.priorityText}>{service.priority}</Text>
+                </View>
+                {favorites.includes(index) && (
+                  <Text style={styles.favoriteStarCorner}>★</Text>
+                )}
+              </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </Animated.View>
+
+      <Modal visible={showAddContact} transparent animationType="slide">
         <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Add Emergency Contact</Text>
-            <TouchableOpacity onPress={() => setShowAddContact(false)} style={styles.modalCloseButton}><Text style={styles.modalCloseText}>✕</Text></TouchableOpacity>
-          </View>
           <View style={styles.modalContent}>
-            <View style={styles.inputGroup}><Text style={styles.inputLabel}>Contact Name *</Text>
-              <TextInput style={styles.textInput} placeholder="e.g., Mom, Dad, Doctor..." placeholderTextColor="#95A5A6" value={newContact.name} onChangeText={(text) => setNewContact({...newContact, name: text})} />
+            <Text style={styles.modalTitle}>Add Emergency Contact</Text>
+            <TextInput 
+              style={styles.input} 
+              placeholder="Name" 
+              placeholderTextColor="#999" 
+              value={newContact.name} 
+              onChangeText={(text) => setNewContact({ ...newContact, name: text })} 
+            />
+            <TextInput 
+              style={styles.input} 
+              placeholder="Phone Number" 
+              placeholderTextColor="#999" 
+              keyboardType="phone-pad" 
+              value={newContact.number} 
+              onChangeText={(text) => setNewContact({ ...newContact, number: text })} 
+            />
+            <TextInput 
+              style={styles.input} 
+              placeholder="Description (optional)" 
+              placeholderTextColor="#999" 
+              value={newContact.description} 
+              onChangeText={(text) => setNewContact({ ...newContact, description: text })} 
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                onPress={() => setShowAddContact(false)} 
+                style={[styles.modalButton, { backgroundColor: '#E74C3C' }]}
+              >
+                <Text style={styles.modalButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={handleAddContact} 
+                style={[styles.modalButton, { backgroundColor: '#27AE60' }]}
+              >
+                <Text style={styles.modalButtonText}>Add</Text>
+              </TouchableOpacity>
             </View>
-            <View style={styles.inputGroup}><Text style={styles.inputLabel}>Phone Number *</Text>
-              <TextInput style={styles.textInput} placeholder="e.g., +27 123 456 7890" placeholderTextColor="#95A5A6" keyboardType="phone-pad" value={newContact.number} onChangeText={(text) => setNewContact({...newContact, number: text})} />
-            </View>
-            <View style={styles.inputGroup}><Text style={styles.inputLabel}>Description (Optional)</Text>
-              <TextInput style={styles.textInput} placeholder="e.g., Family doctor, Close friend..." placeholderTextColor="#95A5A6" value={newContact.description} onChangeText={(text) => setNewContact({...newContact, description: text})} />
-            </View>
-            <TouchableOpacity style={styles.addButton} onPress={handleAddContact} activeOpacity={0.8}><Text style={styles.addButtonText}>➕ Add Emergency Contact</Text></TouchableOpacity>
-            <View style={styles.modalTip}><Text style={styles.modalTipText}>💡 Your contacts are saved locally and will appear in the main list</Text></View>
           </View>
         </View>
       </Modal>
     </>
-  );
+  )
 }
 
 export default Helpline
-
-
-
 
 const styles = StyleSheet.create({
   container: {
     position: "absolute",
     bottom: 60,
-    height: height * 0.75,
     width: width * 0.95,
     alignSelf: "center",
     zIndex: 10,
     backgroundColor: '#1A1A1A',
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: '#333333',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
-    shadowRadius: 12,
+    shadowRadius: 16,
     elevation: 8,
-    padding: 20,
+    overflow: 'hidden',
   },
-
-  closeButton: {
+  dragHandleContainer: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    backgroundColor: '#1A1A1A',
+  },
+  dragHandle: {
+    width: 50,
+    height: 4,
+    backgroundColor: '#555',
+    borderRadius: 2,
+  },
+  swipeHint: {
+    fontSize: 11,
+    color: '#aaa',
+    marginTop: 6,
+    textAlign: 'center',
+  },
+  dragDownHint: {
+    fontSize: 12,
+    color: '#FFD700',
+    marginTop: 4,
+    textAlign: 'center',
+    fontWeight: '600',
+    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 215, 0, 0.3)',
+  },
+  headerInfo: { 
+    paddingHorizontal: 20,
+    paddingBottom: 15,
+    borderBottomWidth: 1, 
+    borderBottomColor: '#333' 
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  headerTitle: { 
+    color: '#fff', 
+    fontSize: 18, 
+    fontWeight: 'bold' 
+  },
+  headerSubtitle: { 
+    color: '#ccc', 
+    fontSize: 12, 
+    marginBottom: 2 
+  },
+  timeText: { 
+    color: '#999', 
+    fontSize: 11 
+  },
+  collapseButton: {
+    padding: 6,
+    backgroundColor: '#333',
+    borderRadius: 6,
+  },
+  collapseButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  scrollContainer: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+  },
+  scrollContent: {
+    paddingBottom: 10,
+  },
+  card: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    padding: 12, 
+    marginVertical: 6, 
+    backgroundColor: '#2C2C2C', 
+    borderRadius: 10, 
+    borderLeftWidth: 5 
+  },
+  leftSection: {
+    position: 'relative',
+    marginRight: 12,
+    alignItems: 'center',
+  },
+  favoriteIndicator: {
     position: 'absolute',
-    top: 16,
-    right: 16,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    top: -6,
+    right: -6,
+    backgroundColor: '#FFD700',
+    borderRadius: 10,
+    width: 20,
+    height: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: '#FFA500',
   },
-
-  closeButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
+  favoriteStar: {
+    fontSize: 12,
+    color: '#fff',
   },
-
-  headerSection: {
-    paddingTop: 16,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#333333',
+  cardIcon: { 
+    fontSize: 24, 
   },
-
+  cardContent: { 
+    flex: 1 
+  },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    justifyContent: 'space-between',
   },
-
-  emergencyBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(231, 76, 60, 0.2)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 16,
-    marginRight: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(231, 76, 60, 0.4)',
-  },
-
-  statusDot: {
-    width: 6,
-    height: 6,
-    backgroundColor: '#E74C3C',
-    borderRadius: 3,
-    marginRight: 6,
-  },
-
-  badgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#E74C3C',
-  },
-
-  mainTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    flex: 1,
-  },
-
-  subtitle: {
-    fontSize: 13,
-    color: '#CCCCCC',
-    marginBottom: 16,
-    lineHeight: 18,
-  },
-
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-
-  statItem: {
-    alignItems: 'center',
-  },
-
-  statNumber: {
+  favoriteStarInline: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#FFD700',
+    marginLeft: 8,
   },
-
-  statLabel: {
-    fontSize: 11,
-    color: '#AAAAAA',
-    marginTop: 2,
-  },
-
-  scrollContainer: {
+  cardTitle: { 
+    color: '#fff', 
+    fontSize: 16, 
+    fontWeight: 'bold',
     flex: 1,
-    marginVertical: 16,
   },
-
-  serviceButton: {
-    backgroundColor: '#2A2A2A',
-    borderRadius: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#404040',
-    borderLeftWidth: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
+  cardDesc: { 
+    color: '#ccc', 
+    fontSize: 12 
   },
-
-  serviceContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
+  cardNumber: { 
+    color: '#bbb', 
+    fontSize: 14, 
+    marginTop: 2 
   },
-
-  iconSection: {
-    width: 56,
-    height: 56,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
+  rightSection: {
+    alignItems: 'flex-end',
     position: 'relative',
   },
-
-  serviceIcon: {
-    fontSize: 22,
-  },
-
-  priorityBadge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
-
-  priorityText: {
-    fontSize: 8,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-
-  infoSection: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-
-  serviceTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 4,
-  },
-
-  serviceDescription: {
-    fontSize: 12,
-    color: '#CCCCCC',
-    marginBottom: 6,
-    lineHeight: 16,
-  },
-
-  serviceNumber: {
+  favoriteStarCorner: {
     fontSize: 14,
-    fontWeight: '600',
+    color: '#FFD700',
+    marginTop: 4,
   },
-
-  actionSection: {
-    justifyContent: 'center',
-    alignItems: 'flex-end',
-    flexDirection: 'row',
-    gap: 8,
+  priorityTag: { 
+    paddingHorizontal: 8, 
+    paddingVertical: 4, 
+    borderRadius: 6 
   },
-
-  deleteButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(231, 76, 60, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
+  priorityText: { 
+    color: '#fff', 
+    fontSize: 10, 
+    fontWeight: 'bold' 
+  },
+  modalContainer: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    backgroundColor: 'rgba(0,0,0,0.7)' 
+  },
+  modalContent: { 
+    width: '90%', 
+    backgroundColor: '#1A1A1A', 
+    borderRadius: 16, 
+    padding: 20,
     borderWidth: 1,
-    borderColor: 'rgba(231, 76, 60, 0.4)',
+    borderColor: '#333',
   },
-
-  deleteButtonText: {
-    fontSize: 14,
-  },
-
-  quickHint: {
-    position: 'absolute',
-    bottom: 4,
-    right: 16,
-  },
-
-  quickHintText: {
-    fontSize: 9,
-    color: '#666666',
-    fontStyle: 'italic',
-  },
-
-  emergencyTip: {
-    backgroundColor: 'rgba(52, 152, 219, 0.15)',
-    padding: 12,
-    borderRadius: 8,
-    marginVertical: 8,
-    borderLeftWidth: 3,
-    borderLeftColor: '#3498DB',
-  },
-
-  emergencyTipText: {
-    fontSize: 11,
-    color: '#87CEEB',
-    lineHeight: 14,
-  },
-
-  legalDisclaimer: {
-    backgroundColor: 'rgba(231, 76, 60, 0.15)',
-    padding: 10,
-    borderRadius: 8,
-    borderLeftWidth: 3,
-    borderLeftColor: '#E74C3C',
-  },
-
-  disclaimerText: {
-    fontSize: 10,
-    color: '#FFB6C1',
+  modalTitle: { 
+    color: '#fff', 
+    fontSize: 18, 
+    fontWeight: 'bold', 
+    marginBottom: 16,
     textAlign: 'center',
-    lineHeight: 13,
-    fontWeight: '500',
   },
-
-  modalTip: {
-    backgroundColor: 'rgba(155, 89, 182, 0.15)',
-    padding: 12,
-    borderRadius: 8,
-    marginTop: 16,
-    borderLeftWidth: 3,
-    borderLeftColor: '#9B59B6',
-  },
-
-  modalTipText: {
-    fontSize: 12,
-    color: '#DDA0DD',
-    lineHeight: 16,
-  },
-
-  callButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-
-  callButtonText: {
-    fontSize: 18,
-  },
-
-  footerSection: {
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#333333',
-  },
-
-  footerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-
-  systemStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-
-  statusIndicator: {
-    width: 6,
-    height: 6,
-    backgroundColor: '#27AE60',
-    borderRadius: 3,
-    marginRight: 8,
-  },
-
-  statusText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#27AE60',
-  },
-
-  lastUpdated: {
-    fontSize: 11,
-    color: '#AAAAAA',
-  },
-
-  // Modal Styles
-  modalContainer: {
-    flex: 1,
-    backgroundColor: '#1A1A1A',
-  },
-
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    paddingTop: 60,
-    borderBottomWidth: 1,
-    borderBottomColor: '#333333',
-  },
-
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-
-  modalCloseButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  modalCloseText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-
-  modalContent: {
-    flex: 1,
-    padding: 20,
-  },
-
-  inputGroup: {
-    marginBottom: 20,
-  },
-
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    marginBottom: 8,
-  },
-
-  textInput: {
-    backgroundColor: '#2A2A2A',
+  input: { 
+    backgroundColor: '#2C2C2C', 
+    borderRadius: 8, 
+    padding: 12, 
+    marginBottom: 12, 
+    color: '#fff',
     borderWidth: 1,
-    borderColor: '#404040',
-    borderRadius: 12,
-    padding: 16,
+    borderColor: '#444',
+  },
+  modalButtons: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  modalButton: { 
+    flex: 1, 
+    padding: 14, 
+    borderRadius: 8, 
+    marginHorizontal: 6, 
+    alignItems: 'center' 
+  },
+  modalButtonText: { 
+    color: '#fff', 
+    fontWeight: 'bold',
     fontSize: 16,
-    color: '#FFFFFF',
-    fontFamily: 'Poppins',
-  },
-
-  addButton: {
-    backgroundColor: '#9B59B6',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    marginTop: 20,
-    shadowColor: '#9B59B6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-
-  addButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
+  }
 });

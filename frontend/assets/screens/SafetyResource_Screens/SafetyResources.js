@@ -41,6 +41,10 @@ export default function SafetyResources({
   setIsSafetyZones,
   previousScreen = "sos",
   setIsDownloadedMaps,
+  // New props for appearance settings
+  setIsAppearanceSettings,
+  setIsFontSizeSettings,
+
   setIsScanning,
   backgroundContent,
   onQRCodeScanned // New prop for handling QR code scan results
@@ -182,6 +186,33 @@ export default function SafetyResources({
             setIsSubscriptionScreen(true)
           }
         },
+        {
+          icon: <MaterialIcons name="language" size={18} color="#fff" />,
+          text: "Language",
+          keywords: ["language", "translate", "locale", "settings"],
+          onPress: () => {
+            setIsSafetyResources(false)
+            setIsLanguagePage(true)
+          }
+        },
+        {
+          icon: <Ionicons name="color-palette-outline" size={18} color="#fff" />,
+          text: "Appearance & Theme",
+          keywords: ["appearance", "theme", "dark", "light", "mode", "color", "display"],
+          onPress: () => {
+            setIsSafetyResources(false)
+            setIsAppearanceSettings && setIsAppearanceSettings(true)
+          }
+        },
+        {
+          icon: <MaterialIcons name="format-size" size={18} color="#fff" />,
+          text: "Font Size",
+          keywords: ["font", "size", "text", "accessibility", "large", "small", "readable"],
+          onPress: () => {
+            setIsSafetyResources(false)
+            setIsFontSizeSettings && setIsFontSizeSettings(true)
+          }
+        }
       ]
     },
     {

@@ -72,7 +72,8 @@
     "react-native-wheel-picker-expo": "^0.5.4",
     "react-native-youtube-iframe": "^2.4.1",
     "react-redux": "^9.2.0",
-    "resend": "^4.8.0"
+    "resend": "^4.8.0",
+    "react-native-svg": "15.12.1"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
