@@ -299,6 +299,11 @@ export class SOSFirebaseService {
       const firstName = currentUserData.name || currentUserData.Name || currentUserData.FirstName || '';
       const lastName = currentUserData.surname || currentUserData.Surname || currentUserData.LastName || '';
       const userName = (`${firstName} ${lastName}`).trim() || 'Your friend';
+      const profilePicture = currentUserData.imageUrl || 
+                             currentUserData.profilePicture || 
+                             currentUserData.localImagePath ||
+                             currentUserData.image ||
+                             null;
       
       // Create location text
       const locationText = location 
@@ -352,13 +357,14 @@ export class SOSFirebaseService {
           userId: friend.userId,
           recipientPhone: FirebaseService.formatPhoneNumber(friend.phone),
           type: 'sos',
-          title: '🚨 EMERGENCY ALERT',
-          message: `${userName} has triggered an SOS alert and needs your help.`,
+          title: 'EMERGENCY ALERT',
+          message: `has triggered an SOS alert and needs your help.`,
           isUrgent: true,
           priority: 'high',
           data: {
             senderId: currentUser.uid,
-            senderName: '', // Set to empty to prevent redundancy in the popup
+            senderName: userName,
+            profilePicture: profilePicture,
             location: location || null,
             sosSessionId: sosSessionId,
             category: 'emergency',

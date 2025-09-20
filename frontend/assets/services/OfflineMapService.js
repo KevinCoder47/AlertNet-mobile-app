@@ -6,7 +6,7 @@ import { auth } from '../../backend/Firebase/FirebaseConfig';
 class OfflineMapService {
   static TILE_SIZE = 256;
   static MIN_ZOOM_LEVEL = 14;
-  static MAX_ZOOM_LEVEL = 16;
+  static MAX_ZOOM_LEVEL = 17;
   static MAP_TILES_DIR = `${FileSystem.documentDirectory}offline_maps/`;
   static MAX_RETRIES = 3;
   static RETRY_DELAY = 1000;

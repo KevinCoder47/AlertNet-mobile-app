@@ -398,15 +398,7 @@ const NotificationSystem = ({ children }) => {
         <Image
           source={{ uri: profilePicture }}
           style={styles.profilePicture}
-          onError={(error) => {
-            console.log('Profile picture failed to load in slide notification:', error.nativeEvent.error);
-            // The component will automatically fall back to default avatar
-            setImageError(true);
-          }}
-          onLoad={() => {
-            console.log('Profile picture loaded successfully in slide notification');
-            setImageError(false);
-          }}
+          onError={(e) => console.log('Error loading notification profile picture:', e.nativeEvent.error)}
         />
       );
     } else {

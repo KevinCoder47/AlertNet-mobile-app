@@ -5,9 +5,8 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
-  StatusBar,
 } from 'react-native';
+import Constants from 'expo-constants';
 
 // --- Mock Data based on the image ---
 const safetyCategories = [
@@ -57,9 +56,8 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
   };
 
   return (
-    <View style={styles.fullScreenContainer}>
-      <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" />
-      <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
+      <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity 
             style={styles.backButton} 
@@ -121,19 +119,19 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
             <Text style={styles.addButtonText}>+ add</Text>
           </TouchableOpacity>
         </ScrollView>
-      </SafeAreaView>
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  fullScreenContainer: {
-    flex: 1,
-    backgroundColor: '#FFFFFF', // Ensures full page white background
-  },
   safeArea: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+    paddingTop: Constants.statusBarHeight,
+  },
+  container: {
+    flex: 1,
   },
   header: {
     backgroundColor: '#FFFFFF',

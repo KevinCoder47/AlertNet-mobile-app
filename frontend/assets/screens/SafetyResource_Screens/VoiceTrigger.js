@@ -5,12 +5,12 @@ import {
   TouchableOpacity,
   TextInput,
   StyleSheet,
-  SafeAreaView,
   Animated,
   Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 
 const { width, height } = Dimensions.get('window');
 
@@ -98,7 +98,7 @@ const VoiceTrigger = ({ setIsVoiceTrigger, setIsSafetyResources }) => {
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
     >
-      <SafeAreaView style={styles.safeArea}>
+      <View style={styles.safeArea}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity 
@@ -218,7 +218,7 @@ const VoiceTrigger = ({ setIsVoiceTrigger, setIsSafetyResources }) => {
             </Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     </LinearGradient>
   );
 };
@@ -229,12 +229,12 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
+    paddingTop: Constants.statusBarHeight,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 10,
     paddingBottom: 20,
   },
   backButton: {

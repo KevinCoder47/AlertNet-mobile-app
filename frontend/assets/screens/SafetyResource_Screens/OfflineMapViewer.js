@@ -27,7 +27,7 @@ const OfflineMapViewer = ({ map, onClose }) => {
         style={styles.map}
         initialRegion={map.region}
         minZoomLevel={map.minZoom || 14}
-        maxZoomLevel={map.maxZoom || 16}
+        maxZoomLevel={map.maxZoom || 17}
         showsUserLocation={true}
         showsMyLocationButton={true}
       >
@@ -46,7 +46,7 @@ const OfflineMapViewer = ({ map, onClose }) => {
       <View style={styles.infoBox}>
         <Text style={styles.mapName}>{map.name}</Text>
         <Text style={styles.infoText}>
-          Viewing offline map. Zoom is available between levels {map.minZoom || 14} and {map.maxZoom || 16}.
+          You are viewing an offline map. Zoom is limited to a range from neighborhood to street level.
         </Text>
       </View>
     </SafeAreaView>
@@ -71,12 +71,12 @@ const styles = StyleSheet.create({
   },
   infoBox: {
     position: 'absolute',
-    bottom: 40,
+    top: 50,
     left: 20,
-    right: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
     borderRadius: 15,
     padding: 15,
+    maxWidth: '65%',
   },
   mapName: {
     color: '#fff',

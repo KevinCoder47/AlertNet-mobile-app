@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated, Easing, Dimensions } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Easing, Dimensions, Image } from 'react-native';
+import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
 
@@ -46,7 +46,17 @@ const InAppNotificationPopup = ({ notification, onDismiss, onNavigate, onViewLoc
   const handleViewLocationPress = (e) => {
     e.stopPropagation(); // Prevent the main press from firing
     if (onViewLocation && notification.data?.location) {
-      onViewLocation(notification.data.location);
+      // The `handleViewLocation` function in Home.js expects an object with top-level
+      // properties like `location`, `name`, `phone`, and `senderId`.
+      // The raw notification object has these nested inside `data`.
+      // We create a new object that matches the expected structure.
+      const viewableData = {
+        location: notification.data.location,
+        name: notification.data.senderName,
+        phone: notification.data.senderPhone,
+        senderId: notification.data.senderId,
+      };
+      onViewLocation(viewableData);
     }
     handleDismiss();
   };
@@ -67,15 +77,20 @@ const InAppNotificationPopup = ({ notification, onDismiss, onNavigate, onViewLoc
   if (!notification) return null;
 
   const iconInfo = getIconInfo(notification.type);
+  const profilePicture = notification.data?.profilePicture;
   const message = `${notification.data?.senderName || ''} ${notification.message}`.trim();
   const hasLocation = notification.type === 'sos' && notification.data?.location;
 
   return (
     <Animated.View style={[styles.container, { transform: [{ translateY: slideAnim }] }]}>
       <TouchableOpacity style={styles.touchable} onPress={handleMainPress} activeOpacity={0.8}>
-        <View style={styles.iconContainer}>
-          <Icon name={iconInfo.name} size={24} color={iconInfo.color} />
-        </View>
+        {profilePicture ? (
+          <Image source={{ uri: profilePicture }} style={styles.profilePicture} />
+        ) : (
+          <View style={styles.iconContainer}>
+            <Icon name={iconInfo.name} size={24} color={iconInfo.color} />
+          </View>
+        )}
         <View style={styles.textContainer}>
           <Text style={styles.title} numberOfLines={1}>{notification.title}</Text>
           <Text style={styles.message} numberOfLines={hasLocation ? 1 : 2}>{message}</Text>
@@ -97,7 +112,14 @@ const InAppNotificationPopup = ({ notification, onDismiss, onNavigate, onViewLoc
 const styles = StyleSheet.create({
     container: { position: 'absolute', top: 0, left: 20, right: 20, zIndex: 9999, backgroundColor: '#2C2C2E', borderRadius: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 10, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.1)' },
     touchable: { flexDirection: 'row', alignItems: 'center', padding: 12 },
-    iconContainer: { marginRight: 12 },
+    profilePicture: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      marginRight: 12,
+      backgroundColor: '#444',
+    },
+    iconContainer: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
     textContainer: { flex: 1 },
     title: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 15 },
     message: { color: '#E0E0E0', fontSize: 13, marginTop: 2 },
