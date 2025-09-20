@@ -1,7 +1,43 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ImageBackground, Linking, Platform } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ImageBackground, Linking, Platform, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-export default function QrCode({ setIsQrCode, setIsSOS, emergencyContacts = [], userData = {}, userImage }) {
+import { getUserDocument } from '../../services/firestore';
+import { SOSService } from '../services/SOSService';
+
+export default function QrCode({ setIsQrCode, setIsSOS, emergencyContacts = [], userData = {}, userImage, scannedUserId, scannedSosId }) {
+  const [displayUser, setDisplayUser] = useState(userData);
+  const [displayUserImage, setDisplayUserImage] = useState(userImage);
+  const [displayContacts, setDisplayContacts] = useState(emergencyContacts);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (scannedUserId) {
+      const fetchScannedUserData = async () => {
+        setIsLoading(true);
+        try {
+          const scannedUserData = await getUserDocument(scannedUserId);
+          if (scannedUserData) {
+            setDisplayUser(scannedUserData);
+            setDisplayUserImage(scannedUserData.imageUrl);
+            const contacts = await SOSService.getEmergencyContactsForUser(scannedUserId);
+            setDisplayContacts(contacts);
+          } else {
+            console.error("Scanned user not found");
+          }
+        } catch (error) {
+          console.error("Error fetching scanned user data:", error);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      fetchScannedUserData();
+    } else {
+      setDisplayUser(userData);
+      setDisplayUserImage(userImage);
+      setDisplayContacts(emergencyContacts);
+    }
+  }, [scannedUserId, userData, userImage, emergencyContacts]);
+
   const handleCall = (phoneNumber) => {
     const cleanPhone = phoneNumber.replace(/\s/g, '');
     let dialerURL;
@@ -23,6 +59,19 @@ export default function QrCode({ setIsQrCode, setIsSOS, emergencyContacts = [], 
       .catch(err => console.error(err));
   };
 
+  if (isLoading) {
+    return (
+      <ImageBackground
+        source={require("../images/SOS-background.jpg")}
+        style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+        resizeMode="cover"
+      >
+        <ActivityIndicator size="large" color="#FFFFFF" />
+        <Text style={{ color: 'white', marginTop: 10 }}>Loading User Details...</Text>
+      </ImageBackground>
+    );
+  }
+
   return (
     <ImageBackground
       source={require("../images/SOS-background.jpg")}
@@ -33,7 +82,9 @@ export default function QrCode({ setIsQrCode, setIsSOS, emergencyContacts = [], 
         <TouchableOpacity 
           onPress={() => {
             setIsQrCode(false);
-            setIsSOS(true);
+            if (!scannedUserId) {
+              setIsSOS(true);
+            }
           }}
           style={styles.backButton}
         >
@@ -42,32 +93,32 @@ export default function QrCode({ setIsQrCode, setIsSOS, emergencyContacts = [], 
 
         <View style={styles.header}>
           <Text style={styles.headerText}>User Profile</Text>
-          <Text style={styles.idText}>ID: 345679</Text>
+          <Text style={styles.idText}>ID: {displayUser.userId ? '...'+displayUser.userId.slice(-6) : '345679'}</Text>
         </View>
 
         <View style={styles.profileSection}>
           <View style={styles.imageWrapper}>
-            {userImage ? (
+            {displayUserImage ? (
               <Image
-                source={{ uri: userImage }}
+                source={{ uri: displayUserImage }}
                 style={styles.profileImage}
               />
             ) : (
               <View style={styles.contactImagePlaceholder}>
                 <Text style={styles.contactInitial}>
-                  {userData.name ? userData.name.charAt(0).toUpperCase() : 'U'}
+                  {displayUser.name ? displayUser.name.charAt(0).toUpperCase() : 'U'}
                 </Text>
               </View>
             )}
           </View>
-          <Text style={styles.nameText}>{userData.fullName || `${userData.name || ''} ${userData.surname || ''}`.trim()}</Text>
-          {userData.gender && <Text style={styles.genderText}>Gender : {userData.gender}</Text>}
+          <Text style={styles.nameText}>{displayUser.fullName || `${displayUser.name || ''} ${displayUser.surname || ''}`.trim()}</Text>
+          {displayUser.gender && <Text style={styles.genderText}>Gender : {displayUser.gender}</Text>}
         </View>
 
         <View style={styles.emergencySection}>
           <Text style={styles.emergencyTitle}>Emergency Contacts</Text>
           
-          {emergencyContacts.map((contact) => (
+          {displayContacts.map((contact) => (
             <View key={contact.id} style={styles.contactCard}>
               <View style={styles.contactImagePlaceholder}>
                 <Text style={styles.contactInitial}>{contact.name ? contact.name.charAt(0).toUpperCase() : '?'}</Text>

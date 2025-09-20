@@ -296,8 +296,10 @@ export class SOSFirebaseService {
       const currentUserRef = doc(db, 'users', currentUser.uid);
       const currentUserDoc = await getDoc(currentUserRef);
       const currentUserData = currentUserDoc.exists() ? currentUserDoc.data() : {};
-      const userName = currentUserData.name || currentUserData.Name || 'Your friend';
-
+      const firstName = currentUserData.name || currentUserData.Name || currentUserData.FirstName || '';
+      const lastName = currentUserData.surname || currentUserData.Surname || currentUserData.LastName || '';
+      const userName = (`${firstName} ${lastName}`).trim() || 'Your friend';
+      
       // Create location text
       const locationText = location 
         ? `Location: https://maps.google.com/?q=${location.latitude},${location.longitude}`
@@ -348,16 +350,19 @@ export class SOSFirebaseService {
         // Create the notification
         await FirebaseService.createNotification({
           userId: friend.userId,
-          recipientPhone: friend.phone,
+          recipientPhone: FirebaseService.formatPhoneNumber(friend.phone),
           type: 'sos',
-          title: notificationTitle,
+          title: '🚨 EMERGENCY ALERT',
           message: `${userName} has triggered an SOS alert and needs your help.`,
+          isUrgent: true,
           priority: 'high',
           data: {
             senderId: currentUser.uid,
-            senderName: userName,
+            senderName: '', // Set to empty to prevent redundancy in the popup
             location: location || null,
             sosSessionId: sosSessionId,
+            category: 'emergency',
+            senderPhone: currentUserData.phone || currentUserData.Phone || currentUserData.phoneNumber,
           }
         });
       });
@@ -434,7 +439,13 @@ export class SOSFirebaseService {
 
       // 1. Get user's name for the notification
       const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
-      const userName = userDoc.exists() ? userDoc.data().name || 'Your friend' : 'Your friend';
+      let userName = 'Your friend';
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        const firstName = userData.name || userData.Name || userData.FirstName || '';
+        const lastName = userData.surname || userData.Surname || userData.LastName || '';
+        userName = (`${firstName} ${lastName}`).trim() || 'Your friend';
+      }
 
       // 2. Find all recipients for this SOS session from the 'sosNotifications' log
       const q = query(collection(db, 'sosNotifications'), where('sosSessionId', '==', sessionId));
@@ -449,16 +460,43 @@ export class SOSFirebaseService {
       // Get unique recipient IDs
       const recipientIds = [...new Set(querySnapshot.docs.map(d => d.data().recipientId))];
 
-      // 3. Get FCM tokens for these recipients
+      // 3. Get notification data (token and phone) for these recipients
       const recipientsWithData = await this.getFriendsNotificationData(recipientIds);
       const tokens = recipientsWithData.map(r => r.token).filter(Boolean);
 
+      const notificationTitle = `✅ ${userName} is Safe`;
+      const notificationBody = `The emergency alert initiated by ${userName} has been resolved.`;
+
+      // 4. Create in-app notifications for all recipients
+      const inAppPromises = recipientsWithData.map(recipient => {
+        if (!recipient.phone) {
+          console.warn(`Cannot send 'safe' in-app alert to ${recipient.name}, phone number is missing.`);
+          return Promise.resolve(); // Don't block for one failure
+        }
+        return FirebaseService.createNotification({
+          userId: recipient.userId,
+          recipientPhone: FirebaseService.formatPhoneNumber(recipient.phone),
+          type: 'sos_resolved',
+          title: `${userName} is Safe`,
+          message: 'The emergency alert has been resolved.',
+          priority: 'normal', // 'normal' so it's not as alarming as an SOS
+          data: {
+            senderId: currentUser.uid,
+            // Set senderName to empty to prevent redundancy in the popup,
+            // as the name is already in the title.
+            senderName: '',
+            sosSessionId: sessionId,
+            category: 'safety',
+          }
+        });
+      });
+
+      await Promise.all(inAppPromises);
+      console.log(`Created in-app 'safe' notifications for ${recipientsWithData.length} friends.`);
+
       if (tokens.length > 0) {
-        // 4. Call a cloud function to send the "safe" notification
-        // IMPORTANT: You will need to create this Cloud Function.
+        // 5. Call a cloud function to send the "safe" push notification
         const functionUrl = 'https://us-central1-alertnet-1ecfb.cloudfunctions.net/sendSOSResolvedNotification';
-        const notificationTitle = `✅ ${userName} is Safe`;
-        const notificationBody = `The emergency alert initiated by ${userName} has been resolved.`;
 
         const response = await fetch(functionUrl, {
           method: 'POST',
@@ -474,7 +512,6 @@ export class SOSFirebaseService {
             },
           }),
         });
-
         if (!response.ok) {
           const errorText = await response.text();
           console.warn(`"All Safe" broadcast failed: ${errorText}`);
@@ -483,9 +520,9 @@ export class SOSFirebaseService {
         }
       }
 
-      // 5. End the SOS session in Firestore
+      // 6. End the SOS session in Firestore
       await this.endSOSSession(sessionId);
-      return { success: true, notifiedCount: tokens.length };
+      return { success: true, notifiedCount: recipientsWithData.length };
     } catch (error) {
       console.error('Error in sendSafeBroadcast:', error);
       if (sessionId) await this.endSOSSession(sessionId);

@@ -10,7 +10,7 @@ import {
   Alert,
   TextInput,
 } from 'react-native';
-import SOSService from '../../services/SOSService';
+import { SOSService } from '../../services/SOSService';
 
 
 

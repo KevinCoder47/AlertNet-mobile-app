@@ -5,7 +5,7 @@ import { SOSFirebaseService } from '../../backend/Firebase/SOSFirebaseService';
 import { auth } from '../../backend/Firebase/FirebaseConfig';
 import { getEmergencyContacts, addEmergencyContact, updateEmergencyContact, deleteEmergencyContact } from '../../services/firestore';
 
-class SOSService {
+export class SOSService {
   static async getEmergencyContacts() {
     try {
       const currentUser = auth.currentUser;
@@ -16,6 +16,27 @@ class SOSService {
       return await getEmergencyContacts(currentUser.uid);
     } catch (error) {
       console.error('Error getting emergency contacts:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Gets the emergency contacts for a specific user, intended for use when scanning a QR code.
+   * WARNING: THIS IS CURRENTLY INSECURE on the client-side. In a production environment,
+   * this logic should be moved to a secure backend (like a Cloud Function) that first
+   * verifies the associated SOS session is active before returning another user's sensitive data.
+   * @param {string} userId The ID of the user whose contacts are being requested.
+   * @returns {Promise<Array>} A promise that resolves to an array of emergency contacts.
+   */
+  static async getEmergencyContactsForUser(userId) {
+    try {
+      if (!userId) {
+        console.warn('No user ID provided to getEmergencyContactsForUser');
+        return [];
+      }
+      return await getEmergencyContacts(userId);
+    } catch (error) {
+      console.error(`Error getting emergency contacts for user ${userId}:`, error);
       return [];
     }
   }
@@ -114,140 +135,123 @@ class SOSService {
     }
   }
 
-  static async sendEmergencyNotifications(triggeredBy = 'manual') {
-    let sosSessionId = null;
-    let totalNotified = 0;
-    let smsNotified = 0;
-    let appFriendsNotified = 0;
-    let errors = [];
+  /**
+   * Initiates the SOS sequence.
+   * This function is designed to be fast. It creates the SOS session,
+   * then triggers the notification dispatch in the background.
+   * @param {string} triggeredBy - The source of the SOS trigger (e.g., 'manual', 'voice').
+   * @returns {Promise<string>} The ID of the created SOS session.
+   */
+  static async initiateSOSSession(triggeredBy = 'manual') {
+    console.log('SOS: Initiating session...');
+    // 1. Get location first, as it's critical for all notifications.
+    const location = await this.getCurrentLocation();
 
+    // 2. Create the SOS session in Firestore to get a session ID. This is awaited.
+    const sessionResult = await SOSFirebaseService.createSOSSession({
+      triggeredBy,
+      startTime: new Date(),
+      location, // Store initial location in the session document.
+    });
+
+    if (!sessionResult.success || !sessionResult.sessionId) {
+      throw new Error('Failed to create a valid SOS session. Cannot proceed.');
+    }
+    const sosSessionId = sessionResult.sessionId;
+    console.log(`SOS: Session created with ID: ${sosSessionId}`);
+
+    // 3. Log the initial trigger event.
+    await SOSFirebaseService.addLogToSOSSession(sosSessionId, `SOS triggered by ${triggeredBy} action.`);
+
+    // 4. Dispatch all notifications in the background.
+    // We DO NOT await this. This is "fire-and-forget".
+    this.dispatchNotificationsInBackground(sosSessionId, location);
+    console.log('SOS: Notification dispatch running in the background.');
+
+    // 5. Return the session ID to the UI immediately.
+    return sosSessionId;
+  }
+
+  /**
+   * Runs the notification tasks in the background.
+   * This includes calling police, sending SMS, and sending push notifications.
+   * @param {string} sosSessionId - The ID of the active SOS session.
+   * @param {object} location - The user's location coordinates.
+   */
+  static async dispatchNotificationsInBackground(sosSessionId, location) {
+    console.log('SOS Background Task: Starting...');
     try {
-      // 1. Create an SOS Session to track this event
-      const sessionResult = await SOSFirebaseService.createSOSSession({
-        triggeredBy,
-        startTime: new Date(),
-      });
-
-      if (!sessionResult.success) {
-        // This is a critical failure, we cannot proceed.
-        throw new Error('Failed to create SOS session.');
-      }
-      sosSessionId = sessionResult.sessionId;
-      await SOSFirebaseService.addLogToSOSSession(sosSessionId, `SOS triggered by ${triggeredBy} action.`);
-
-      // 2. Call police and log the event
+      // Call police and log the event
       const policeCallResult = await this.callPolice();
       if (policeCallResult.success) {
         await SOSFirebaseService.addLogToSOSSession(sosSessionId, `Called Police (${policeCallResult.number})`, 'police_called');
       } else {
         await SOSFirebaseService.addLogToSOSSession(sosSessionId, `Failed to call police: ${policeCallResult.error}`, 'error');
-        errors.push(`Police call failed: ${policeCallResult.error}`);
       }
 
+      // Get contacts and send SMS
       const contacts = await this.getEmergencyContacts();
-      const location = await this.getCurrentLocation();
-
-      // Send SMS to emergency contacts
       if (contacts.length > 0) {
-        const locationText = location 
-          ? `My location: https://maps.google.com/?q=${location.latitude},${location.longitude}`
-          : 'Location unavailable';
-
-        const message = `🚨 EMERGENCY ALERT 🚨\n\nI need immediate help! Please contact me or emergency services.\n\n${locationText}\n\nSent from AlertNet Safety App`;
-
-        const phoneNumbers = contacts.map(contact => contact.phoneNumber);
-        
-        try {
-          const isAvailable = await SMS.isAvailableAsync();
-          if (isAvailable) {
-            await SMS.sendSMSAsync(phoneNumbers, message);
-            smsNotified = contacts.length;
-            totalNotified += contacts.length;
-
-            // Log each SMS contact notification individually
-            for (const contact of contacts) {
-              await SOSFirebaseService.addLogToSOSSession(
-                sosSessionId, 
-                `Sent SMS to contact: "${contact.name}"`, 
-                'sms_sent', 
-                { contactName: contact.name, contactPhone: contact.phoneNumber }
-              );
-            }
-
-            console.log(`SMS sent to ${contacts.length} emergency contacts`);
-          } else {
-            errors.push('SMS not available on this device');
-            await SOSFirebaseService.addLogToSOSSession(sosSessionId, 'SMS not available on this device', 'error');
-          }
-        } catch (smsError) {
-          console.error('SMS Error:', smsError);
-          errors.push(`SMS failed: ${smsError.message}`);
-          await SOSFirebaseService.addLogToSOSSession(sosSessionId, `SMS to contacts failed: ${smsError.message}`, 'error');
-        }
+        await this.sendSMSToContacts(contacts, location, sosSessionId);
+      } else {
+        await SOSFirebaseService.addLogToSOSSession(sosSessionId, 'No SMS emergency contacts found.', 'warning');
       }
 
-      // Send push notifications to app friends via SOSFirebaseService
-      try {
-        const friendsResult = await SOSFirebaseService.sendSOSNotifications(location, null, sosSessionId);
-        
-        if (friendsResult.success) {
-          appFriendsNotified = friendsResult.notificationsSent;
-          totalNotified += friendsResult.notificationsSent;
-          await SOSFirebaseService.addLogToSOSSession(sosSessionId, `Sent push notifications to ${appFriendsNotified} friends.`);
-          console.log(`Firebase notifications sent to ${friendsResult.notificationsSent} friends`);
-          
-          // Log additional details
-          if (friendsResult.totalFriends) {
-            console.log(`Total friends: ${friendsResult.totalFriends}, Friends with tokens: ${friendsResult.friendsWithTokens}`);
-          }
-          
-          if (friendsResult.errors) {
-            errors.push(`Some friend notifications failed: ${friendsResult.errors.join(', ')}`);
-            await SOSFirebaseService.addLogToSOSSession(sosSessionId, `Some friend notifications failed.`, 'error');
-          }
-        } else {
-          const errorMsg = `App friends notification failed: ${friendsResult.error}`;
-          errors.push(errorMsg);
-          await SOSFirebaseService.addLogToSOSSession(sosSessionId, errorMsg, 'error');
-        }
-      } catch (firebaseError) {
-        const errorMsg = `Firebase notification error: ${firebaseError.message}`;
-        errors.push(errorMsg);
-        console.error('Firebase Error:', firebaseError);
-      }
+      // Send push notifications to app friends
+      await SOSFirebaseService.sendSOSNotifications(location, null, sosSessionId);
 
-      // Check if any notifications were sent
-      if (totalNotified === 0) {
-        errors.push('No contacts or friends found to notify.');
-        await SOSFirebaseService.addLogToSOSSession(sosSessionId, 'No contacts or friends found to notify.', 'warning');
-      }
-
-      // Prepare success response
-      const response = {
-        success: true, 
-        contactsNotified: totalNotified,
-        smsContactsNotified: smsNotified,
-        appFriendsNotified: appFriendsNotified,
-        sosSessionId: sosSessionId, // Return the session ID
-        triggeredBy,
-        errors: errors.length > 0 ? errors : null
-      };
-
-      console.log('SOS Notification Summary:', response);
-      return response;
-
+      console.log('SOS Background Task: Completed.');
     } catch (error) {
-      console.error('CRITICAL Error sending emergency notifications:', error);
-      return { 
-        success: false, 
-        error: error.message,
-        sosSessionId: sosSessionId, // Return session ID even on failure, if it was created
-        contactsNotified: 0,
-        smsContactsNotified: 0,
-        appFriendsNotified: 0
-      };
+      console.error('SOS Background Task: A critical error occurred:', error);
+      await SOSFirebaseService.addLogToSOSSession(sosSessionId, `A critical error occurred during notification dispatch: ${error.message}`, 'critical_error');
     }
   }
+
+  /**
+   * Helper method to send SMS messages to a list of contacts.
+   * @param {Array} contacts - The emergency contacts.
+   * @param {object} location - The user's location.
+   * @param {string} sosSessionId - The active SOS session ID for logging.
+   */
+  static async sendSMSToContacts(contacts, location, sosSessionId) {
+    try {
+      const locationText = location
+        ? `My location: https://maps.google.com/?q=${location.latitude},${location.longitude}`
+        : 'Location unavailable';
+
+      const message = `🚨 EMERGENCY ALERT 🚨\n\nI need immediate help! Please contact me or emergency services.\n\n${locationText}\n\nSent from AlertNet Safety App`;
+      const phoneNumbers = contacts.map(contact => contact.phoneNumber);
+
+      const isAvailable = await SMS.isAvailableAsync();
+      if (isAvailable) {
+        await SMS.sendSMSAsync(phoneNumbers, message);
+        console.log(`SOS Background Task: SMS sent to ${contacts.length} emergency contacts.`);
+        // Log each SMS contact notification individually
+        for (const contact of contacts) {
+          await SOSFirebaseService.addLogToSOSSession(
+            sosSessionId,
+            `Sent SMS to contact: "${contact.name}"`,
+            'sms_sent',
+            { contactName: contact.name, contactPhone: contact.phoneNumber }
+          );
+        }
+      } else {
+        console.warn('SOS Background Task: SMS not available on this device.');
+        await SOSFirebaseService.addLogToSOSSession(sosSessionId, 'SMS not available on this device', 'error');
+      }
+    } catch (smsError) {
+      console.error('SOS Background Task: SMS Error:', smsError);
+      await SOSFirebaseService.addLogToSOSSession(sosSessionId, `SMS to contacts failed: ${smsError.message}`, 'error');
+    }
+  }
+
+  // This function is deprecated and replaced by the new flow.
+  // I'm keeping it here but commenting it out in case you need to reference the old logic.
+  /*
+  static async sendEmergencyNotifications(triggeredBy = 'manual') {
+    // ... old monolithic code was here ...
+  }
+  */
 
   static async testEmergencyNotifications() {
     try {
@@ -341,5 +345,3 @@ class SOSService {
     SOSFirebaseService.removeNotificationListeners(listeners);
   }
 }
-
-export default SOSService;

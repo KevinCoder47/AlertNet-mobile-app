@@ -10,6 +10,9 @@ import {
   Modal,
   Dimensions,
   PanResponder,
+  StatusBar,
+  Platform,
+  BackHandler,
 } from 'react-native';
 import MapView, { PROVIDER_GOOGLE } from 'react-native-maps';
 import Icon from 'react-native-vector-icons/Feather';
@@ -50,6 +53,27 @@ const OfflineMap = ({ setIsOfflineMap, setIsSafetyResources, setIsDownloadedMaps
       OfflineMapService.syncWithFirebase();
     }
   }, [mapRegion]);
+
+  // Handle Android hardware back button
+  useEffect(() => {
+    const backAction = () => {
+      handleGoBack();
+      return true; // This prevents the app from closing
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      backAction
+    );
+
+    // Cleanup the event listener on component unmount
+    return () => backHandler.remove();
+  }, []);
+
+  const handleGoBack = () => {
+    setIsOfflineMap(false);
+    setIsDownloadedMaps(true);
+  };
 
   const updateDownloadSize = () => {
     const size = OfflineMapService.calculateDownloadSize(mapRegion);
@@ -202,6 +226,7 @@ const OfflineMap = ({ setIsOfflineMap, setIsSafetyResources, setIsDownloadedMaps
 
   return (
     <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
       {/* --- Background Map --- */}
       <MapView
         ref={mapRef}
@@ -216,6 +241,15 @@ const OfflineMap = ({ setIsOfflineMap, setIsSafetyResources, setIsDownloadedMaps
 
       {/* --- Main Content Overlay --- */}
       <View style={styles.overlayContainer}>
+
+        {/* --- Header --- */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
+            <Icon name="arrow-left" size={24} color="#333" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Download Offline Map</Text>
+          <View style={{ width: 24 }} />{/* Spacer */}
+        </View>
 
         {/* --- Interactive Map Selection Area --- */}
         <View 
@@ -255,10 +289,7 @@ const OfflineMap = ({ setIsOfflineMap, setIsSafetyResources, setIsDownloadedMaps
         <View style={styles.bottomActions}>
           <TouchableOpacity 
             style={styles.button}
-            onPress={() => {
-              setIsOfflineMap(false);
-              setIsDownloadedMaps(true);
-            }}
+            onPress={handleGoBack}
           >
             <Text style={styles.buttonText}>Cancel</Text>
           </TouchableOpacity>
@@ -303,6 +334,31 @@ const styles = StyleSheet.create({
   overlayContainer: {
     flex: 1,
     justifyContent: 'space-between',
+  },
+
+  header: {
+    position: 'absolute',
+    top: Platform.OS === 'android' ? StatusBar.currentHeight + 10 : 50,
+    left: 20,
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    borderRadius: 25,
+    zIndex: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  backButton: {},
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 
   selectionContainer: {

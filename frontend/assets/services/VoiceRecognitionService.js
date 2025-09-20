@@ -1,7 +1,7 @@
 import { Audio } from 'expo-av';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Voice from '@react-native-voice/voice';
-import SOSService from './SOSService';
+import { SOSService } from './SOSService';
 
 class VoiceRecognitionService {
   static recording = null;

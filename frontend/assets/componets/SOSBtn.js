@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View, TouchableOpacity, Dimensions, Alert } from 'react-native'
 import React, {useState} from 'react'
-import SOSService from '../services/SOSService'
+import { SOSService } from '../services/SOSService'
 
 const { width, height } = Dimensions.get('window');
 const SOSBtn = ({ onPress, isSOSPreview, setIsSOSPreview }) => {
@@ -27,23 +27,22 @@ const SOSBtn = ({ onPress, isSOSPreview, setIsSOSPreview }) => {
           return;
         }
         
-        // The service now handles the entire SOS sequence, including the police call
-        const result = await SOSService.sendEmergencyNotifications();
-        
-        // Navigate to the SOS page, passing the session ID from the result.
-        // The result contains the sosSessionId even on partial failure.
-        onPress(result.sosSessionId);
-        
-        // Show a non-blocking confirmation alert about the notification status
-        if (result.success) {
+        try {
+          // This new function returns almost instantly with the session ID.
+          // The heavy work of sending notifications happens in the background.
+          const sessionId = await SOSService.initiateSOSSession();
+          
+          // Navigate to the SOS page immediately.
+          // The SOSPage will show the real-time progress of alerts being sent.
+          onPress(sessionId);
+
+        } catch (error) {
+          // This will only catch critical errors from creating the session or getting location.
+          // Notification-related errors are handled in the background.
           Alert.alert(
-            'Alerts Sent',
-            `Notified ${result.contactsNotified} emergency contacts. You are now in SOS mode.`
-          );
-        } else {
-          Alert.alert(
-            'Notification Error',
-            `SOS mode is active, but we failed to notify contacts: ${result.error || 'Unknown error'}. Please add contacts in Safety Resources.`
+            'SOS Activation Failed',
+            `Could not initiate SOS mode: ${error.message}. Please check your connection and location permissions and try again.`,
+            [{ text: 'OK' }]
           );
         }
       }}

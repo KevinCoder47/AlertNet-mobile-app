@@ -13,11 +13,13 @@ import {
   StyleSheet,
 } from 'react-native';
 import { SOSFirebaseService } from '../../backend/Firebase/SOSFirebaseService';
+import QRCode from 'react-native-qrcode-svg';
 
-export default function SOS({ setIsSOS, setIsQrCode, setIsSafetyResources, sosSessionId }) {
+export default function SOS({ setIsSOS, setIsQrCode, setIsSafetyResources, sosSessionId, userData }) {
   const [activityLog, setActivityLog] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const scrollViewRef = useRef(null);
+
 
   useEffect(() => {
     if (!sosSessionId) {
@@ -57,6 +59,13 @@ export default function SOS({ setIsSOS, setIsQrCode, setIsSafetyResources, sosSe
     // Cleanup listener on component unmount
     return () => unsubscribe();
   }, [sosSessionId]);
+
+  // Data for the QR code
+  const qrCodeData = JSON.stringify({
+    type: 'alertnet_sos', // Add a type to identify our QR codes
+    userId: userData?.userId,
+    sosSessionId: sosSessionId,
+  });
 
   const handleSafePress = async () => {
     if (sosSessionId) {
@@ -182,10 +191,18 @@ export default function SOS({ setIsSOS, setIsQrCode, setIsSafetyResources, sosSe
               setIsQrCode(true);
             }}
           >
-            <Image
-              source={require('../images/QR_Code_Updated.png')}
-              style={{ width: 200, height: 200, marginTop: 50 }}
-            />
+            {userData?.userId && sosSessionId ? (
+              <View style={styles.qrCodeContainer}>
+                <QRCode
+                  value={qrCodeData}
+                  size={200}
+                  backgroundColor="white"
+                  color="black"
+                />
+              </View>
+            ) : (
+              <Image source={require('../images/QR_Code_Updated.png')} style={{ width: 200, height: 200, marginTop: 50 }} />
+            )}
           </TouchableOpacity>
 
           {/* Safe Button */}
@@ -251,6 +268,12 @@ export default function SOS({ setIsSOS, setIsQrCode, setIsSafetyResources, sosSe
 }
 
 const styles = StyleSheet.create({
+  qrCodeContainer: {
+    marginTop: 50,
+    padding: 10,
+    backgroundColor: 'white',
+    borderRadius: 10,
+  },
   logEntry: {
     color: 'white',
     marginTop: 15,

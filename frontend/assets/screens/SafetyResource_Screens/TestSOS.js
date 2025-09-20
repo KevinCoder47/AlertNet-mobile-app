@@ -9,8 +9,7 @@ import {
   SafeAreaView,
   Alert,
 } from 'react-native';
-import SOSService from '../../services/SOSService';
-// ---
+import { SOSService } from '../../services/SOSService';
 
 import Feather from '@expo/vector-icons/Feather';
 import * as Location from 'expo-location';

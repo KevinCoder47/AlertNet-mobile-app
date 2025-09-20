@@ -9,13 +9,13 @@ import AnimatedSplash from '../screens/AnimatedSplash';
 import Login from '../screens/LoginScreen';
 import Signup from '../screens/signup';
 import Home from '../screens/Home';
+import { NotificationProvider } from '../contexts/NotificationContext';
 import OnBoarding from '../screens/OnBoarding';
 import Profile from '../componets/People/Profile';
 import ChatScreen from '../componets/People/ChatScreen';
 
 
 const Stack = createNativeStackNavigator();
-<Stack.Screen name="Profile" component={Profile} options={{ headerShown: false }} />
 
 const AppNavigator = () => {
   const [showSplash, setShowSplash] = useState(true);
@@ -92,51 +92,51 @@ const handleLogout = () => {
   }
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {!isLoggedIn && !onboardingComplete ? (
-          <Stack.Screen name="OnBoarding">
-            {(props) => (
-              <OnBoarding
-                {...props}
-                setOnboardingComplete={setOnboardingComplete}
-                setIsLoggedIn = {setIsLoggedIn}
-              />
-            )}
-          </Stack.Screen>
-        ) : !isLoggedIn ? (
-          <>
-            <Stack.Screen name="LoginScreen">
-              {(props) => <Login {...props} setIsLoggedIn={setIsLoggedIn} />}
+    <NotificationProvider>
+      <NavigationContainer>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          {!isLoggedIn && !onboardingComplete ? (
+            <Stack.Screen name="OnBoarding">
+              {(props) => (
+                <OnBoarding
+                  {...props}
+                  setOnboardingComplete={setOnboardingComplete}
+                  setIsLoggedIn = {setIsLoggedIn}
+                />
+              )}
             </Stack.Screen>
-            <Stack.Screen name="signup">
-              {(props) => <Signup {...props} setIsLoggedIn={setIsLoggedIn} />}
-            </Stack.Screen>
-          </>
-        ) : (
-          <Stack.Screen name="Home">
-                {(props) => <Home {...props} handleLogout={handleLogout} />
-                }
-          </Stack.Screen>      
-        )}
+          ) : !isLoggedIn ? (
+            <>
+              <Stack.Screen name="LoginScreen">
+                {(props) => <Login {...props} setIsLoggedIn={setIsLoggedIn} />}
+              </Stack.Screen>
+              <Stack.Screen name="signup">
+                {(props) => <Signup {...props} setIsLoggedIn={setIsLoggedIn} />}
+              </Stack.Screen>
+            </>
+          ) : (
+            <Stack.Screen name="Home">
+                  {(props) => <Home {...props} handleLogout={handleLogout} />
+                  }
+            </Stack.Screen>      
+          )}
 
 
+          <Stack.Screen 
+            name="Profile" 
+            component={Profile} 
+            options={({ route }) => ({ title: route.params?.person?.name || "Profile" })} 
+          />
+          
         <Stack.Screen 
-          name="Profile" 
-          component={Profile} 
-          options={({ route }) => ({ title: route.params?.person?.name || "Profile" })} 
+          name="ChatScreen" 
+          component={ChatScreen} 
+          options={{ title: "Chat" }} 
         />
-        
-      <Stack.Screen 
-        name="ChatScreen" 
-        component={ChatScreen} 
-        options={{ title: "Chat" }} 
-      />
 
-      </Stack.Navigator>
-
-
-    </NavigationContainer>
+        </Stack.Navigator>
+      </NavigationContainer>
+    </NotificationProvider>
   );
 }
 

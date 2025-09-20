@@ -3,18 +3,22 @@ import React, { useState, useEffect,useRef } from 'react';
 import Map from '../componets/Map';
 import TopBar from '../componets/TopBar';
 import BottomNav from '../componets/BottomNav';
+import InAppNotificationPopup from '../componets/InAppNotificationPopup'; 
 import { MapProvider } from '../contexts/MapContext';
 import MyProfile from '../screens/MyProfile';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
+import { Alert, Linking } from 'react-native';
 import { getUserDocument } from '../../services/firestore';
 import * as Location from 'expo-location';
+import { useNotifications } from '../contexts/NotificationContext';
 import { updateCurrentLocation } from '../../services/firestore';
 import * as TaskManager from 'expo-task-manager';
-import SOSService from '../services/SOSService';
+import { SOSService } from '../services/SOSService';
 
 import WalkPartner from './WalkPartner';
+import QRCodeScanner from './QRCodeScanner';
 import SOSPage from './SOS';
 import QrCode from './QrCode';
 import SafetyResources from '../screens/SafetyResource_Screens/SafetyResources';
@@ -63,6 +67,11 @@ const Home = ({handleLogout}) => {
   const [isPeopleActive, setIsPeopleActive] = useState(false);
   const [isTopBarManuallyExpanded, setIsTopBarManuallyExpanded] = useState(false);
   const [userData, setUserData] = useState();
+  const { activePopup, dismissPopup, unreadCount, markNotificationAsRead, markAllNotificationsAsRead } = useNotifications();
+  const [isScanning, setIsScanning] = useState(false);
+  const [scannedUserId, setScannedUserId] = useState(null);
+  const [scannedSosId, setScannedSosId] = useState(null);
+  
   
   // State for profile image
   const [userImage, setUserImage] = useState(null);
@@ -73,6 +82,17 @@ const Home = ({handleLogout}) => {
   const [userLocation, setUserLocation] = useState(null);
   const mapRef = useRef(null);
   
+  const focusOnLocation = (location) => {
+    if (location && mapRef.current) {
+      mapRef.current.animateToRegion({
+        latitude: location.latitude,
+        longitude: location.longitude,
+        latitudeDelta: 0.005, // Zoom in close
+        longitudeDelta: 0.005,
+      }, 1000); // 1 second animation
+    }
+  };
+
   // Initialize FCM for the current user
   useEffect(() => {
     const initializeUserFCM = async () => {
@@ -350,6 +370,25 @@ useEffect(() => {
     }
   };
 
+  // Handle app state changes for notifications
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState) => {
+      if (nextAppState === 'active') {
+        // App became active - notifications will be handled by NotificationContext
+        console.log('📱 App became active - notification listener active');
+      } else if (nextAppState === 'background' || nextAppState === 'inactive') {
+        // App going to background - clear any active popups
+        if (activePopup) {
+          dismissPopup();
+        }
+        console.log('📱 App going to background - dismissed active popups');
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => subscription.remove();
+  }, [activePopup, dismissPopup]);
+
   // Load profile image and downloaded maps from AsyncStorage
   useEffect(() => {
     const loadProfileImage = async () => {
@@ -445,6 +484,35 @@ useEffect(() => {
     }
   };
 
+  const handleBarCodeScanned = ({ type, data }) => {
+    setIsScanning(false);
+    console.log(`QR Code scanned! Type: ${type}, Data: ${data}`);
+    
+    try {
+      const parsedData = JSON.parse(data);
+      // Check if it's our specific QR code
+      if (parsedData.type === 'alertnet_sos' && parsedData.userId && parsedData.sosSessionId) {
+        Alert.alert(
+          'SOS Detected',
+          `You have scanned an emergency QR code. Viewing user's details.`,
+          [{ text: 'OK' }]
+        );
+        // Set state to navigate to the QrCode page with the scanned user's data
+        setScannedUserId(parsedData.userId);
+        setScannedSosId(parsedData.sosSessionId);
+        setIsQrCode(true); // This will trigger the render of QrCode page
+      } else {
+        Alert.alert('Invalid QR Code', 'This QR code is not a valid AlertNet SOS code.');
+      }
+    } catch (e) {
+      if (data.startsWith('http')) {
+        Linking.openURL(data);
+      } else {
+        Alert.alert('Invalid QR Code', 'The scanned QR code is not recognized.');
+      }
+    }
+  };
+
   if (isWalkPartner) {
     return <WalkPartner setIsWalkPartner={setIsWalkPartner}
       userImage = {userImage}
@@ -462,6 +530,7 @@ useEffect(() => {
   if (isSOS) {
     return (
       <SOSPage
+        userData={userData}
         setIsSOS={setIsSOS}
         setIsQrCode={setIsQrCode}
         setIsSafetyResources={(value) => {
@@ -473,13 +542,26 @@ useEffect(() => {
     );
   }
 
+  if (isScanning) {
+    return <QRCodeScanner onScan={handleBarCodeScanned} onCancel={() => setIsScanning(false)} />;
+  }
+
   if (isQrCode) {
     return <QrCode 
-      setIsQrCode={setIsQrCode} 
+      setIsQrCode={(value) => {
+        setIsQrCode(value);
+        // Reset scanned data when closing
+        setScannedUserId(null);
+        setScannedSosId(null);
+      }}
       setIsSOS={setIsSOS} 
+      // Pass local data for own QR code view
       emergencyContacts={emergencyContacts}
       userData={userData}
       userImage={getImageSource()}
+      // Pass scanned data for remote user view
+      scannedUserId={scannedUserId}
+      scannedSosId={scannedSosId}
     />;
   }
 
@@ -542,10 +624,19 @@ useEffect(() => {
         setIsEmergencyContacts={setIsEmergencyContacts}
         setIsLanguagePage={setIsLanguagePage}
         setIsSafetyVideos={setIsSafetyVideos}
+        setIsScanning={setIsScanning}
         setIsOfflineMap={setIsOfflineMap}
         setIsSubscriptionScreen={setIsSubscriptionScreen}
         setIsDownloadedMaps={setIsDownloadedMaps}
         setIsSafetyZones = {setIsSafetyZones}
+        setIsScanning={setIsScanning}
+        setIsSafetyZones = {setIsSafetyZones}
+        onQRCodeScanned={(userId, sosId) => {
+          // Set the scanned data and navigate to QrCode page
+          setScannedUserId(userId);
+          setScannedSosId(sosId);
+          setIsQrCode(true);
+        }}
       />
     );
   }
@@ -704,6 +795,7 @@ useEffect(() => {
           setIsNotification={setIsNotification}
           renderProfileImage={renderProfileImage}
         userLocation = {userLocation}
+        unreadCount={unreadCount}
         />
 
         <BottomNav
@@ -722,7 +814,47 @@ useEffect(() => {
         {/* Notifications Popup */}
         {IsNotification && (
           <NotificationsPopup
+            userData={userData}
             setIsNotification={setIsNotification}
+            onViewLocation={focusOnLocation}
+            markNotificationAsRead={async (notificationId) => {
+              console.log('📖 Manual mark as read from popup:', notificationId);
+              return await markNotificationAsRead(notificationId);
+            }}
+            markAllNotificationsAsRead={async () => {
+              console.log('📖 Manual mark all as read from popup');
+              return await markAllNotificationsAsRead();
+            }}
+          />
+        )}
+
+        {/* In-App Notification Popup - Only show for truly new notifications */}
+        {activePopup && !activePopup.read && (
+          <InAppNotificationPopup
+            notification={activePopup}
+            onDismiss={async () => {
+              if (activePopup && activePopup.id) {
+                console.log('🔕 Dismissing popup and marking as read:', activePopup.id);
+                // Mark as read in Firebase to prevent future popups
+                const success = await markNotificationAsRead(activePopup.id);
+                if (success) {
+                  console.log('✅ Notification marked as read successfully');
+                } else {
+                  console.error('❌ Failed to mark notification as read');
+                }
+              }
+              // Remove the popup from current view
+              dismissPopup();
+            }}
+            onNavigate={() => {
+              // When the popup is tapped, open the main notifications page
+              setIsNotification(true);
+              // Also mark as read when navigating
+              if (activePopup && activePopup.id) {
+                markNotificationAsRead(activePopup.id);
+              }
+            }}
+            onViewLocation={focusOnLocation}
           />
         )}
       </View>

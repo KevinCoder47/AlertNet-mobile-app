@@ -28,6 +28,15 @@ export const contentIndex = {
       "emergency word activation silent"
     ]
   },
+  "Scan SOS QR Code": {
+    content: [
+      "scan qr code",
+      "sos emergency qr code",
+      "scan friend code",
+      "help friend sos",
+      "scanner"
+    ]
+  },
   "What to do when feeling unsafe": {
     content: [
       "feeling unsafe follow steps quick action buttons",
