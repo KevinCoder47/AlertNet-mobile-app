@@ -545,7 +545,7 @@ export class SOSFirebaseService {
         userName: currentUser.displayName || 'Unknown',
         ...sessionData,
         status: 'active',
-        createdAt: new Date(), // Added timestamp for better tracking
+        createdAt: new Date() // Added timestamp for better tracking
       });
 
       return { success: true, sessionId: sessionRef.id };
@@ -568,7 +568,7 @@ export class SOSFirebaseService {
         timestamp: new Date(),
         message,
         type, // e.g., 'info', 'friend_notified', 'police_called', 'user_safe'
-        ...data,
+        ...data
       };
       
       const logRef = await addDoc(collection(db, 'sosActivityLog'), logEntry);
@@ -598,7 +598,7 @@ export class SOSFirebaseService {
           const logs = snapshot.docs.map(doc => ({ 
             id: doc.id, 
             ...doc.data(), 
-            // Safely handle timestamp conversion
+            // Safely handle timestamp conversion, removed invalid trailing comma
             timestamp: doc.data().timestamp?.toDate ? doc.data().timestamp.toDate() : new Date(doc.data().timestamp)
           }));
           callback({ logs, error: null });
