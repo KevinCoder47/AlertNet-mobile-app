@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
+  ActivityIndicator,
+  Dimensions,
   View,
   Text,
   TouchableOpacity,
@@ -8,17 +10,24 @@ import {
   SafeAreaView,
   StatusBar,
   Alert,
+  Image,
+  Modal
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { OfflineMapFirebaseService } from '../../../backend/Firebase/OfflineMapFirebaseService';
 import OfflineMapService from '../../services/OfflineMapService';
 import { auth } from '../../../backend/Firebase/FirebaseConfig';
+import OfflineMapViewer from './OfflineMapViewer';
+
+const { width, height } = Dimensions.get('window');
 
 
 const DownloadedMaps = ({ navigation, setIsOfflineMap, setIsDownloadedMaps, downloadedMaps, setDownloadedMaps }) => {
   const [firebaseMaps, setFirebaseMaps] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [selectedMap, setSelectedMap] = useState(null);
+  const [showMapModal, setShowMapModal] = useState(false);
 
   useEffect(() => {
     loadFirebaseMaps();
@@ -30,6 +39,7 @@ const DownloadedMaps = ({ navigation, setIsOfflineMap, setIsDownloadedMaps, down
       const result = await OfflineMapFirebaseService.getUserOfflineMaps();
       if (result.success) {
         setFirebaseMaps(result.maps);
+        console.log("result", result.maps)
       }
       setLoading(false);
     }
@@ -69,6 +79,12 @@ const DownloadedMaps = ({ navigation, setIsOfflineMap, setIsDownloadedMaps, down
     // Record map access for usage statistics
     if (auth.currentUser) {
       await OfflineMapFirebaseService.recordMapAccess(mapId);
+    }
+    // Then show the map
+    const allMaps = [...downloadedMaps, ...firebaseMaps];
+    const mapToView = allMaps.find(m => m.id === mapId);
+    if (mapToView) {
+      handleViewMap(mapToView);
     }
   };
 
@@ -114,6 +130,15 @@ const DownloadedMaps = ({ navigation, setIsOfflineMap, setIsDownloadedMaps, down
     navigation.goBack();
   };
 
+  const handleViewMap = (map) => {
+    // Record map access for usage statistics
+    if (auth.currentUser) {
+      OfflineMapFirebaseService.recordMapAccess(map.id);
+    }
+    setSelectedMap(map);
+    setShowMapModal(true);
+  };
+
   const MapCard = ({ map, isFirebaseMap = false }) => {
     const displayExpiryDate = isFirebaseMap && map.expiryDate 
       ? (map.expiryDate.seconds ? new Date(map.expiryDate.seconds * 1000).toLocaleDateString('en-GB', {
@@ -132,7 +157,7 @@ const DownloadedMaps = ({ navigation, setIsOfflineMap, setIsDownloadedMaps, down
     return (
       <TouchableOpacity 
         style={styles.mapCard}
-        onPress={() => handleMapAccess(map.id)}
+        onPress={() => handleViewMap(map)}
         activeOpacity={0.7}
       >
         <View style={styles.mapCardHeader}>
@@ -159,17 +184,13 @@ const DownloadedMaps = ({ navigation, setIsOfflineMap, setIsDownloadedMaps, down
         <View style={styles.mapCardFooter}>
           <Text style={styles.expiryText}>Expires on {displayExpiryDate}</Text>
           <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => handleUpdate(map.id)}
-            >
+            <TouchableOpacity style={styles.actionButton} onPress={(e) => { e.stopPropagation(); handleUpdate(map.id); }} activeOpacity={0.8}>
+              <Ionicons name="refresh-outline" size={14} color="#FFFFFF" />
               <Text style={styles.buttonText}>Update</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => handleDelete(map.id)}
-            >
-              <Text style={styles.buttonText}>Delete</Text>
+            <TouchableOpacity style={styles.actionButton} onPress={(e) => { e.stopPropagation(); handleDelete(map.id); }} activeOpacity={0.8}>
+              <Ionicons name="trash-outline" size={14} color="#FCA5A5" />
+              <Text style={[styles.buttonText, styles.deleteButtonText]}>Delete</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -177,9 +198,10 @@ const DownloadedMaps = ({ navigation, setIsOfflineMap, setIsDownloadedMaps, down
     );
   };
 
+
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" backgroundColor="#F3F4F6" />
       
       {/* Header */}
       <View style={styles.header}>
@@ -193,6 +215,7 @@ const DownloadedMaps = ({ navigation, setIsOfflineMap, setIsDownloadedMaps, down
       <View style={styles.subtitleContainer}>
         <Text style={styles.subtitleText}>
           Please make sure you update the offline map before they expire
+          or view them
         </Text>
       </View>
 
@@ -205,7 +228,10 @@ const DownloadedMaps = ({ navigation, setIsOfflineMap, setIsDownloadedMaps, down
               <Text style={styles.sectionTitle}>Synced Maps</Text>
               {firebaseMaps.map((map) => (
                 <MapCard key={`firebase_${map.id}`} map={map} isFirebaseMap={true} />
+
               ))}
+
+
             </>
           )}
           
@@ -214,7 +240,9 @@ const DownloadedMaps = ({ navigation, setIsOfflineMap, setIsDownloadedMaps, down
             <>
               {auth.currentUser && firebaseMaps.length > 0 && (
                 <Text style={styles.sectionTitle}>Local Maps</Text>
+
               )}
+
               {downloadedMaps.map((map) => (
                 <MapCard key={`local_${map.id}`} map={map} />
               ))}
@@ -244,7 +272,29 @@ const DownloadedMaps = ({ navigation, setIsOfflineMap, setIsDownloadedMaps, down
           <Text style={styles.addButtonText}>ADD</Text>
         </TouchableOpacity>
       </View>
+
+      <Modal
+        animationType="slide"
+        transparent={false}
+        visible={showMapModal}
+        onRequestClose={() => {
+          setShowMapModal(false);
+          setSelectedMap(null);
+        }}
+      >
+        <OfflineMapViewer 
+          map={selectedMap} 
+          onClose={() => setShowMapModal(false)} 
+        />
+      </Modal>
     </SafeAreaView>
+
+
+
+
+
+
+
   );
 };
 
@@ -349,6 +399,12 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 6,
   },
+  viewButton: {
+    backgroundColor: 'rgba(59, 130, 246, 0.8)',
+  },
+  deleteButtonText: {
+    color: '#FCA5A5',
+  },
   buttonText: {
     fontSize: 12,
     color: '#FFFFFF',
@@ -398,6 +454,10 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
 
+  mapImage: {
+      width: 300,
+      height: 200,
+  },
   mapStatus: {
     alignItems: 'center',
   },
@@ -405,5 +465,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 });
+
 
 export default DownloadedMaps;

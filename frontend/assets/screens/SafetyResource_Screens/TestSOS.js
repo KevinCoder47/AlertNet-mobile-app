@@ -6,14 +6,13 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
   Alert,
 } from 'react-native';
-import SOSService from '../../services/SOSService';
-// ---
+import { SOSService } from '../../services/SOSService';
 
 import Feather from '@expo/vector-icons/Feather';
 import * as Location from 'expo-location';
+import Constants from 'expo-constants';
 
 
 
@@ -57,14 +56,35 @@ export default function TestSOS({ setIsSafetyResources, setIsTestSOS }) {
     const result = await SOSService.testEmergencyNotifications();
     
     if (result.success) {
-      const contactsList = result.contacts.map(c => c.name).join(', ');
+      let alertMessage = "SOS Test Completed!\n\n";
+      
+      // Location Info
       const locationInfo = result.location 
-        ? `Location: ${result.location.latitude.toFixed(4)}, ${result.location.longitude.toFixed(4)}`
-        : 'Location: Unavailable';
+        ? `📍 Location: ${result.location.latitude.toFixed(4)}, ${result.location.longitude.toFixed(4)} (Available)`
+        : '📍 Location: Unavailable';
+      alertMessage += `${locationInfo}\n\n`;
+
+      // SMS Contacts Info
+      if (result.smsTest && result.smsTest.contactsFound > 0) {
+        const contactsList = result.smsTest.contacts.map(c => c.name).join(', ');
+        alertMessage += `📱 SMS Contacts (${result.smsTest.contactsFound}):\n${contactsList}\n\n`;
+        alertMessage += `💬 SMS Preview:\n"${result.smsTest.message.substring(0, 100)}..."\n\n`;
+      } else {
+        alertMessage += "📱 No SMS emergency contacts found.\n\n";
+      }
+
+      // App Friends Info
+      if (result.appFriendsTest) {
+        alertMessage += `👥 App Friends:\n- Total Friends: ${result.appFriendsTest.totalFriends}\n- Ready for notifications: ${result.appFriendsTest.friendsWithTokens}\n\n`;
+      } else {
+        alertMessage += "👥 No app friends found.\n\n";
+      }
+
+      alertMessage += "No real messages or notifications were sent.";
       
       Alert.alert(
-        "SOS Test Successful",
-        `Test completed successfully!\n\nContacts that would be notified: ${contactsList}\n\n${locationInfo}\n\nMessage preview:\n"${result.message.substring(0, 100)}..."\n\nNo real messages were sent.`,
+        "✅ SOS Test Results",
+        alertMessage,
         [{ text: 'OK' }]
       );
     } else {
@@ -77,7 +97,7 @@ export default function TestSOS({ setIsSafetyResources, setIsTestSOS }) {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.container}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -129,14 +149,23 @@ export default function TestSOS({ setIsSafetyResources, setIsTestSOS }) {
 
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#fff" },
-  scrollContent: { paddingHorizontal: 20, paddingBottom: 40 },
-  headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginVertical: 20 },
+  container: { flex: 1, backgroundColor: "#fff" },
+  scrollContent: { 
+    paddingHorizontal: 20, 
+    paddingBottom: 40,
+    paddingTop: Constants.statusBarHeight,
+  },
+  headerRow: { 
+    flexDirection: "row", 
+    alignItems: "center", 
+    justifyContent: "space-between", 
+    marginBottom: 20 
+  },
   title: { fontSize: 20, fontWeight: "bold", textAlign: "center" },
   subtitle: { fontSize: 14, color: "#444", textAlign: "center", marginBottom: 20 },
   bold: { fontWeight: "bold" },

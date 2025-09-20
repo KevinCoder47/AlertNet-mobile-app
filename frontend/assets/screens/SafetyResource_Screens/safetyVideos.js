@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   TouchableOpacity,
   Linking,
@@ -12,6 +11,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { YOUTUBE_API_KEY } from '@env';
+import Constants from 'expo-constants';
 
 
 
@@ -111,7 +111,7 @@ const SafetyVideos = ({ setIsSafetyVideos, setIsSafetyResources }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => { setIsSafetyVideos(false); setIsSafetyResources(true); }}>
           <Text style={styles.backArrow}>←</Text>
@@ -161,12 +161,16 @@ const SafetyVideos = ({ setIsSafetyVideos, setIsSafetyResources }) => {
           </>
         )}
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#ffffff' },
+  container: { 
+    flex: 1, 
+    backgroundColor: '#ffffff',
+    paddingTop: Constants.statusBarHeight,
+  },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 20 },
   backArrow: { fontSize: 28, color: '#333', marginRight: 15 },
   headerTitle: { fontSize: 22, fontWeight: 'bold', color: '#000' },

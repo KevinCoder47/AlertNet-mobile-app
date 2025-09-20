@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   View,
   Dimensions,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -20,6 +21,7 @@ import {
   Octicons,
 } from "@expo/vector-icons";
 import { contentIndex } from './contentIndex';
+import QRScanner from './QRScanner'; // Import the QR Scanner component
 
 export default function SafetyResources({
   setIsSafetyResources,
@@ -44,10 +46,14 @@ export default function SafetyResources({
   setIsFontSizeSettings,
 
   backgroundContent
+  setIsScanning,
+  backgroundContent,
+  onQRCodeScanned // New prop for handling QR code scan results
 }) {
   const screenWidth = Dimensions.get('window').width;
   const pan = useRef(new Animated.ValueXY({ x: screenWidth * 0.9, y: 0 })).current;
   const [searchQuery, setSearchQuery] = useState("");
+  const [showQRScanner, setShowQRScanner] = useState(false);
 
   // Entrance animation when component mounts
   useEffect(() => {
@@ -59,6 +65,21 @@ export default function SafetyResources({
       friction: 8,
     }).start();
   }, []);
+
+  // Handle QR code scanning result
+  const handleQRScanned = (scannedUserId, scannedSosId) => {
+    console.log('QR Code scanned - UserID:', scannedUserId, 'SOS ID:', scannedSosId);
+    
+    // Close the scanner and safety resources
+    setShowQRScanner(false);
+    setIsSafetyResources(false);
+    
+    // Navigate to QrCode page with scanned data
+    // We'll need to pass these values up to the parent component
+    if (onQRCodeScanned) {
+      onQRCodeScanned(scannedUserId, scannedSosId);
+    }
+  };
 
   // PanResponder for horizontal swipe right gesture to go back
   const panResponder = useRef(
@@ -109,9 +130,19 @@ export default function SafetyResources({
             setIsSafetyResources(false);
             setIsVoiceTrigger(true);
           }
+        },
+        {
+          icon: <Ionicons name="qr-code-outline" size={18} color="#fff" />,
+          text: "Scan SOS QR Code",
+          keywords: ["qr", "code", "scan", "sos", "emergency", "scanner"],
+          onPress: () => {
+            console.log("QR Scanner Clicked");
+            setShowQRScanner(true);
+          }
         }
       ]
     },
+    // ... rest of your menu items remain the same
     {
       section: "Safety Instructions",
       items: [
@@ -295,6 +326,16 @@ export default function SafetyResources({
 
   const filteredSections = getFilteredSections();
 
+  // Show QR Scanner if active
+  if (showQRScanner) {
+    return (
+      <QRScanner 
+        setIsScanning={setShowQRScanner}
+        onQRScanned={handleQRScanned}
+      />
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safeAreaContainer}>
       {backgroundContent && (
@@ -403,6 +444,7 @@ export default function SafetyResources({
   );
 }
 
+// Styles remain the same as your original component
 const styles = StyleSheet.create({
   safeAreaContainer: {
     flex: 1,

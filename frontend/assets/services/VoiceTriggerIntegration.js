@@ -1,5 +1,5 @@
 import VoiceRecognitionService from './VoiceRecognitionService';
-import SOSService from './SOSService';
+import { SOSService } from './SOSService';
 
 class VoiceTriggerIntegration {
   static sosCallback = null;
