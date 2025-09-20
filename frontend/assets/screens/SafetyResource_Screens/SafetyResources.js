@@ -39,6 +39,9 @@ export default function SafetyResources({
   setIsSafetyZones,
   previousScreen = "sos",
   setIsDownloadedMaps,
+  // New props for appearance settings
+  setIsAppearanceSettings,
+  setIsFontSizeSettings,
 
   backgroundContent
 }) {
@@ -160,6 +163,24 @@ export default function SafetyResources({
           onPress: () => {
             setIsSafetyResources(false)
             setIsLanguagePage(true)
+          }
+        },
+        {
+          icon: <Ionicons name="color-palette-outline" size={18} color="#fff" />,
+          text: "Appearance & Theme",
+          keywords: ["appearance", "theme", "dark", "light", "mode", "color", "display"],
+          onPress: () => {
+            setIsSafetyResources(false)
+            setIsAppearanceSettings && setIsAppearanceSettings(true)
+          }
+        },
+        {
+          icon: <MaterialIcons name="format-size" size={18} color="#fff" />,
+          text: "Font Size",
+          keywords: ["font", "size", "text", "accessibility", "large", "small", "readable"],
+          onPress: () => {
+            setIsSafetyResources(false)
+            setIsFontSizeSettings && setIsFontSizeSettings(true)
           }
         }
       ]
