@@ -1,10 +1,20 @@
-import { StyleSheet, Text, View, Dimensions, TouchableOpacity, ScrollView, Modal, TextInput, Alert, Linking, Animated, PanResponder } from 'react-native'
+import { StyleSheet, Text, View, Dimensions, TouchableOpacity, ScrollView, Modal, TextInput, Alert, Linking, Animated, PanResponder, Platform, useColorScheme, StatusBar } from 'react-native'
 import { useTheme } from '../contexts/ColorContext';
 import React, { useState, useEffect, useRef } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Clipboard from 'expo-clipboard';
+import { BlurView } from 'expo-blur';
+import { Ionicons } from '@expo/vector-icons';
 
 const { width, height } = Dimensions.get('window')
+
+// Cross-platform safe area calculations (copied from PeopleBar)
+const getStatusBarHeight = () => {
+  if (Platform.OS === 'ios') {
+    return height >= 812 ? 44 : 20;
+  }
+  return StatusBar.currentHeight || 24;
+};
 
 const Helpline = ({ onClose = () => console.log('Close button pressed - please implement onClose prop') }) => {
   const { colors } = useTheme()
@@ -15,20 +25,28 @@ const Helpline = ({ onClose = () => console.log('Close button pressed - please i
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
   const [isExpanded, setIsExpanded] = useState(false)
 
-  // Enhanced animation system like PeopleBar
-  const baseHeight = height * 0.35;
-  const maxHeight = Math.min(height * 0.65, height - 100);
+  // Color scheme detection like PeopleBar
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
   
+  // Responsive dimensions (matching PeopleBar exactly)
+  const statusBarHeight = getStatusBarHeight();
+  const baseHeight = height * 0.33;
+  const maxHeight = Math.min(height * 0.65, height - 150);
+  
+  // Animation values (matching PeopleBar)
   const animatedHeight = useRef(new Animated.Value(baseHeight)).current;
   const animatedOpacity = useRef(new Animated.Value(1)).current;
   
-  // Drag configuration
+  // Drag configuration (matching PeopleBar)
   const dragState = useRef({
     isDragging: false,
     startHeight: baseHeight,
     minHeight: baseHeight,
     maxHeight,
   }).current;
+
+  const styles = getStyles(isDark);
 
   useEffect(() => {
     AsyncStorage.getItem('customContacts').then(data => {
@@ -65,7 +83,7 @@ const Helpline = ({ onClose = () => console.log('Close button pressed - please i
 
   const allServices = [...emergencyServices, ...customContacts];
 
-  // Enhanced PanResponder system from PeopleBar
+  // Enhanced PanResponder system (matching PeopleBar)
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -146,7 +164,7 @@ const Helpline = ({ onClose = () => console.log('Close button pressed - please i
     })
   ).current;
 
-  // Function to toggle panel programmatically
+  // Function to toggle panel programmatically (matching PeopleBar)
   const togglePanel = (expand) => {
     const targetHeight = expand ? dragState.maxHeight : dragState.minHeight;
     setIsExpanded(expand);
@@ -196,7 +214,6 @@ const Helpline = ({ onClose = () => console.log('Close button pressed - please i
   const handleLongPress = (service, index) => {
     if (service.isAddButton) return
     
-    // Check if this is a custom contact (added after the default emergency services)
     const isCustomContact = index >= emergencyServices.length
     
     const actions = [
@@ -205,7 +222,6 @@ const Helpline = ({ onClose = () => console.log('Close button pressed - please i
       { text: favorites.includes(index) ? 'Remove from Favorites' : 'Add to Favorites', onPress: () => toggleFavorite(index) },
     ]
     
-    // Add delete option only for custom contacts
     if (isCustomContact) {
       const customContactIndex = index - emergencyServices.length
       actions.push({ 
@@ -245,13 +261,11 @@ const Helpline = ({ onClose = () => console.log('Close button pressed - please i
             const updatedContacts = customContacts.filter((_, i) => i !== customContactIndex)
             setCustomContacts(updatedContacts)
             
-            // Also update favorites list to remove any references to deleted contacts
             const totalEmergencyServices = emergencyServices.length
             const deletedContactGlobalIndex = totalEmergencyServices + customContactIndex
             const updatedFavorites = favorites
               .filter(favIndex => favIndex !== deletedContactGlobalIndex)
               .map(favIndex => {
-                // Adjust indices for contacts that come after the deleted one
                 if (favIndex > deletedContactGlobalIndex) {
                   return favIndex - 1
                 }
@@ -286,84 +300,96 @@ const Helpline = ({ onClose = () => console.log('Close button pressed - please i
     }
   }
 
+  const formatTime = (date) => date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
   return (
     <>
+      {/* Updated container to match PeopleBar format */}
       <Animated.View style={[styles.container, { height: animatedHeight }]}>
-        {/* Enhanced drag handle with PeopleBar styling */}
-        <View {...panResponder.panHandlers} style={styles.dragHandleContainer}>
-          <View style={styles.dragHandle} />
-          <Animated.Text style={[styles.swipeHint, { opacity: animatedOpacity }]}>
-            {isExpanded ? 'Swipe down to collapse' : 'Swipe up to expand'}
-          </Animated.Text>
-          {isExpanded && (
-            <Text style={styles.dragDownHint}>
-              Drag down to collapse
-            </Text>
-          )}
-        </View>
+        <BlurView intensity={70} tint={isDark ? 'dark' : 'light'} style={styles.blurContainer}>
+          <View style={styles.glassOverlay} />
 
-        <View style={styles.headerInfo}>
-          <View style={styles.headerRow}>
-            <Text style={styles.headerTitle}>🚨 Emergency Services</Text>
-            {isExpanded && (
-              <TouchableOpacity 
-                onPress={() => togglePanel(false)} 
-                style={styles.collapseButton}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <Text style={styles.collapseButtonText}>✕</Text>
-              </TouchableOpacity>
-            )}
+          {/* Enhanced drag handle matching PeopleBar */}
+          <View {...panResponder.panHandlers} style={styles.dragHandleContainer}>
+            <View style={styles.dragHandle} />
+            <Animated.Text style={[styles.swipeHint, { opacity: animatedOpacity }]}>
+              {isExpanded ? 'Swipe down to collapse' : 'Swipe up to expand'}
+            </Animated.Text>
           </View>
-          <Text style={styles.headerSubtitle}>Tap to call • Long press for options</Text>
-          <Text style={styles.timeText}>Current time: {currentTime}</Text>
-        </View>
 
-        <ScrollView 
-          style={styles.scrollContainer} 
-          showsVerticalScrollIndicator={true} 
-          contentContainerStyle={styles.scrollContent}
-          nestedScrollEnabled={true}
-        >
-          {allServices.map((service, index) => (
-            <TouchableOpacity 
-              key={index} 
-              style={[styles.card, { borderLeftColor: service.color }]} 
-              onPress={() => handleCall(service)} 
-              onLongPress={() => handleLongPress(service, index)}
-              activeOpacity={0.7}
+          {/* Header matching PeopleBar style */}
+          <View style={styles.header}>
+            <Text style={styles.headerText}>🚨 Emergency Services</Text>
+            <View style={styles.headerRight}>
+              {isExpanded && (
+                <TouchableOpacity 
+                  onPress={() => togglePanel(false)} 
+                  style={styles.collapseButton}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Ionicons name="chevron-down" size={20} color={isDark ? '#ccc' : '#555'} />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+
+          {/* Subtitle */}
+          <View style={styles.subtitleContainer}>
+            <Text style={styles.subtitle}>Tap to call • Long press for options</Text>
+          </View>
+
+          {/* Content container matching PeopleBar */}
+          <View style={styles.contentContainer}>
+            <ScrollView 
+              style={styles.list} 
+              contentContainerStyle={styles.listContent}
+              showsVerticalScrollIndicator={false}
+              scrollEventThrottle={16}
+              nestedScrollEnabled
             >
-              <View style={styles.leftSection}>
-                <Text style={styles.cardIcon}>{service.icon}</Text>
-                {favorites.includes(index) && (
-                  <View style={styles.favoriteIndicator}>
-                    <Text style={styles.favoriteStar}>⭐</Text>
+              {allServices.map((service, index) => (
+                <TouchableOpacity 
+                  key={index} 
+                  style={[styles.card, { borderLeftColor: service.color }]} 
+                  onPress={() => handleCall(service)} 
+                  onLongPress={() => handleLongPress(service, index)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.leftSection}>
+                    <View style={styles.iconContainer}>
+                      <Text style={styles.cardIcon}>{service.icon}</Text>
+                      {favorites.includes(index) && (
+                        <View style={styles.favoriteIndicator}>
+                          <Ionicons name="star" size={12} color="#FFD700" />
+                        </View>
+                      )}
+                    </View>
                   </View>
-                )}
-              </View>
-              <View style={styles.cardContent}>
-                <View style={styles.titleRow}>
-                  <Text style={styles.cardTitle}>{service.title}</Text>
-                  {favorites.includes(index) && (
-                    <Text style={styles.favoriteStarInline}>★</Text>
-                  )}
-                </View>
-                <Text style={styles.cardDesc}>{service.description}</Text>
-                <Text style={styles.cardNumber}>{service.number}</Text>
-              </View>
-              <View style={styles.rightSection}>
-                <View style={[styles.priorityTag, { backgroundColor: getPriorityColor(service.priority) }]}>
-                  <Text style={styles.priorityText}>{service.priority}</Text>
-                </View>
-                {favorites.includes(index) && (
-                  <Text style={styles.favoriteStarCorner}>★</Text>
-                )}
-              </View>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+                  
+                  <View style={styles.cardContent}>
+                    <View style={styles.titleRow}>
+                      <Text style={styles.cardTitle} numberOfLines={1}>{service.title}</Text>
+                      {favorites.includes(index) && (
+                        <Ionicons name="star" size={16} color="#FFD700" style={styles.favoriteStarInline} />
+                      )}
+                    </View>
+                    <Text style={styles.cardDesc} numberOfLines={1}>{service.description}</Text>
+                    <Text style={styles.cardNumber} numberOfLines={1}>{service.number}</Text>
+                  </View>
+                  
+                  <View style={styles.rightSection}>
+                    <View style={[styles.priorityTag, { backgroundColor: getPriorityColor(service.priority) }]}>
+                      <Text style={styles.priorityText}>{service.priority}</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </BlurView>
       </Animated.View>
 
+      {/* Modal for adding contacts */}
       <Modal visible={showAddContact} transparent animationType="slide">
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
@@ -371,14 +397,14 @@ const Helpline = ({ onClose = () => console.log('Close button pressed - please i
             <TextInput 
               style={styles.input} 
               placeholder="Name" 
-              placeholderTextColor="#999" 
+              placeholderTextColor={isDark ? "#999" : "#666"} 
               value={newContact.name} 
               onChangeText={(text) => setNewContact({ ...newContact, name: text })} 
             />
             <TextInput 
               style={styles.input} 
               placeholder="Phone Number" 
-              placeholderTextColor="#999" 
+              placeholderTextColor={isDark ? "#999" : "#666"} 
               keyboardType="phone-pad" 
               value={newContact.number} 
               onChangeText={(text) => setNewContact({ ...newContact, number: text })} 
@@ -386,20 +412,20 @@ const Helpline = ({ onClose = () => console.log('Close button pressed - please i
             <TextInput 
               style={styles.input} 
               placeholder="Description (optional)" 
-              placeholderTextColor="#999" 
+              placeholderTextColor={isDark ? "#999" : "#666"} 
               value={newContact.description} 
               onChangeText={(text) => setNewContact({ ...newContact, description: text })} 
             />
             <View style={styles.modalButtons}>
               <TouchableOpacity 
                 onPress={() => setShowAddContact(false)} 
-                style={[styles.modalButton, { backgroundColor: '#E74C3C' }]}
+                style={[styles.modalButton, styles.cancelButton]}
               >
                 <Text style={styles.modalButtonText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 onPress={handleAddContact} 
-                style={[styles.modalButton, { backgroundColor: '#27AE60' }]}
+                style={[styles.modalButton, styles.addButton]}
               >
                 <Text style={styles.modalButtonText}>Add</Text>
               </TouchableOpacity>
@@ -411,226 +437,231 @@ const Helpline = ({ onClose = () => console.log('Close button pressed - please i
   )
 }
 
-export default Helpline
-
-const styles = StyleSheet.create({
+// Updated styles to match PeopleBar format
+const getStyles = (isDark) => StyleSheet.create({
   container: {
-    position: "absolute",
+    position: 'absolute',
     bottom: 60,
     width: width * 0.95,
-    alignSelf: "center",
-    zIndex: 10,
-    backgroundColor: '#1A1A1A',
+    alignSelf: 'center',
+    zIndex: 20,
+  },
+  blurContainer: {
+    flex: 1,
+    padding: 10,
     borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#333333',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
     overflow: 'hidden',
+    backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+    borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+    borderWidth: 1,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.2,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
+  },
+  glassOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.03)',
+    borderRadius: 18,
   },
   dragHandleContainer: {
     alignItems: 'center',
-    paddingVertical: 12,
-    backgroundColor: '#1A1A1A',
+    paddingVertical: 8,
   },
   dragHandle: {
-    width: 50,
+    width: 30,
     height: 4,
-    backgroundColor: '#555',
+    backgroundColor: isDark ? '#e0e0e0' : '#333',
     borderRadius: 2,
   },
   swipeHint: {
-    fontSize: 11,
-    color: '#aaa',
-    marginTop: 6,
-    textAlign: 'center',
-  },
-  dragDownHint: {
-    fontSize: 12,
-    color: '#FFD700',
+    fontSize: 10,
+    color: isDark ? '#aaa' : '#666',
     marginTop: 4,
     textAlign: 'center',
-    fontWeight: '600',
-    backgroundColor: 'rgba(255, 215, 0, 0.1)',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 215, 0, 0.3)',
   },
-  headerInfo: { 
-    paddingHorizontal: 20,
-    paddingBottom: 15,
-    borderBottomWidth: 1, 
-    borderBottomColor: '#333' 
-  },
-  headerRow: {
+  header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    paddingHorizontal: 5,
+    marginBottom: 5,
   },
-  headerTitle: { 
-    color: '#fff', 
-    fontSize: 18, 
-    fontWeight: 'bold' 
+  headerText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: isDark ? 'white' : 'black',
   },
-  headerSubtitle: { 
-    color: '#ccc', 
-    fontSize: 12, 
-    marginBottom: 2 
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
-  timeText: { 
-    color: '#999', 
-    fontSize: 11 
+  lastUpdatedText: {
+    fontSize: 10,
+    color: isDark ? '#aaa' : '#666',
   },
   collapseButton: {
-    padding: 6,
-    backgroundColor: '#333',
-    borderRadius: 6,
+    padding: 4,
   },
-  collapseButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
+  subtitleContainer: {
+    paddingHorizontal: 5,
+    marginBottom: 10,
   },
-  scrollContainer: {
+  subtitle: {
+    fontSize: 12,
+    color: isDark ? '#ccc' : '#666',
+  },
+  contentContainer: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 10,
   },
-  scrollContent: {
-    paddingBottom: 10,
+  list: { 
+    flex: 1,
   },
-  card: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    padding: 12, 
-    marginVertical: 6, 
-    backgroundColor: '#2C2C2C', 
-    borderRadius: 10, 
-    borderLeftWidth: 5 
+  listContent: { 
+    paddingBottom: 5,
+  },
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 5,
+    borderBottomWidth: 0.5,
+    borderBottomColor: isDark ? '#444' : '#ccc',
+    borderLeftWidth: 4,
+    borderRadius: 8,
+    marginVertical: 2,
+    backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
   },
   leftSection: {
-    position: 'relative',
     marginRight: 12,
     alignItems: 'center',
+  },
+  iconContainer: {
+    position: 'relative',
+    alignItems: 'center',
+  },
+  cardIcon: {
+    fontSize: 24,
   },
   favoriteIndicator: {
     position: 'absolute',
     top: -6,
     right: -6,
-    backgroundColor: '#FFD700',
+    backgroundColor: isDark ? '#333' : '#fff',
     borderRadius: 10,
-    width: 20,
-    height: 20,
+    width: 18,
+    height: 18,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#FFA500',
+    borderColor: '#FFD700',
   },
-  favoriteStar: {
-    fontSize: 12,
-    color: '#fff',
-  },
-  cardIcon: { 
-    fontSize: 24, 
-  },
-  cardContent: { 
-    flex: 1 
+  cardContent: {
+    flex: 1,
+    justifyContent: 'center',
+    marginRight: 10,
   },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginBottom: 2,
   },
-  favoriteStarInline: {
-    fontSize: 16,
-    color: '#FFD700',
-    marginLeft: 8,
-  },
-  cardTitle: { 
-    color: '#fff', 
-    fontSize: 16, 
-    fontWeight: 'bold',
+  cardTitle: {
+    fontWeight: '600',
+    fontSize: 15,
+    color: isDark ? 'white' : '#111',
     flex: 1,
   },
-  cardDesc: { 
-    color: '#ccc', 
-    fontSize: 12 
+  favoriteStarInline: {
+    marginLeft: 8,
   },
-  cardNumber: { 
-    color: '#bbb', 
-    fontSize: 14, 
-    marginTop: 2 
+  cardDesc: {
+    fontSize: 12,
+    color: isDark ? '#b0b0b0' : '#444',
+    marginBottom: 2,
+  },
+  cardNumber: {
+    fontSize: 12,
+    color: isDark ? '#a0a0a0' : '#555',
+    fontWeight: '500',
   },
   rightSection: {
     alignItems: 'flex-end',
-    position: 'relative',
+    justifyContent: 'center',
   },
-  favoriteStarCorner: {
-    fontSize: 14,
-    color: '#FFD700',
-    marginTop: 4,
+  priorityTag: {
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
+    marginBottom: 4,
   },
-  priorityTag: { 
-    paddingHorizontal: 8, 
-    paddingVertical: 4, 
-    borderRadius: 6 
+  priorityText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: 'bold',
   },
-  priorityText: { 
-    color: '#fff', 
-    fontSize: 10, 
-    fontWeight: 'bold' 
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.7)'
   },
-  modalContainer: { 
-    flex: 1, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    backgroundColor: 'rgba(0,0,0,0.7)' 
-  },
-  modalContent: { 
-    width: '90%', 
-    backgroundColor: '#1A1A1A', 
-    borderRadius: 16, 
+  modalContent: {
+    width: '90%',
+    backgroundColor: isDark ? '#1A1A1A' : '#fff',
+    borderRadius: 16,
     padding: 20,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: isDark ? '#333' : '#ddd',
   },
-  modalTitle: { 
-    color: '#fff', 
-    fontSize: 18, 
-    fontWeight: 'bold', 
+  modalTitle: {
+    color: isDark ? '#fff' : '#333',
+    fontSize: 18,
+    fontWeight: 'bold',
     marginBottom: 16,
     textAlign: 'center',
   },
-  input: { 
-    backgroundColor: '#2C2C2C', 
-    borderRadius: 8, 
-    padding: 12, 
-    marginBottom: 12, 
-    color: '#fff',
+  input: {
+    backgroundColor: isDark ? '#2C2C2C' : '#f5f5f5',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+    color: isDark ? '#fff' : '#333',
     borderWidth: 1,
-    borderColor: '#444',
+    borderColor: isDark ? '#444' : '#ddd',
   },
-  modalButtons: { 
-    flexDirection: 'row', 
+  modalButtons: {
+    flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: 8,
   },
-  modalButton: { 
-    flex: 1, 
-    padding: 14, 
-    borderRadius: 8, 
-    marginHorizontal: 6, 
-    alignItems: 'center' 
+  modalButton: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 8,
+    marginHorizontal: 6,
+    alignItems: 'center'
   },
-  modalButtonText: { 
-    color: '#fff', 
+  cancelButton: {
+    backgroundColor: '#E74C3C',
+  },
+  addButton: {
+    backgroundColor: '#27AE60',
+  },
+  modalButtonText: {
+    color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
   }
 });
+
+export default Helpline

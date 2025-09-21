@@ -531,8 +531,6 @@ const PeopleBar = () => {
             )}
           </View>
 
-          <NotificationBell />
-
           <TouchableOpacity 
             style={styles.addButton} 
             onPress={() => setPhoneOverlayVisible(true)}
@@ -542,6 +540,11 @@ const PeopleBar = () => {
           </TouchableOpacity>
         </BlurView>
       </Animated.View>
+
+      {/* NotificationBell positioned lower to give PeopleBar more space */}
+      <View style={styles.notificationBellContainer}>
+        <NotificationBell />
+      </View>
 
       <PhoneOverlay
         visible={phoneOverlayVisible}
@@ -807,6 +810,13 @@ const getStyles = (isDark) => StyleSheet.create({
   loadingText: {
     fontSize: 14,
     color: isDark ? '#ccc' : '#666',
+  },
+  // New style for NotificationBell container
+  notificationBellContainer: {
+    position: 'absolute',
+    top: '-120%', // Moved down from the original position
+    right: 120,
+    zIndex: 25, // Higher than PeopleBar to stay on top
   },
 });
 
