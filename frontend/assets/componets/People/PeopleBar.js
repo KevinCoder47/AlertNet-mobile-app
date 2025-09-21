@@ -460,12 +460,6 @@ const PeopleBar = () => {
       <Ionicons name="people-outline" size={48} color={isDark ? '#666' : '#ccc'} />
       <Text style={styles.emptyStateText}>No friends yet</Text>
       <Text style={styles.emptyStateSubtext}>Send friend requests to see your friends here</Text>
-      <TouchableOpacity 
-        style={styles.addFriendsButton}
-        onPress={() => setPhoneOverlayVisible(true)}
-      >
-        <Text style={styles.addFriendsButtonText}>Add Friends</Text>
-      </TouchableOpacity>
     </View>
   );
 
@@ -474,6 +468,20 @@ const PeopleBar = () => {
       <Text style={styles.loadingText}>Loading friends...</Text>
     </View>
   );
+
+  // Helper function to get header text based on active tab
+  const getHeaderText = () => {
+    switch (activeTab) {
+      case 'friends':
+        return `Friends (${friendsData.length})`;
+      case 'community':
+        return 'Community';
+      case 'feed':
+        return 'Feed';
+      default:
+        return 'Friends';
+    }
+  };
 
   return (
     <>
@@ -489,7 +497,7 @@ const PeopleBar = () => {
           </View>
 
           <View style={styles.header}>
-            <Text style={styles.headerText}>Friends ({friendsData.length})</Text>
+            <Text style={styles.headerText}>{getHeaderText()}</Text>
             <View style={styles.headerRight}>
               <Text style={styles.lastUpdatedText}>
                 Last updated: {formatTime(lastUpdated)}
@@ -531,13 +539,16 @@ const PeopleBar = () => {
             )}
           </View>
 
-          <TouchableOpacity 
-            style={styles.addButton} 
-            onPress={() => setPhoneOverlayVisible(true)}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.addButtonText}>+ add</Text>
-          </TouchableOpacity>
+          {/* Only show the add button when on the friends tab */}
+          {activeTab === 'friends' && (
+            <TouchableOpacity 
+              style={styles.addButton} 
+              onPress={() => setPhoneOverlayVisible(true)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.addButtonText}>+ add</Text>
+            </TouchableOpacity>
+          )}
         </BlurView>
       </Animated.View>
 

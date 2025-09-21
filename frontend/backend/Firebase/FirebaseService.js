@@ -31,6 +31,80 @@ export const FirebaseService = {
   getCurrentUser: () => auth.currentUser,
 
   // ========================
+  // ENHANCED USER DATA FETCHING
+  // ========================
+
+  /**
+   * Get complete user data by user ID from the users collection
+   * @param {string} userId - User document ID
+   * @returns {Object} - { success: boolean, userData: object|null, error?: string }
+   */
+  getUserById: async (userId) => {
+    try {
+      console.log('Fetching user data by ID:', userId);
+      
+      const userDoc = await getDoc(doc(db, 'users', userId));
+      
+      if (!userDoc.exists()) {
+        console.log('User document not found:', userId);
+        return { success: false, userData: null, error: 'User not found' };
+      }
+      
+      const userData = userDoc.data();
+      console.log('Found user data:', userData);
+      
+      return { 
+        success: true, 
+        userData: {
+          id: userDoc.id,
+          ...userData
+        }
+      };
+    } catch (error) {
+      console.error('Error fetching user by ID:', error);
+      return { success: false, userData: null, error: error.message };
+    }
+  },
+
+  /**
+   * Get complete user data by phone number (enhanced to get full user doc)
+   * @param {string} phone - Phone number to check
+   * @returns {Object} - { exists: boolean, userData: object|null, error?: string }
+   */
+  getUserByPhone: async (phone) => {
+    try {
+      console.log('Original phone input:', phone);
+      
+      const formattedPhone = FirebaseService.formatPhoneNumber(phone);
+      console.log('Querying for Phone ==', formattedPhone);
+      
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('Phone', '==', formattedPhone));
+      const querySnapshot = await getDocs(q);
+      
+      if (querySnapshot.empty) {
+        console.log('No user found with phone:', formattedPhone);
+        return { exists: false, userData: null };
+      }
+      
+      const userDoc = querySnapshot.docs[0];
+      const userData = userDoc.data();
+      console.log('Found user by phone with complete data!');
+      
+      return { 
+        exists: true, 
+        userData: {
+          id: userDoc.id,
+          ...userData
+        }
+      };
+    } catch (error) {
+      console.error('Error getting user by phone:', error);
+      return { exists: false, userData: null, error: error.message };
+    }
+  },
+
+  // ========================
   // ENHANCED NOTIFICATION SYSTEM
   // ========================
 
@@ -406,39 +480,13 @@ export const FirebaseService = {
   },
 
   /**
-   * Check if a user exists by phone number
+   * Check if a user exists by phone number (backward compatibility)
    * @param {string} phone - Phone number to check
    * @returns {Object} - { exists: boolean, userData: object|null, error?: string }
    */
   checkUserExists: async (phone) => {
-    try {
-      console.log('Original phone input:', phone);
-      
-      const formattedPhone = FirebaseService.formatPhoneNumber(phone);
-      console.log('Querying for Phone ==', formattedPhone);
-      
-      const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('Phone', '==', formattedPhone));
-      const querySnapshot = await getDocs(q);
-      
-      if (querySnapshot.empty) {
-        console.log('No user found with phone:', formattedPhone);
-        return { exists: false, userData: null };
-      }
-      
-      const userData = querySnapshot.docs[0].data();
-      console.log('Found match with formatted phone!');
-      return { 
-        exists: true, 
-        userData: {
-          id: querySnapshot.docs[0].id,
-          ...userData
-        }
-      };
-    } catch (error) {
-      console.error('Error checking if user exists:', error);
-      return { exists: false, userData: null, error: error.message };
-    }
+    const result = await FirebaseService.getUserByPhone(phone);
+    return result;
   },
 
   /**
@@ -506,8 +554,8 @@ export const FirebaseService = {
   },
 
   /**
-   * Enhanced sendFriendRequest with profile picture and complete user data
-   * @param {Object} friendData - { firstName, lastName, phone, senderPhone, senderEmail, senderUserData }
+   * Enhanced sendFriendRequest with proper user data fetching
+   * @param {Object} friendData - { firstName, lastName, phone, senderPhone, senderEmail, senderUserData, senderUserId }
    * @returns {Object} - { success: boolean, message: string, requestId?: string }
    */
   sendFriendRequest: async (friendData) => {
@@ -515,36 +563,51 @@ export const FirebaseService = {
       console.log('Starting enhanced friend request process...');
       
       const currentUser = auth.currentUser;
-      const { firstName, lastName, phone, senderPhone, senderEmail, senderUserData } = friendData;
+      const { firstName, lastName, phone, senderPhone, senderEmail, senderUserData, senderUserId } = friendData;
       
-      const senderId = currentUser ? currentUser.uid : `temp_${Date.now()}`;
+      const senderId = senderUserId || currentUser?.uid || `temp_${Date.now()}`;
       const userEmail = senderEmail || (currentUser ? currentUser.email : 'guest@alertnet.com');
       
-      console.log('=== SENDER DATA DEBUG ===');
-      console.log('senderUserData received:', senderUserData);
-      console.log('senderUserData keys:', senderUserData ? Object.keys(senderUserData) : 'null');
+      console.log('=== ENHANCED SENDER DATA FETCHING ===');
       
+      // Enhanced sender data fetching - prioritize getting from users collection
       let senderProfileData = senderUserData;
-      if (!senderProfileData) {
-        console.log('No senderUserData provided, trying to fetch from Firebase...');
-        const senderResult = await FirebaseService.checkUserExists(senderPhone);
-        if (senderResult.exists) {
-          senderProfileData = senderResult.userData;
-          console.log('Retrieved sender data from Firebase:', senderProfileData);
+      
+      // If we have a userId, fetch complete user document
+      if (senderId && senderId !== `temp_${Date.now()}` && !senderProfileData) {
+        console.log('Fetching sender data by userId:', senderId);
+        const userByIdResult = await FirebaseService.getUserById(senderId);
+        if (userByIdResult.success) {
+          senderProfileData = userByIdResult.userData;
+          console.log('Retrieved sender data by ID:', senderProfileData);
         }
       }
       
-      const senderName = senderProfileData?.name || 
+      // If still no data, try by phone
+      if (!senderProfileData && senderPhone) {
+        console.log('Fetching sender data by phone:', senderPhone);
+        const userByPhoneResult = await FirebaseService.getUserByPhone(senderPhone);
+        if (userByPhoneResult.exists) {
+          senderProfileData = userByPhoneResult.userData;
+          console.log('Retrieved sender data by phone:', senderProfileData);
+        }
+      }
+      
+      // Extract and map user data to notification format
+      const senderName = senderProfileData?.Name || 
                         senderProfileData?.FirstName || 
                         senderProfileData?.firstName ||
                         currentUser?.displayName || 
                         'AlertNet User';
-      const senderSurname = senderProfileData?.surname || 
+                        
+      const senderSurname = senderProfileData?.Surname || 
                            senderProfileData?.LastName || 
                            senderProfileData?.lastName ||
                            '';
       
-      const senderProfilePicture = senderProfileData?.imageUrl || 
+      // Map the correct profile picture field from your Firestore structure
+      const senderProfilePicture = senderProfileData?.ImageURL || 
+                                  senderProfileData?.imageUrl || 
                                   senderProfileData?.localImagePath || 
                                   senderProfileData?.profilePicture ||
                                   senderProfileData?.image ||
@@ -554,9 +617,9 @@ export const FirebaseService = {
         senderName,
         senderSurname,
         senderProfilePicture: senderProfilePicture ? 'URL present' : 'null',
-        senderProfilePictureUrl: senderProfilePicture
+        senderPhone: FirebaseService.formatPhoneNumber(senderPhone)
       });
-      console.log('=== END SENDER DATA DEBUG ===');
+      console.log('=== END ENHANCED SENDER DATA FETCHING ===');
       
       const formattedRecipientPhone = FirebaseService.formatPhoneNumber(phone);
       const formattedSenderPhone = FirebaseService.formatPhoneNumber(senderPhone);
@@ -565,14 +628,15 @@ export const FirebaseService = {
       console.log('Sender phone:', formattedSenderPhone);
       console.log('Recipient phone:', formattedRecipientPhone);
       
-      const userCheck = await FirebaseService.checkUserExists(formattedRecipientPhone);
+      // Check if recipient exists
+      const userCheck = await FirebaseService.getUserByPhone(formattedRecipientPhone);
       if (userCheck.error) {
-        console.error('Error checking user database');
+        console.error('Error checking recipient user database');
         return { success: false, error: 'Error checking user database' };
       }
       
       if (!userCheck.exists) {
-        console.log('User does not exist on platform');
+        console.log('Recipient does not exist on platform');
         return { 
           success: false, 
           error: 'This person is not on AlertNet',
@@ -580,8 +644,9 @@ export const FirebaseService = {
         };
       }
       
-      console.log('Recipient exists on platform');
+      console.log('Recipient exists on platform:', userCheck.userData.Name);
       
+      // Check for existing requests
       const existingRequest = await FirebaseService.checkExistingFriendRequest(formattedSenderPhone, formattedRecipientPhone);
       if (existingRequest.error) {
         console.error('Error checking existing requests');
@@ -608,6 +673,7 @@ export const FirebaseService = {
       
       console.log('No existing requests found, proceeding...');
       
+      // Create enhanced friend request with complete user data
       const friendRequest = {
         senderId: senderId,
         senderEmail: userEmail,
@@ -620,7 +686,9 @@ export const FirebaseService = {
         recipientPhone: formattedRecipientPhone,
         recipientUserId: userCheck.userData.id,
         status: 'pending',
-        createdAt: serverTimestamp()
+        createdAt: serverTimestamp(),
+        // Add complete user data for future reference
+        senderUserData: senderProfileData
       };
       
       console.log('Creating enhanced friend request document...');
@@ -629,6 +697,7 @@ export const FirebaseService = {
       
       console.log('Friend request created with ID:', docRef.id);
       
+      // Create notification with proper profile data mapping
       const notificationResult = await FirebaseService.createNotification({
         userId: userCheck.userData.id,
         recipientPhone: formattedRecipientPhone,
@@ -641,14 +710,24 @@ export const FirebaseService = {
           senderPhone: formattedSenderPhone,
           senderName: senderName,
           senderSurname: senderSurname,
+          senderFirstName: senderName, // For backward compatibility
+          senderLastName: senderSurname, // For backward compatibility
           senderEmail: userEmail,
           profilePicture: senderProfilePicture,
-          action: 'view_request'
+          action: 'view_request',
+          // Include complete sender data for rich notifications
+          senderUserData: {
+            Name: senderName,
+            Surname: senderSurname,
+            ImageURL: senderProfilePicture,
+            Phone: formattedSenderPhone,
+            Email: userEmail
+          }
         }
       });
       
       if (notificationResult.success) {
-        console.log('Enhanced notification created successfully');
+        console.log('Enhanced notification created successfully with profile data');
       } else {
         console.warn('Failed to create notification:', notificationResult.error);
       }
@@ -657,7 +736,12 @@ export const FirebaseService = {
         success: true, 
         message: 'Friend request sent successfully!',
         requestId: docRef.id,
-        notificationSent: notificationResult.success
+        notificationSent: notificationResult.success,
+        senderData: {
+          name: senderName,
+          surname: senderSurname,
+          profilePicture: senderProfilePicture
+        }
       };
 
     } catch (error) {
@@ -771,12 +855,12 @@ export const FirebaseService = {
       
       console.log('Request validation passed');
       
-      const currentUserResult = await FirebaseService.checkUserExists(formattedCurrentPhone);
+      const currentUserResult = await FirebaseService.getUserByPhone(formattedCurrentPhone);
       if (!currentUserResult.exists) {
         return { success: false, error: 'Current user not found in database' };
       }
       
-      const senderResult = await FirebaseService.checkUserExists(requestData.senderPhone);
+      const senderResult = await FirebaseService.getUserByPhone(requestData.senderPhone);
       if (!senderResult.exists) {
         return { success: false, error: 'Sender user not found in database' };
       }
@@ -792,7 +876,7 @@ export const FirebaseService = {
       
       const friendshipResult = await FirebaseService.createFriendship({
         user1Phone: requestData.senderPhone,
-        user1Name: requestData.senderName || `${senderResult.userData.FirstName || ''} ${senderResult.userData.LastName || ''}`.trim(),
+        user1Name: requestData.senderName || `${senderResult.userData.Name || ''} ${senderResult.userData.Surname || ''}`.trim(),
         user1Email: requestData.senderEmail || senderResult.userData.Email,
         user1Id: requestData.senderId,
         
