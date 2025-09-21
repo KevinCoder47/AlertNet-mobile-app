@@ -16,7 +16,6 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNotifications } from '../contexts/NotificationContext';
 
-
 const { width } = Dimensions.get('window');
 
 const NotificationBell = ({ style, iconSize = 24, showProfileInfo = true }) => {
@@ -84,6 +83,94 @@ const NotificationBell = ({ style, iconSize = 24, showProfileInfo = true }) => {
     }
   }, [unreadCount]);
 
+  // Enhanced display name extraction with proper Firestore field mapping
+  const getDisplayName = (notification) => {
+    const { data = {} } = notification;
+    
+    // Try multiple field combinations based on Firestore structure
+    const firstName = data.senderName || 
+                     data.senderFirstName || 
+                     data.senderUserData?.Name ||
+                     'Unknown';
+                     
+    const lastName = data.senderSurname || 
+                    data.senderLastName || 
+                    data.senderUserData?.Surname ||
+                    '';
+    
+    const displayName = `${firstName} ${lastName}`.trim();
+    
+    console.log('Extracted display name:', {
+      firstName,
+      lastName,
+      displayName,
+      availableFields: Object.keys(data)
+    });
+    
+    return displayName !== 'Unknown' ? displayName : 'AlertNet User';
+  };
+
+  // Enhanced profile picture rendering with proper fallbacks for Firestore data structure
+  const renderProfilePicture = (notification, size = 40) => {
+    // Extract profile data from multiple possible sources
+    const { data = {} } = notification;
+    
+    // Look for profile picture in multiple possible fields
+    const profilePicture = data.profilePicture || 
+                          data.senderUserData?.ImageURL ||
+                          data.senderUserData?.imageUrl ||
+                          data.ImageURL ||
+                          data.imageUrl ||
+                          null;
+    
+    // Extract name for fallback initial
+    const senderName = data.senderName || 
+                      data.senderFirstName ||
+                      data.senderUserData?.Name ||
+                      'U';
+    
+    console.log('Rendering profile picture:', {
+      profilePicture: profilePicture ? 'URL present' : 'null',
+      senderName,
+      notificationType: notification.type
+    });
+    
+    // Render profile picture if available
+    if (profilePicture && profilePicture.trim() !== '') {
+      return (
+        <Image
+          source={{ uri: profilePicture }}
+          style={[
+            styles.profilePicture, 
+            { width: size, height: size, borderRadius: size / 2 }
+          ]}
+          onError={(error) => {
+            console.log('Profile picture failed to load:', error.nativeEvent.error);
+          }}
+          onLoadStart={() => {
+            console.log('Loading profile picture for notification...');
+          }}
+          onLoad={() => {
+            console.log('Profile picture loaded successfully for notification');
+          }}
+        />
+      );
+    } else {
+      // Default avatar with user's initial
+      const initial = senderName ? senderName.charAt(0).toUpperCase() : 'U';
+      return (
+        <View style={[
+          styles.defaultProfilePicture, 
+          { width: size, height: size, borderRadius: size / 2 }
+        ]}>
+          <Text style={[styles.profileInitial, { fontSize: size * 0.4 }]}>
+            {initial}
+          </Text>
+        </View>
+      );
+    }
+  };
+
   const handleNotificationPress = async (notification) => {
     // Mark as read if unread
     if (!notification.read) {
@@ -109,11 +196,12 @@ const NotificationBell = ({ style, iconSize = 24, showProfileInfo = true }) => {
   };
 
   const handleFriendRequestNotification = (notification) => {
-    const { requestId, senderName, senderSurname } = notification.data || {};
+    const displayName = getDisplayName(notification);
+    const { requestId } = notification.data || {};
     
     Alert.alert(
       'Friend Request',
-      `${senderName || 'Someone'} ${senderSurname || ''} wants to connect with you`,
+      `${displayName} wants to connect with you on AlertNet`,
       [
         {
           text: 'Decline',
@@ -129,21 +217,22 @@ const NotificationBell = ({ style, iconSize = 24, showProfileInfo = true }) => {
   };
 
   const handleFriendAcceptedNotification = (notification) => {
-    const { accepterName, accepterSurname } = notification.data || {};
+    const displayName = getDisplayName(notification);
     
     Alert.alert(
       'Friend Request Accepted! 🎉',
-      `${accepterName || 'Someone'} ${accepterSurname || ''} accepted your friend request. You are now connected!`,
+      `${displayName} accepted your friend request. You are now connected!`,
       [{ text: 'Great!', style: 'default' }]
     );
   };
 
   const handleSOSNotification = (notification) => {
-    const { senderName, senderSurname, location } = notification.data || {};
+    const displayName = getDisplayName(notification);
+    const { location } = notification.data || {};
     
     Alert.alert(
       '🚨 EMERGENCY ALERT',
-      `${senderName || 'Someone'} ${senderSurname || ''} sent an SOS alert${location ? ` from ${location}` : ''}`,
+      `${displayName} sent an SOS alert${location ? ` from ${location}` : ''}`,
       [
         { text: 'Dismiss', style: 'cancel' },
         { 
@@ -252,140 +341,81 @@ const NotificationBell = ({ style, iconSize = 24, showProfileInfo = true }) => {
     }
   };
 
-// Fixed renderProfilePicture function for NotificationBell.js
-// Replace the existing renderProfilePicture function with this enhanced version
-
-const renderProfilePicture = (profilePicture, senderName, size = 40) => {
-  // Handle profile picture with better fallback logic
-  if (profilePicture && profilePicture.trim() !== '') {
-    return (
-      <Image
-        source={{ uri: profilePicture }}
-        style={[
-          styles.profilePicture, 
-          { width: size, height: size, borderRadius: size / 2 }
-        ]}
-        onError={(error) => {
-          console.log('Profile picture failed to load:', error.nativeEvent.error);
-          // The component will re-render and show the default avatar below
-        }}
-        onLoadStart={() => {
-          // Optional: Show loading state
-          console.log('Loading profile picture...');
-        }}
-        onLoad={() => {
-          console.log('Profile picture loaded successfully');
-        }}
-      />
-    );
-  } else {
-    // Default avatar with user's initial
-    const initial = senderName ? senderName.charAt(0).toUpperCase() : 'U';
-    return (
-      <View style={[
-        styles.defaultProfilePicture, 
-        { width: size, height: size, borderRadius: size / 2 }
-      ]}>
-        <Text style={[styles.profileInitial, { fontSize: size * 0.4 }]}>
-          {initial}
-        </Text>
-      </View>
-    );
-  }
-};
-
-// Also update the notification rendering to better handle profile data
-const renderNotificationItem = ({ item: notification }) => {
-  const isUnread = !notification.read;
-  const timeAgo = getTimeAgo(notification.createdAt);
-  
-  // Enhanced data extraction with better fallbacks
-  const { 
-    senderName, 
-    senderSurname, 
-    profilePicture,
-    // Also check for alternative field names
-    senderFirstName,
-    senderLastName
-  } = notification.data || {};
-  
-  // Build display name with fallbacks
-  const firstName = senderName || senderFirstName || 'Unknown';
-  const lastName = senderSurname || senderLastName || '';
-  const displayName = `${firstName} ${lastName}`.trim();
-  
-  // Enhanced profile picture URL handling
-  const profileImageUrl = profilePicture && typeof profilePicture === 'string' 
-    ? profilePicture.trim() 
-    : null;
+  // Enhanced notification item rendering
+  const renderNotificationItem = ({ item: notification }) => {
+    const isUnread = !notification.read;
+    const timeAgo = getTimeAgo(notification.createdAt);
+    const displayName = getDisplayName(notification);
     
-  console.log('Rendering notification:', {
-    displayName,
-    profileImageUrl,
-    notificationType: notification.type
-  });
-  
-  return (
-    <TouchableOpacity
-      style={[
-        styles.notificationItem,
-        isUnread && styles.unreadNotification
-      ]}
-      onPress={() => handleNotificationPress(notification)}
-      activeOpacity={0.7}
-    >
-      <View style={styles.notificationContent}>
-        {/* Profile Section */}
-        {showProfileInfo && (
-          <View style={styles.profileSection}>
-            {renderProfilePicture(profileImageUrl, firstName)}
-          </View>
-        )}
-        
-        {/* Content Section */}
-        <View style={styles.contentSection}>
-          <View style={styles.headerRow}>
-            <View style={styles.titleSection}>
-              {showProfileInfo && displayName !== 'Unknown' && (
-                <Text style={[styles.senderName, isUnread && styles.unreadText]}>
-                  {displayName}
+    console.log('Rendering notification item:', {
+      id: notification.id,
+      type: notification.type,
+      displayName,
+      isUnread,
+      dataKeys: Object.keys(notification.data || {})
+    });
+    
+    return (
+      <TouchableOpacity
+        style={[
+          styles.notificationItem,
+          isUnread && styles.unreadNotification
+        ]}
+        onPress={() => handleNotificationPress(notification)}
+        activeOpacity={0.7}
+      >
+        <View style={styles.notificationContent}>
+          {/* Profile Section */}
+          {showProfileInfo && (
+            <View style={styles.profileSection}>
+              {renderProfilePicture(notification)}
+            </View>
+          )}
+          
+          {/* Content Section */}
+          <View style={styles.contentSection}>
+            <View style={styles.headerRow}>
+              <View style={styles.titleSection}>
+                {showProfileInfo && displayName !== 'AlertNet User' && (
+                  <Text style={[styles.senderName, isUnread && styles.unreadText]}>
+                    {displayName}
+                  </Text>
+                )}
+                <Text style={[
+                  styles.notificationTitle,
+                  isUnread && styles.unreadText,
+                  !showProfileInfo && styles.noProfileTitle
+                ]}>
+                  {notification.title}
                 </Text>
-              )}
-              <Text style={[
-                styles.notificationTitle,
-                isUnread && styles.unreadText,
-                !showProfileInfo && styles.noProfileTitle
-              ]}>
-                {notification.title}
-              </Text>
+              </View>
+              
+              <View style={styles.metaSection}>
+                <Text style={styles.timeText}>{timeAgo}</Text>
+                {isUnread && <View style={styles.unreadDot} />}
+              </View>
             </View>
             
-            <View style={styles.metaSection}>
-              <Text style={styles.timeText}>{timeAgo}</Text>
-              {isUnread && <View style={styles.unreadDot} />}
-            </View>
+            <Text style={[
+              styles.notificationMessage,
+              isUnread && styles.unreadMessageText
+            ]}>
+              {notification.message}
+            </Text>
           </View>
           
-          <Text style={[
-            styles.notificationMessage,
-            isUnread && styles.unreadMessageText
-          ]}>
-            {notification.message}
-          </Text>
+          {/* Icon Section */}
+          <View style={styles.iconSection}>
+            <Ionicons 
+              name={getNotificationIcon(notification.type)} 
+              size={20} 
+              color={getNotificationIconColor(notification.type)} 
+            />
+          </View>
         </View>
-        
-        {/* Icon Section */}
-        <View style={styles.iconSection}>
-          <Ionicons 
-            name={getNotificationIcon(notification.type)} 
-            size={20} 
-            color={getNotificationIconColor(notification.type)} 
-          />
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
-};
+      </TouchableOpacity>
+    );
+  };
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
@@ -477,7 +507,6 @@ const renderNotificationItem = ({ item: notification }) => {
                 </TouchableOpacity>
               )}
 
-       
               {/* Close Button */}
               <TouchableOpacity
                 onPress={() => setShowModal(false)}
@@ -487,8 +516,6 @@ const renderNotificationItem = ({ item: notification }) => {
               </TouchableOpacity>
             </View>
           </View>
-
-          
 
           {/* Notification List */}
           {notifications.length === 0 ? (

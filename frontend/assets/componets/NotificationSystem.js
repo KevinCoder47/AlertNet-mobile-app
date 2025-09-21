@@ -143,6 +143,33 @@ const NotificationSystem = ({ children }) => {
     setFriendRequests(requests);
   };
 
+  // Enhanced display name extraction with proper Firestore field mapping
+  const getDisplayName = (notification) => {
+    const { data = {} } = notification;
+    
+    // Try multiple field combinations based on Firestore structure
+    const firstName = data.senderName || 
+                     data.senderFirstName || 
+                     data.senderUserData?.Name ||
+                     'Unknown';
+                     
+    const lastName = data.senderSurname || 
+                    data.senderLastName || 
+                    data.senderUserData?.Surname ||
+                    '';
+    
+    const displayName = `${firstName} ${lastName}`.trim();
+    
+    console.log('Extracted display name:', {
+      firstName,
+      lastName,
+      displayName,
+      availableFields: Object.keys(data)
+    });
+    
+    return displayName !== 'Unknown' ? displayName : 'AlertNet User';
+  };
+
   // Enhanced slide-down notification with profile info
   const showEnhancedSlideNotification = (notification) => {
     setCurrentSlideNotification(notification);
@@ -281,11 +308,12 @@ const NotificationSystem = ({ children }) => {
 
   // Handle friend request notification
   const handleFriendRequestNotification = (notification) => {
-    const { requestId, senderName, senderSurname } = notification.data;
+    const displayName = getDisplayName(notification);
+    const { requestId } = notification.data;
     
     Alert.alert(
       'Friend Request',
-      `${senderName} ${senderSurname} wants to connect with you on AlertNet`,
+      `${displayName} wants to connect with you on AlertNet`,
       [
         {
           text: 'Decline',
@@ -302,11 +330,11 @@ const NotificationSystem = ({ children }) => {
 
   // Handle friend accepted notification
   const handleFriendAcceptedNotification = (notification) => {
-    const { accepterName, accepterSurname } = notification.data;
+    const displayName = getDisplayName(notification);
     
     Alert.alert(
       'Friend Request Accepted!',
-      `${accepterName} ${accepterSurname} accepted your friend request. You are now connected!`,
+      `${displayName} accepted your friend request. You are now connected!`,
       [{ text: 'Great!', style: 'default' }]
     );
   };
@@ -390,64 +418,68 @@ const NotificationSystem = ({ children }) => {
     }
   };
 
-  // Render profile picture
-  const renderProfilePicture = (profilePicture, senderName) => {
-    // Handle profile picture with better error handling
+  // Enhanced profile picture rendering with proper fallbacks for Firestore data structure
+  const renderProfilePicture = (notification, size = 44) => {
+    // Extract profile data from multiple possible sources
+    const { data = {} } = notification;
+    
+    // Look for profile picture in multiple possible fields
+    const profilePicture = data.profilePicture || 
+                          data.senderUserData?.ImageURL ||
+                          data.senderUserData?.imageUrl ||
+                          data.ImageURL ||
+                          data.imageUrl ||
+                          null;
+    
+    // Extract name for fallback initial
+    const senderName = data.senderName || 
+                      data.senderFirstName ||
+                      data.senderUserData?.Name ||
+                      'U';
+    
+    console.log('Rendering slide notification profile picture:', {
+      profilePicture: profilePicture ? 'URL present' : 'null',
+      senderName,
+      notificationType: notification.type
+    });
+    
+    // Render profile picture if available
     if (profilePicture && profilePicture.trim() !== '') {
       return (
         <Image
           source={{ uri: profilePicture }}
-          style={styles.profilePicture}
-          onError={(e) => console.log('Error loading notification profile picture:', e.nativeEvent.error)}
+          style={[styles.profilePicture, { width: size, height: size, borderRadius: size / 2 }]}
+          onError={(error) => {
+            console.log('Slide notification profile picture failed to load:', error.nativeEvent.error);
+          }}
         />
       );
     } else {
       // Default avatar with user's initial
       const initial = senderName ? senderName.charAt(0).toUpperCase() : 'U';
       return (
-        <View style={styles.defaultProfilePicture}>
-          <Text style={styles.profileInitial}>
+        <View style={[styles.defaultProfilePicture, { width: size, height: size, borderRadius: size / 2 }]}>
+          <Text style={[styles.profileInitial, { fontSize: size * 0.4 }]}>
             {initial}
           </Text>
         </View>
       );
     }
   };
-  
 
   // Enhanced slide-down notification banner
   const renderSlideNotification = () => {
     if (!currentSlideNotification) return null;
   
     const notification = currentSlideNotification;
-    
-    // Enhanced data extraction with better fallbacks
-    const { 
-      senderName, 
-      senderSurname, 
-      profilePicture,
-      // Also check for alternative field names
-      senderFirstName,
-      senderLastName
-    } = notification.data || {};
-    
-    // Build display name with fallbacks
-    const firstName = senderName || senderFirstName || 'AlertNet User';
-    const lastName = senderSurname || senderLastName || '';
-    const displayName = `${firstName} ${lastName}`.trim();
-    
-    // Enhanced profile picture URL handling
-    const profileImageUrl = profilePicture && typeof profilePicture === 'string' 
-      ? profilePicture.trim() 
-      : null;
-    
+    const displayName = getDisplayName(notification);
     const isConnectionRequest = notification.type === 'friend_request';
     
     console.log('Rendering slide notification:', {
       displayName,
-      profileImageUrl,
       notificationType: notification.type,
-      message: notification.message
+      message: notification.message,
+      hasProfilePicture: !!(notification.data?.profilePicture || notification.data?.senderUserData?.ImageURL)
     });
   
     return (
@@ -471,7 +503,7 @@ const NotificationSystem = ({ children }) => {
           <View style={styles.notificationHeader}>
             {/* Profile Picture */}
             <View style={styles.profileSection}>
-              {renderProfilePicture(profileImageUrl, firstName)}
+              {renderProfilePicture(notification, 44)}
               <View style={styles.nameSection}>
                 <Text style={styles.senderName}>
                   {displayName}
@@ -529,29 +561,11 @@ const NotificationSystem = ({ children }) => {
     }
   };
 
-  // Render notification item (for the notification list)
+  // Enhanced notification item rendering for the notification list
   const renderNotificationItem = ({ item: notification }) => {
     const isUnread = !notification.read;
     const timeAgo = getTimeAgo(notification.createdAt);
-    
-    // Enhanced data extraction
-    const { 
-      senderName, 
-      senderSurname, 
-      profilePicture,
-      senderFirstName,
-      senderLastName
-    } = notification.data || {};
-    
-    // Build display name with fallbacks
-    const firstName = senderName || senderFirstName || 'AlertNet User';
-    const lastName = senderSurname || senderLastName || '';
-    const displayName = `${firstName} ${lastName}`.trim();
-    
-    // Enhanced profile picture URL handling
-    const profileImageUrl = profilePicture && typeof profilePicture === 'string' 
-      ? profilePicture.trim() 
-      : null;
+    const displayName = getDisplayName(notification);
     
     return (
       <TouchableOpacity
@@ -564,7 +578,7 @@ const NotificationSystem = ({ children }) => {
         <View style={styles.listItemContent}>
           {/* Profile Picture */}
           <View style={styles.listProfileSection}>
-            {renderProfilePicture(profileImageUrl, firstName)}
+            {renderProfilePicture(notification, 40)}
           </View>
           
           <View style={styles.listTextContent}>
@@ -764,24 +778,17 @@ const getStyles = (isDark) =>
       flex: 1,
     },
     profilePicture: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
       marginRight: 12,
       borderWidth: 2,
       borderColor: isDark ? '#2C2C2E' : '#E5E5E7',
     },
     defaultProfilePicture: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
       backgroundColor: isDark ? '#2C2C2E' : '#E5E5E7',
       justifyContent: 'center',
       alignItems: 'center',
       marginRight: 12,
     },
     profileInitial: {
-      fontSize: 18,
       fontWeight: 'bold',
       color: isDark ? '#fff' : '#333',
     },
