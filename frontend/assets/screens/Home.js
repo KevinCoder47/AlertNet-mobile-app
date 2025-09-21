@@ -16,7 +16,6 @@ import { useNotifications } from '../contexts/NotificationContext';
 import { updateCurrentLocation } from '../../services/firestore';
 import * as TaskManager from 'expo-task-manager';
 import { SOSService } from '../services/SOSService';
-
 import WalkPartner from './WalkPartner';
 import QRCodeScanner from './QRCodeScanner';
 import SOSPage from './SOS';
@@ -40,6 +39,26 @@ import LocationViewer from './LocationViewer';
 
 const { width, height } = Dimensions.get('window');
 
+// Define a task to handle background location updates
+// This MUST be at the top level of the module, not inside a component.
+TaskManager.defineTask('backgroundLocationTask', async ({ data, error }) => {
+  if (error) {
+    console.error('Background location task error:', error);
+    return;
+  }
+  
+  if (data) {
+    const { locations } = data;
+    const location = locations[0];
+    
+    // Since this runs in the background, we can't access component state like `userData`.
+    // We must retrieve the userId from storage.
+    const userId = await AsyncStorage.getItem('userId');
+    if (location && userId) {
+      await updateCurrentLocation(userId, location.coords);
+    }
+  }
+});
 const Home = ({handleLogout}) => {
   const [isNotHome, setIsNotHome] = useState(false);
   const [isSOS, setIsSOS] = useState(false);
@@ -73,7 +92,7 @@ const Home = ({handleLogout}) => {
   const [isScanning, setIsScanning] = useState(false);
   const [scannedUserId, setScannedUserId] = useState(null);
   const [scannedSosId, setScannedSosId] = useState(null);
-  
+
   
   // State for profile image
   const [userImage, setUserImage] = useState(null);
@@ -84,6 +103,12 @@ const Home = ({handleLogout}) => {
   const [userLocation, setUserLocation] = useState(null);
   const mapRef = useRef(null);
   
+  // Moved state declarations to the top level
+  const [emergencyContacts, setEmergencyContacts] = useState([]);
+  const [friendsDetails, setFriendsDetails] = useState({});
+  const [locationUpdateInterval, setLocationUpdateInterval] = useState(null);
+
+
   const handleViewLocation = (notification) => {
     if (notification && notification.location) {
       setLocationViewerData({
@@ -95,28 +120,25 @@ const Home = ({handleLogout}) => {
     }
   };
 
+useEffect(() => {
+  if (!userData?.userId) {
+    return;
+  }
+
   // Initialize FCM for the current user
-  useEffect(() => {
-    const initializeUserFCM = async () => {
-      if (userData && userData.userId) {
-        try {
-          console.log('Initializing FCM for user:', userData.name);
-          const token = await SOSService.initializeFCM();
-          if (token) {
-            console.log('FCM token initialized for user');
-          }
-        } catch (error) {
-          console.error('Error initializing FCM for user:', error);
-        }
-      }
-    };
+  const initializeUserFCM = async () => {
+    try {
+      console.log('Initializing FCM for user:', userData.name);
+      await SOSService.initializeFCM(userData.userId);
+    } catch (error) {
+      console.error('Error initializing FCM for user:', error);
+    }
+  };
+  initializeUserFCM();
 
-    initializeUserFCM();
-  }, [userData]); // Run when userData changes
+}, [userData]);
 
-  // Load emergency contacts and reload them when the management screen is closed
-  const [emergencyContacts, setEmergencyContacts] = useState([]);
-  useEffect(() => {
+  useEffect(() => { // Load emergency contacts and reload them when the management screen is closed
     const loadEmergencyContacts = async () => {
       // Only load if we have a user
       if (userData?.userId) {
@@ -170,8 +192,7 @@ useEffect(() => {
 }, [userData]);
 
   //friends
-  const [friendsDetails, setFriendsDetails] = useState({});
-useEffect(() => {
+  useEffect(() => {
   const fetchFriendsDetails = async () => {
     if (!userData || !userData.friends || userData.friends.length === 0) {
       return;
@@ -229,8 +250,7 @@ useEffect(() => {
 }, [userData, friendsDetails]);
   
   //UPDATE CURRENT LOCATION IN THE MOST EFFICIENT WAY
-  const [locationUpdateInterval, setLocationUpdateInterval] = useState(null);
-useEffect(() => {
+  useEffect(() => {
   const updateUserLocation = async () => {
     if (!userData) return;
     
@@ -294,25 +314,6 @@ useEffect(() => {
   };
 }, []);
 
-// Define a task to handle background location updates
-TaskManager.defineTask('backgroundLocationTask', async ({ data, error }) => {
-  if (error) {
-    console.error('Background location task error:', error);
-    return;
-  }
-  
-  if (data && userData) {
-    const { locations } = data;
-    const location = locations[0];
-    
-    if (location) {
-      // Update Firebase with new location
-      await updateCurrentLocation(userData.userId, location.coords);
-    }
-  }
-});
-  
-  
 
 // Add app state awareness to reduce updates when app is in background
 useEffect(() => {

@@ -498,11 +498,6 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, markN
             </TouchableOpacity>
           </View>
         )}
-        
-        {/* Swipe Actions Indicator */}
-        <View style={styles.swipeIndicator}>
-          <Text style={styles.swipeText}>← Swipe for actions</Text>
-        </View>
       </View>
     );
   };
@@ -1440,19 +1435,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  
-  // Swipe Indicator
-  swipeIndicator: {
-    position: 'absolute',
-    right: 10,
-    bottom: 5,
-    opacity: 0.3,
-  },
-  swipeText: {
-    color: '#888888',
-    fontSize: 10,
-    fontStyle: 'italic',
   },
   
   // Empty State

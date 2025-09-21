@@ -318,15 +318,14 @@ export class SOSService {
   }
 
   // Initialize FCM for the current user
-  static async initializeFCM() {
+  static async initializeFCM(userId) {
     try {
-      const currentUser = auth.currentUser;
-      if (!currentUser) {
-        console.warn('No authenticated user for FCM initialization');
+      if (!userId) {
+        console.warn('No user ID provided for FCM initialization');
         return null;
       }
 
-      const token = await SOSFirebaseService.initializeFCM(currentUser.uid);
+      const token = await SOSFirebaseService.initializeFCM(userId);
       if (token) {
         console.log('FCM initialized successfully');
       }
