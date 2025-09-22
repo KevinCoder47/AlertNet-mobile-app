@@ -6,7 +6,7 @@ import AppNavigator from './assets/navigation/AppNavigator';
 import { ScheduledSlotsProvider } from './assets/contexts/ScheduledSlotsContext';
 import { LanguageProvider } from './assets/screens/SafetyResource_Screens/LanguagePage';
 import { NotificationProvider } from './assets/contexts/NotificationContext';
-import SOSService from './assets/services/SOSService';
+import { SOSService } from './assets/services/SOSService';
 import './backend/Firebase/FirebaseConfig';
 
 export default function App() {

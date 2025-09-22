@@ -21,6 +21,7 @@ export const NotificationProvider = ({ children }) => {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [activePopup, setActivePopup] = useState(null);
   
+  const [activeChatRoomId, setActiveChatRoomId] = useState(null);
   // Track which notifications have been shown to prevent re-showing
   const [shownNotifications, setShownNotifications] = useState(new Set());
   const [lastProcessedNotification, setLastProcessedNotification] = useState(null);
@@ -152,12 +153,12 @@ export const NotificationProvider = ({ children }) => {
   };
 
   const handleNotificationUpdate = (data) => {
-    const { 
-      notifications: newNotifications, 
-      changes, 
-      unreadCount: newUnreadCount, 
-      error 
-    } = data;
+  const { 
+    notifications: newNotifications, 
+    changes, 
+    unreadCount: newUnreadCount, 
+    error 
+  } = data;
     
     if (error) {
       console.error('Notification listener error:', error);
@@ -180,7 +181,19 @@ export const NotificationProvider = ({ children }) => {
       if (newUnreadNotifications.length > 0) {
         // Process the most recent new notification
         const mostRecent = newUnreadNotifications[0].notification;
-        handleNewNotification(mostRecent);
+
+        const enhancedNotification = {
+        ...mostRecent,
+          // Make sure the profile picture is available at the top level for the popup
+          profilePicture: mostRecent.data?.profilePicture || null,
+          // Also ensure other data is accessible
+          senderName: mostRecent.data?.senderName || '',
+          senderId: mostRecent.data?.senderId || '',
+          location: mostRecent.data?.location || null,
+          senderPhone: mostRecent.data?.senderPhone || null,
+        };
+
+        handleNewNotification(enhancedNotification);
       }
     }
   };
@@ -188,6 +201,15 @@ export const NotificationProvider = ({ children }) => {
   const handleNewNotification = async (notification) => {
     try {
       console.log('Processing new notification:', notification.title);
+
+      // If the notification is a chat message and the user is already in that chat room,
+      // mark it as read immediately and do not show a popup.
+      if (notification.type === 'chat_message' && notification.data?.chatRoomId === activeChatRoomId) {
+        console.log('User is already in the chat room. Marking notification as read and skipping popup.');
+        // Mark as read so it doesn't show up as "new" later. The function already handles local state.
+        await markNotificationAsRead(notification.id);
+        return; // Exit early
+      }
       
       // Skip if already processed or read
       if (shownNotifications.has(notification.id) || notification.read) {
@@ -221,7 +243,7 @@ export const NotificationProvider = ({ children }) => {
 
   const shouldShowNotificationPopup = (notification) => {
     // Show popups for high-priority notifications and important types
-    const importantTypes = ['friend_request', 'friend_accepted', 'sos', 'sos_resolved', 'safety_request'];
+    const importantTypes = ['friend_request', 'friend_accepted', 'sos', 'sos_resolved', 'safety_request', 'chat_message'];
     
     return (
       notification.priority === 'high' || 
@@ -452,6 +474,16 @@ export const NotificationProvider = ({ children }) => {
     setActivePopup(null);
   };
 
+  const setActiveChat = (chatId) => {
+    console.log(`Setting active chat room: ${chatId}`);
+    setActiveChatRoomId(chatId);
+  };
+
+  const clearActiveChat = () => {
+    console.log('Clearing active chat room.');
+    setActiveChatRoomId(null);
+  };
+
   const getNotificationById = (notificationId) => {
     return notifications.find(notification => notification.id === notificationId);
   };
@@ -504,6 +536,8 @@ export const NotificationProvider = ({ children }) => {
     toggleSoundEnabled,
     clearAllNotifications,
     dismissPopup,
+    setActiveChat,
+    clearActiveChat,
     
     // Utilities
     getNotificationById,

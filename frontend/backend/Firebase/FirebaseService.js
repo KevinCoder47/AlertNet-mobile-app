@@ -19,7 +19,8 @@ import {
   orderBy,
   limit,
   writeBatch,
-  deleteDoc
+  deleteDoc,
+  arrayUnion
 } from 'firebase/firestore';
 
 export const FirebaseService = {
@@ -29,6 +30,50 @@ export const FirebaseService = {
   signOut: () => signOut(auth),
   onAuthStateChanged: (callback) => onAuthStateChanged(auth, callback),
   getCurrentUser: () => auth.currentUser,
+
+  // ========================
+  // USER PRESENCE
+  // ========================
+
+  /**
+   * Updates the status of a user in Firestore.
+   * @param {string} userId - The ID of the user to update.
+   * @param {Object} statusData - The data to update, e.g., { status: 'online' } or { status: 'offline', lastSeen: serverTimestamp() }.
+   * @returns {Promise<Object>} - { success: boolean, error?: string }
+   */
+  updateUserStatus: async (userId, statusData) => {
+    if (!userId) {
+      return { success: false, error: "User ID is required." };
+    }
+    try {
+      const userRef = doc(db, 'users', userId);
+      await updateDoc(userRef, statusData);
+      return { success: true };
+    } catch (error) {
+      console.error(`Error updating status for user ${userId}:`, error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Listens for real-time updates for a specific user.
+   * @param {string} userId - The ID of the user to listen to.
+   * @param {Function} callback - Function to call with the user's data.
+   * @returns {Function} - Unsubscribe function.
+   */
+  listenToUser: (userId, callback) => {
+    if (!userId) {
+      console.warn("listenToUser called with no userId.");
+      return () => {};
+    }
+    const userRef = doc(db, 'users', userId);
+    return onSnapshot(userRef, (docSnap) => {
+      callback(docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } : null);
+    }, (error) => {
+      console.error(`Error listening to user ${userId}:`, error);
+      callback(null);
+    });
+  },
 
   // ========================
   // ENHANCED USER DATA FETCHING
@@ -168,18 +213,24 @@ export const FirebaseService = {
         notificationsRef,
         where('recipientPhone', '==', formattedPhone),
         where('deleted', '!=', true),
+        orderBy('createdAt', 'desc'),
         limit(100)
       );
       
       return onSnapshot(q, (snapshot) => {
-        const notifications = [];
+        // Correctly map all documents from the snapshot for the full list
+        const allNotifications = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+
         const changes = [];
         let hasNewUnreadNotifications = false;
         
         snapshot.docChanges().forEach((change) => {
           const notificationData = {
             id: change.doc.id,
-            ...change.doc.data()
+            ...change.doc.data(),
           };
           
           // Track changes for popup triggering
@@ -191,29 +242,27 @@ export const FirebaseService = {
             console.log('Notification updated:', notificationData.title, 'Read:', notificationData.read);
             changes.push({ type: 'updated', notification: notificationData });
           }
-          
-          notifications.push(notificationData);
         });
         
-        // Sort notifications client-side by creation time (newest first)
-        const sortedNotifications = notifications.sort((a, b) => {
+        // Sort the complete list of notifications, not just the changes
+        const sortedNotifications = allNotifications.sort((a, b) => {
           if (!a.createdAt || !b.createdAt) return 0;
           const aTime = a.createdAt.toMillis ? a.createdAt.toMillis() : a.createdAt;
           const bTime = b.createdAt.toMillis ? b.createdAt.toMillis() : b.createdAt;
           return bTime - aTime;
         });
         
-        // Count unread notifications accurately
+        // Count unread notifications from the complete list for accuracy
         const unreadCount = sortedNotifications.filter(n => !n.read && !n.deleted).length;
         
         console.log(`Processed ${sortedNotifications.length} total notifications, ${unreadCount} unread for ${formattedPhone}`);
         
-        // Call callback with comprehensive data
+        // Call callback with the complete, correct data
         callback({
           notifications: sortedNotifications,
           changes: changes,
           unreadCount: unreadCount,
-          hasNewUnreadNotifications: hasNewUnreadNotifications
+          hasNewUnreadNotifications: hasNewUnreadNotifications,
         });
       }, (error) => {
         console.error('Error listening to notifications:', error);
@@ -769,6 +818,10 @@ export const FirebaseService = {
       
       console.log('Creating bidirectional friendship...');
       
+      // Get references to the user documents and create a batch for atomic updates
+      const user1DocRef = doc(db, 'users', user1Id);
+      const user2DocRef = doc(db, 'users', user2Id);
+      const batch = writeBatch(db);
       const friendsRef = collection(db, 'friends');
       const timestamp = serverTimestamp();
       
@@ -786,6 +839,8 @@ export const FirebaseService = {
         requestId: requestId,
         lastInteraction: timestamp
       };
+      // Use a new doc ref for the batch operation
+      batch.set(doc(friendsRef), friendship1);
       
       const friendship2 = {
         userId: user2Id,
@@ -801,22 +856,31 @@ export const FirebaseService = {
         requestId: requestId,
         lastInteraction: timestamp
       };
-      
-      const [friend1Doc, friend2Doc] = await Promise.all([
-        addDoc(friendsRef, friendship1),
-        addDoc(friendsRef, friendship2)
-      ]);
-      
-      console.log('Friendship created:', {
-        friend1DocId: friend1Doc.id,
-        friend2DocId: friend2Doc.id
+      // Use a new doc ref for the batch operation
+      batch.set(doc(friendsRef), friendship2);
+
+      // --- FIX: Update the `friends` array in both user documents ---
+      // This ensures other parts of the app (like FriendsContext) see the new friend.
+      const user1FriendData = { uid: user2Id, name: user2Name, email: user2Email, phone: user2Phone };
+      const user2FriendData = { uid: user1Id, name: user1Name, email: user1Email, phone: user1Phone };
+
+      batch.update(user1DocRef, {
+        friends: arrayUnion(user1FriendData)
       });
+
+      batch.update(user2DocRef, {
+        friends: arrayUnion(user2FriendData)
+      });
+      // --- END FIX ---
+
+      // Commit all writes at once
+      await batch.commit();
+      
+      console.log('Friendship created and user documents updated successfully.');
       
       return { 
         success: true, 
-        message: 'Friendship created successfully!',
-        friendship1Id: friend1Doc.id,
-        friendship2Id: friend2Doc.id
+        message: 'Friendship created successfully!'
       };
       
     } catch (error) {
@@ -1161,6 +1225,204 @@ export const FirebaseService = {
     } catch (error) {
       console.error('Error removing friend:', error);
       return { success: false, error: 'Failed to remove friend' };
+    }
+  },
+
+  // ========================
+  // CHAT SYSTEM
+  // ========================
+
+  /**
+   * Generates a consistent chat room ID for two users.
+   * @param {string} userId1 - First user's ID.
+   * @param {string} userId2 - Second user's ID.
+   * @returns {string} - The chat room ID.
+   */
+  getChatRoomId: (userId1, userId2) => {
+    if (!userId1 || !userId2) {
+      console.error("Cannot generate chat room ID, user ID is missing");
+      return null;
+    }
+    // Sort IDs to ensure consistency regardless of who starts the chat
+    return [userId1, userId2].sort().join('_');
+  },
+
+  /**
+   * Sends a message to a chat room.
+   * @param {string} chatRoomId - The ID of the chat room.
+   * @param {Object} messageData - { text, senderId, recipientId }
+   * @returns {Promise<Object>} - { success: boolean, messageId?: string, error?: string }
+   */
+  sendMessage: async (chatRoomId, messageData) => {
+    try {
+      if (!chatRoomId) throw new Error("Chat room ID is required.");
+
+      const { 
+        text, 
+        senderId, 
+        recipientId, 
+        type, 
+        location, 
+        imageUrl,
+        audioUrl,
+        audioDuration,
+        // Notification-related data
+        senderName,
+        senderProfilePicture,
+        recipientPhone,
+        senderPhone
+      } = messageData;
+
+      const messagesRef = collection(db, 'chats', chatRoomId, 'messages');
+      
+      const message = {
+        text,
+        senderId,
+        recipientId,
+        createdAt: serverTimestamp(),
+        read: false,
+      };
+      // Add optional fields
+      if (type) message.type = type;
+      if (location) message.location = location;
+      if (imageUrl) message.imageUrl = imageUrl;
+      if (audioUrl) message.audioUrl = audioUrl;
+      if (audioDuration) message.audioDuration = audioDuration;
+
+      const docRef = await addDoc(messagesRef, message);
+      console.log('Message sent with ID:', docRef.id);
+
+      // Send a notification to the recipient
+      if (recipientPhone && senderName) {
+        await FirebaseService.createNotification({
+          userId: recipientId,
+          recipientPhone: recipientPhone,
+          type: 'chat_message',
+          title: `New message from ${senderName}`,
+          message: text.length > 50 ? `${text.substring(0, 50)}...` : text,
+          priority: 'normal',
+          data: {
+            senderId: senderId,
+            senderName: senderName,
+            profilePicture: senderProfilePicture,
+            senderPhone: senderPhone, // Pass sender's phone for the recipient to open chat
+            chatRoomId: chatRoomId,
+            action: 'open_chat',
+          }
+        });
+        console.log(`Notification sent to ${recipientPhone} for new message.`);
+      }
+
+      return { success: true, messageId: docRef.id };
+    } catch (error) {
+      console.error('Error sending message:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Listens for real-time messages in a chat room.
+   * @param {string} chatRoomId - The ID of the chat room.
+   * @param {Function} callback - Function to call with the array of messages.
+   * @returns {Function} - Unsubscribe function.
+   */
+  listenToMessages: (chatRoomId, callback) => {
+    try {
+      if (!chatRoomId) {
+        console.warn("listenToMessages called with no chatRoomId.");
+        callback([]);
+        return () => {};
+      }
+      const messagesRef = collection(db, 'chats', chatRoomId, 'messages');
+      const q = query(messagesRef, orderBy('createdAt', 'asc'));
+
+      const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const messages = querySnapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            // Convert Firestore Timestamp to JS Date object
+            createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
+          };
+        });
+        callback(messages);
+      }, (error) => {
+        console.error('Error listening to messages:', error);
+        callback([]);
+      });
+
+      return unsubscribe;
+    } catch (error) {
+      console.error('Error setting up message listener:', error);
+      return () => {}; // Return empty unsubscribe function on error
+    }
+  },
+
+  /**
+   * Marks all unread messages for a user in a chat room as read.
+   * @param {string} chatRoomId - The ID of the chat room.
+   * @param {string} currentUserId - The ID of the user whose messages are being marked as read (the recipient).
+   * @returns {Promise<Object>} - { success: boolean, updatedCount?: number, error?: string }
+   */
+  markMessagesAsRead: async (chatRoomId, currentUserId) => {
+    try {
+      if (!chatRoomId || !currentUserId) {
+        throw new Error("Chat room ID and user ID are required.");
+      }
+      
+      const messagesRef = collection(db, 'chats', chatRoomId, 'messages');
+      
+      // Query for messages sent TO the current user that are unread.
+      const q = query(
+        messagesRef,
+        where('recipientId', '==', currentUserId),
+        where('read', '==', false)
+      );
+      
+      const querySnapshot = await getDocs(q);
+      
+      if (querySnapshot.empty) return { success: true, updatedCount: 0 };
+      
+      const batch = writeBatch(db);
+      querySnapshot.forEach((docSnapshot) => batch.update(docSnapshot.ref, { read: true }));
+      await batch.commit();
+      
+      return { success: true, updatedCount: querySnapshot.size };
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Deletes all messages in a chat room.
+   * @param {string} chatRoomId - The ID of the chat room to clear.
+   * @returns {Promise<Object>} - { success: boolean, deletedCount?: number, error?: string }
+   */
+  clearChatHistory: async (chatRoomId) => {
+    try {
+      if (!chatRoomId) {
+        throw new Error("Chat room ID is required.");
+      }
+      
+      const messagesRef = collection(db, 'chats', chatRoomId, 'messages');
+      const querySnapshot = await getDocs(messagesRef);
+      
+      if (querySnapshot.empty) {
+        return { success: true, deletedCount: 0 };
+      }
+      
+      const batch = writeBatch(db);
+      querySnapshot.forEach((docSnapshot) => batch.delete(docSnapshot.ref));
+      
+      await batch.commit();
+      
+      console.log(`Cleared ${querySnapshot.size} messages from chat room ${chatRoomId}`);
+      return { success: true, deletedCount: querySnapshot.size };
+    } catch (error) {
+      console.error(`Error clearing chat history for ${chatRoomId}:`, error);
+      return { success: false, error: error.message };
     }
   },
 

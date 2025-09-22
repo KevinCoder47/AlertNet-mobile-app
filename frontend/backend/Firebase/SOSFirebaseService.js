@@ -299,7 +299,8 @@ export class SOSFirebaseService {
       const firstName = currentUserData.name || currentUserData.Name || currentUserData.FirstName || '';
       const lastName = currentUserData.surname || currentUserData.Surname || currentUserData.LastName || '';
       const userName = (`${firstName} ${lastName}`).trim() || 'Your friend';
-      const profilePicture = currentUserData.imageUrl || 
+      const profilePicture = currentUserData.ImageURL || // Correct field from Firestore
+                             currentUserData.imageUrl || 
                              currentUserData.profilePicture || 
                              currentUserData.localImagePath ||
                              currentUserData.image ||

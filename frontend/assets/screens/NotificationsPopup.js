@@ -15,6 +15,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   Image,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { FirebaseService } from '../../backend/Firebase/FirebaseService';
@@ -44,12 +45,9 @@ const tabCategories = {
   system: ['info', 'beta', 'subscription', 'updates', 'reports', 'welcome']
 };
 
-const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, markNotificationAsRead, markAllNotificationsAsRead }) => {
+const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpenChat, markNotificationAsRead, markAllNotificationsAsRead, clearAllNotifications }) => {
   const [activeTab, setActiveTab] = React.useState('closeFriends');
-  const [showCalendar, setShowCalendar] = React.useState(false);
-  const [selectedDate, setSelectedDate] = React.useState(21);
-  const [calendarMonth, setCalendarMonth] = React.useState(0);
-  const [calendarYear, setCalendarYear] = React.useState(2025);
+  const [selectedDate, setSelectedDate] = React.useState(new Date()); // Use a full date object
   const [showMenu, setShowMenu] = React.useState(false);
   const [allowNotifications, setAllowNotifications] = React.useState(true);
   
@@ -70,6 +68,7 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, markN
   });
   const [showFilters, setShowFilters] = React.useState(false);
   const [fontSize, setFontSize] = React.useState('medium'); // 'small', 'medium', 'large'
+  const [showCalendar, setShowCalendar] = React.useState(false);
   
   // State for real notifications
   const [allNotifications, setAllNotifications] = React.useState([]);
@@ -80,9 +79,9 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, markN
 
   // Listen for notifications from Firebase
   React.useEffect(() => {
-    if (userData && (userData.phone || userData.Phone || userData.phoneNumber)) {
-      const userPhone = userData.phone || userData.Phone || userData.phoneNumber;
-      setLoading(true);
+  if (userData && (userData.phone || userData.Phone || userData.phoneNumber)) {
+    const userPhone = userData.phone || userData.Phone || userData.phoneNumber;
+    setLoading(true);
       
       const unsubscribe = FirebaseService.listenToNotifications(userPhone, ({ notifications, error }) => {
         if (error) {
@@ -92,68 +91,82 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, markN
         }
         
         const transformedNotifications = notifications.map(n => {
-          const isUrgent = n.priority === 'high';
-          const timestamp = n.createdAt?.toDate ? n.createdAt.toDate().getTime() : Date.now();
-          
+        const isUrgent = n.priority === 'high';
+        const timestamp = n.createdAt?.toDate ? n.createdAt.toDate().getTime() : Date.now();
+        
           return {
-              id: n.id,
-              type: n.type,
-              category: n.data?.category || 'general',
-              name: n.data?.senderName || n.title,
-              message: n.message,
-              time: formatTimeAgo(timestamp),
-              timestamp: timestamp,
-              status: n.read ? 'read' : 'new',
-              isUrgent: isUrgent,
-              location: n.data?.location || null,
-              phone: n.data?.senderPhone || null,
-              senderId: n.data?.senderId || null,
-              profilePicture: n.data?.profilePicture || null,
-          };
-        });
+            id: n.id,
+            type: n.type,
+            category: n.data?.category || 'general',
+            name: n.data?.senderName || n.title,
+            message: n.message,
+            time: formatTimeAgo(timestamp),
+            timestamp: timestamp,
+            status: n.read ? 'read' : 'new',
+            isUrgent: isUrgent,
+            location: n.data?.location || null,
+            phone: n.data?.senderPhone || null,
+            senderId: n.data?.senderId || null,
+            // FIXED: Ensure profile picture is properly extracted
+            profilePicture: n.data?.profilePicture || null,
+        };
+      });
 
         const friends = [];
         const feed = [];
         const system = [];
 
         transformedNotifications.forEach(n => {
-          if (tabCategories.feed.includes(n.type)) {
-            feed.push(n);
-          } else if (tabCategories.system.includes(n.type)) {
-            system.push(n);
-          } else { // Default to friends
-            friends.push(n);
-          }
-        });
+        if (tabCategories.feed.includes(n.type)) {
+          feed.push(n);
+        } else if (tabCategories.system.includes(n.type)) {
+          system.push(n);
+        } else { // Default to friends
+          friends.push(n);
+        }
+      });
         
         setAllNotifications(transformedNotifications);
         setCloseFriendsNotifications(friends);
         setFeedNotifications(feed);
         setSystemNotifications(system);
         setLoading(false);
-      });
+    });
 
       return () => {
-        if (unsubscribe) {
-          unsubscribe();
-        }
+      if (unsubscribe) {
+        unsubscribe();
+      }
       };
     } else {
       setLoading(false);
     }
   }, [userData]);
   
-  const systemContent = [
-    { id: 1, title: 'Learn about the App', subtitle: 'Get started with safety features', type: 'info' },
-    { id: 2, title: 'Beta Test', subtitle: 'Help us improve the app', type: 'beta' },
-    { id: 3, title: 'Subscription', subtitle: 'Upgrade for premium features', type: 'subscription' },
-    { id: 4, title: 'Updates', subtitle: 'Latest app improvements', type: 'updates' },
-    { id: 5, title: 'Reports', subtitle: 'View your safety reports', type: 'reports' }
-  ];
+  const isSameDay = (d1, d2) => {
+    if (!d1 || !d2) return false;
+    return d1.getFullYear() === d2.getFullYear() &&
+           d1.getMonth() === d2.getMonth() &&
+           d1.getDate() === d2.getDate();
+  };
 
   // Enhanced filtering and sorting functions
   const filterNotifications = (notifs) => {
     let filtered = notifs;
+    
+    // Date filter
+    if (selectedDate) {
+      const startOfDay = new Date(selectedDate);
+      startOfDay.setHours(0, 0, 0, 0);
+
+      const endOfDay = new Date(selectedDate);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      filtered = filtered.filter(n => {
+        const notificationDate = new Date(n.timestamp);
+        return notificationDate >= startOfDay && notificationDate <= endOfDay;
+      });
+    }
     
     // Search filter
     if (searchQuery) {
@@ -229,6 +242,32 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, markN
     }
   };
 
+  // Clear all notifications
+  const handleClearAll = () => {
+    Alert.alert(
+      'Clear All Notifications',
+      'Are you sure you want to permanently delete all notifications? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear All',
+          style: 'destructive',
+          onPress: async () => {
+            if (clearAllNotifications) {
+              const result = await clearAllNotifications();
+              if (result.success) {
+                Vibration.vibrate(100);
+                Alert.alert('Success', `${result.deletedCount || 0} notifications have been cleared.`);
+              } else {
+                Alert.alert('Error', result.error || 'Could not clear notifications.');
+              }
+            }
+          },
+        },
+      ]
+    );
+  };
+
   // Delete notification
   const deleteNotification = (notificationId) => {
     Alert.alert(
@@ -259,7 +298,12 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, markN
         }
         break;
       case 'respond':
-        Alert.alert('Quick Response', 'Response sent!');
+        if (onOpenChat) {
+          onOpenChat(notification);
+          setIsNotification(false); // Close the notifications popup
+        } else {
+          Alert.alert('Quick Response', 'Response sent!');
+        }
         break;
       case 'location':
         if (notification.location && onViewLocation) {
@@ -310,15 +354,26 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, markN
   };
 
   const getCalendarDays = () => {
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const dates = [18, 19, 20, 21, 22, 23, 24];
-    
-    return days.map((day, index) => ({
-      day,
-      date: dates[index],
-      isToday: dates[index] === selectedDate,
-      isWeekend: day === 'Sat' || day === 'Sun'
-    }));
+    const days = [];
+    const today = new Date(selectedDate);
+    const dayOfWeek = today.getDay(); // Sunday - 0, Monday - 1
+
+    // Find the start of the week (Monday)
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+
+    for (let i = 0; i < 7; i++) {
+      const currentDate = new Date(startOfWeek);
+      currentDate.setDate(startOfWeek.getDate() + i);
+      
+      days.push({
+        day: currentDate.toLocaleDateString('en-GB', { weekday: 'short' }),
+        date: currentDate.getDate(),
+        fullDate: currentDate,
+        isWeekend: currentDate.getDay() === 0 || currentDate.getDay() === 6,
+      });
+    }
+    return days;
   };
 
   const getCalendarMonth = () => {
@@ -327,8 +382,11 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, markN
       'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
     ];
     
-    const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
-    const firstDayOfMonth = new Date(calendarYear, calendarMonth, 1).getDay();
+    const currentMonth = selectedDate.getMonth();
+    const currentYear = selectedDate.getFullYear();
+
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay();
     
     const days = [];
     for (let i = 0; i < firstDayOfMonth; i++) {
@@ -338,33 +396,35 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, markN
       days.push(day);
     }
     
-    return { month: months[calendarMonth], year: calendarYear, days, monthIndex: calendarMonth };
+    return { month: months[currentMonth], year: currentYear, days, monthIndex: currentMonth };
   };
 
   const navigateMonth = (direction) => {
-    if (direction === 'prev') {
-      setCalendarMonth(calendarMonth === 0 ? 11 : calendarMonth - 1);
-    } else {
-      setCalendarMonth(calendarMonth === 11 ? 0 : calendarMonth + 1);
-    }
+    setSelectedDate(currentDate => {
+      const newDate = new Date(currentDate);
+      newDate.setDate(1); // Avoid issues with different month lengths
+      newDate.setMonth(newDate.getMonth() + (direction === 'prev' ? -1 : 1));
+      return newDate;
+    });
   };
 
   const navigateYear = (direction) => {
-    setCalendarYear(direction === 'prev' ? calendarYear - 1 : calendarYear + 1);
+    setSelectedDate(currentDate => {
+      const newDate = new Date(currentDate);
+      newDate.setFullYear(newDate.getFullYear() + (direction === 'prev' ? -1 : 1));
+      return newDate;
+    });
   };
 
   const isToday = (day) => {
     const today = new Date();
     return day === today.getDate() && 
-           calendarMonth === today.getMonth() && 
-           calendarYear === today.getFullYear();
+           selectedDate.getMonth() === today.getMonth() && 
+           selectedDate.getFullYear() === today.getFullYear();
   };
 
   const isSelectedDate = (day) => {
-    const today = new Date();
-    return day === selectedDate && 
-           calendarMonth === today.getMonth() && 
-           calendarYear === today.getFullYear();
+    return day === selectedDate.getDate();
   };
 
   const getNotificationIcon = (type) => {
@@ -395,6 +455,24 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, markN
   const getIconBackgroundColor = (notification) => {
     if (notification.isUrgent) return '#FFE5E5';
     return '#2A2A2A';
+  };
+
+  const getHeaderTitle = () => {
+    if (isSelectionMode) {
+      return `${selectedNotifications.length} selected`;
+    }
+    const today = new Date();
+    if (isSameDay(selectedDate, today)) {
+      return 'Today';
+    }
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+    if (isSameDay(selectedDate, yesterday)) {
+      return 'Yesterday';
+    }
+    return selectedDate.toLocaleDateString('en-GB', {
+      day: 'numeric', month: 'long'
+    });
   };
 
   const counts = getNotificationCounts();
@@ -503,7 +581,8 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, markN
   };
 
   return (
-    <Modal
+    <>
+      <Modal
       animationType="slide"
       transparent={true}
       visible={true}
@@ -522,7 +601,7 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, markN
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.headerTitle}>
-              {isSelectionMode ? `${selectedNotifications.length} selected` : 'Today'}
+              {getHeaderTitle()}
             </Text>
             <View style={styles.headerRight}>
               {isSelectionMode ? (
@@ -578,6 +657,11 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, markN
               <TouchableOpacity style={styles.menuItem} onPress={handleMarkAllAsRead}>
                 <Icon name="check-all" size={20} color="#FFFFFF" />
                 <Text style={styles.menuItemText}>Mark all as read</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={styles.menuItem} onPress={handleClearAll}>
+                <Icon name="delete-sweep" size={20} color="#FF4444" />
+                <Text style={[styles.menuItemText, { color: '#FF4444' }]}>Clear all</Text>
               </TouchableOpacity>
               
               <TouchableOpacity style={styles.menuItem} onPress={() => setShowFilters(!showFilters)}>
@@ -745,8 +829,12 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, markN
           {/* Calendar */}
           <View style={styles.calendarContainer}>
             <View style={styles.calendar}>
-              {getCalendarDays().map((item, index) => (
-                <View key={index} style={styles.calendarDay}>
+              {getCalendarDays().map((item) => (
+                <TouchableOpacity 
+                  key={item.date} 
+                  style={styles.calendarDay}
+                  onPress={() => setSelectedDate(item.fullDate)}
+                >
                   <Text style={[
                     styles.dayText, 
                     { color: item.isWeekend ? '#FF6B35' : '#888888' }
@@ -755,16 +843,16 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, markN
                   </Text>
                   <View style={[
                     styles.dateContainer,
-                    item.isToday && styles.todayContainer
+                    isSameDay(item.fullDate, selectedDate) && styles.todayContainer
                   ]}>
                     <Text style={[
                       styles.dateText,
-                      { color: item.isToday ? '#FFFFFF' : '#FFFFFF' }
+                      { color: isSameDay(item.fullDate, selectedDate) ? '#FFFFFF' : '#FFFFFF' }
                     ]}>
                       {item.date}
                     </Text>
                   </View>
-                </View>
+                </TouchableOpacity>
               ))}
             </View>
             
@@ -902,19 +990,13 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, markN
                 </>
               ) : (
               <>
-                {/* System Content */}
-                <View style={styles.systemContentContainer}>
-                  {systemContent.map((item) => (
-                    <TouchableOpacity key={item.id} style={styles.systemContentItem}>
-                      <View style={styles.systemItemContent}>
-                        <Text style={styles.systemContentTitle}>{item.title}</Text>
-                        {item.subtitle && (
-                          <Text style={styles.systemContentSubtitle}>{item.subtitle}</Text>
-                        )}
-                      </View>
-                      <Icon name="chevron-right" size={20} color="#888888" />
-                    </TouchableOpacity>
-                  ))}
+                {/* Empty State for System Tab */}
+                <View style={styles.emptyState}>
+                  <Icon name="cog-outline" size={48} color="#888888" />
+                  <Text style={styles.emptyStateTitle}>System Notifications</Text>
+                  <Text style={styles.emptyStateText}>
+                    Updates, alerts, and other system messages will appear here.
+                  </Text>
                 </View>
               </>
             )}
@@ -923,81 +1005,90 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, markN
             <View style={styles.bottomSpacing} />
           </ScrollView>
 
-          {/* Enhanced Calendar Popup */}
-          {showCalendar && (
-            <View style={styles.calendarOverlay}>
-              <View style={styles.calendarPopup}>
-                <View style={styles.calendarHeader}>
-                  <Text style={styles.calendarTitle}>Select Date</Text>
-                  <TouchableOpacity onPress={() => setShowCalendar(false)}>
-                    <Icon name="close" size={20} color="#FFFFFF" />
-                  </TouchableOpacity>
-                </View>
-                
-                <View style={styles.yearNavigation}>
-                  <TouchableOpacity onPress={() => navigateYear('prev')} style={styles.navButton}>
-                    <Icon name="chevron-left" size={20} color="#FFFFFF" />
-                  </TouchableOpacity>
-                  <Text style={styles.yearText}>{calendarYear}</Text>
-                  <TouchableOpacity onPress={() => navigateYear('next')} style={styles.navButton}>
-                    <Icon name="chevron-right" size={20} color="#FFFFFF" />
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.monthNavigation}>
-                  <TouchableOpacity onPress={() => navigateMonth('prev')} style={styles.navButton}>
-                    <Icon name="chevron-left" size={18} color="#FF6B35" />
-                  </TouchableOpacity>
-                  <Text style={styles.monthText}>{getCalendarMonth().month}</Text>
-                  <TouchableOpacity onPress={() => navigateMonth('next')} style={styles.navButton}>
-                    <Icon name="chevron-right" size={18} color="#FF6B35" />
-                  </TouchableOpacity>
-                </View>
-                
-                <View style={styles.calendarGrid}>
-                  <View style={styles.weekDaysRow}>
-                    {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day, index) => (
-                      <Text key={index} style={styles.weekDayText}>{day}</Text>
-                    ))}
-                  </View>
-                  
-                  <View style={styles.datesGrid}>
-                    {getCalendarMonth().days.map((day, index) => (
-                      <TouchableOpacity
-                        key={index}
-                        style={[
-                          styles.dateCell,
-                          isSelectedDate(day) && styles.selectedDateCell,
-                          isToday(day) && styles.todayDateCell
-                        ]}
-                        onPress={() => {
-                          if (day) {
-                            setSelectedDate(day);
-                            setShowCalendar(false);
-                            Vibration.vibrate(30);
-                          }
-                        }}
-                        disabled={!day}
-                      >
-                        {day && (
-                          <Text style={[
-                            styles.dateCellText,
-                            isSelectedDate(day) && styles.selectedDateText,
-                            isToday(day) && styles.todayDateText
-                          ]}>
-                            {day}
-                          </Text>
-                        )}
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-              </View>
-            </View>
-          )}
         </View>
       </View>
     </Modal>
+
+      {/* Enhanced Calendar Popup as a separate Modal for cross-platform consistency */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={showCalendar}
+        onRequestClose={() => setShowCalendar(false)}
+      >
+        <TouchableOpacity style={styles.calendarOverlay} activeOpacity={1} onPress={() => setShowCalendar(false)}>
+          <TouchableWithoutFeedback>
+            <View style={styles.calendarPopup}>
+              <View style={styles.calendarHeader}>
+                <Text style={styles.calendarTitle}>Select Date</Text>
+                <TouchableOpacity onPress={() => setShowCalendar(false)}>
+                  <Icon name="close" size={20} color="#FFFFFF" />
+                </TouchableOpacity>
+              </View>
+              
+              <View style={styles.yearNavigation}>
+                <TouchableOpacity onPress={() => navigateYear('prev')} style={styles.navButton}>
+                  <Icon name="chevron-left" size={20} color="#FFFFFF" />
+                </TouchableOpacity>
+                <Text style={styles.yearText}>{getCalendarMonth().year}</Text>
+                <TouchableOpacity onPress={() => navigateYear('next')} style={styles.navButton}>
+                  <Icon name="chevron-right" size={20} color="#FFFFFF" />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.monthNavigation}>
+                <TouchableOpacity onPress={() => navigateMonth('prev')} style={styles.navButton}>
+                  <Icon name="chevron-left" size={18} color="#FF6B35" />
+                </TouchableOpacity>
+                <Text style={styles.monthText}>{selectedDate.toLocaleString('default', { month: 'long' })}</Text>
+                <TouchableOpacity onPress={() => navigateMonth('next')} style={styles.navButton}>
+                  <Icon name="chevron-right" size={18} color="#FF6B35" />
+                </TouchableOpacity>
+              </View>
+              
+              <View style={styles.calendarGrid}>
+                <View style={styles.weekDaysRow}>
+                  {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day, index) => (
+                    <Text key={index} style={styles.weekDayText}>{day}</Text>
+                  ))}
+                </View>
+                
+                <View style={styles.datesGrid}>
+                  {getCalendarMonth().days.map((day, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={[
+                        styles.dateCell,
+                        isSelectedDate(day) && styles.selectedDateCell, // Highlight selected day
+                        isToday(day) && !isSelectedDate(day) && styles.todayDateCell // Highlight today if not selected
+                      ]}
+                      onPress={() => {
+                        if (day) {
+                          setSelectedDate(new Date(getCalendarMonth().year, getCalendarMonth().monthIndex, day));
+                          setShowCalendar(false);
+                          Vibration.vibrate(30);
+                        }
+                      }}
+                      disabled={!day}
+                    >
+                      {day && (
+                        <Text style={[
+                          styles.dateCellText,
+                          isSelectedDate(day) && styles.selectedDateText, // Style for selected day
+                          isToday(day) && !isSelectedDate(day) && styles.todayDateText // Style for today
+                        ]}>
+                          {day}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            </View>
+          </TouchableWithoutFeedback>
+        </TouchableOpacity>
+      </Modal>
+    </>
   );
 };
 
@@ -1486,11 +1577,7 @@ const styles = StyleSheet.create({
   
   // Calendar Popup
   calendarOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'center',
     alignItems: 'center',

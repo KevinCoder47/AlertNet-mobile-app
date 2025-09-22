@@ -3,9 +3,9 @@ import * as SMS from 'expo-sms';
 import { Linking, Alert } from 'react-native';
 import { SOSFirebaseService } from '../../backend/Firebase/SOSFirebaseService';
 import { auth } from '../../backend/Firebase/FirebaseConfig';
-import { getEmergencyContacts, addEmergencyContact, updateEmergencyContact, deleteEmergencyContact } from '../../services/firestore';
+import { getEmergencyContacts, addEmergencyContact, updateEmergencyContact, deleteEmergencyContact, getUserDocument } from '../../services/firestore';
 
-export class SOSService {
+class SOSServiceClass {
   static async getEmergencyContacts() {
     try {
       const currentUser = auth.currentUser;
@@ -117,7 +117,7 @@ export class SOSService {
   }
 
   static async callPolice() {
-    const POLICE_NUMBER = '0638184478';
+    const POLICE_NUMBER = '10111';
     try {
         const phoneUrl = `tel:${POLICE_NUMBER}`;
         const canOpen = await Linking.canOpenURL(phoneUrl);
@@ -346,3 +346,6 @@ export class SOSService {
     SOSFirebaseService.removeNotificationListeners(listeners);
   }
 }
+
+// Export a singleton instance of the class
+export const SOSService = SOSServiceClass;
