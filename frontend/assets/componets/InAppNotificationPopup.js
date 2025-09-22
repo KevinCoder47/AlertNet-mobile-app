@@ -4,8 +4,21 @@ import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
 
-const InAppNotificationPopup = ({ notification, onDismiss, onNavigate, onViewLocation }) => {
+const InAppNotificationPopup = ({ notification, onDismiss, onNavigate, onViewLocation, onOpenChat }) => {
   const slideAnim = useRef(new Animated.Value(-150)).current;
+
+  // DEBUG: Log the notification data when component mounts
+  useEffect(() => {
+    console.log('InAppNotificationPopup received notification:', {
+      id: notification?.id,
+      type: notification?.type,
+      title: notification?.title,
+      message: notification?.message,
+      senderName: notification?.data?.senderName || notification?.senderName,
+      profilePicture: notification?.data?.profilePicture || notification?.profilePicture,
+      data: notification?.data
+    });
+  }, [notification]);
 
   useEffect(() => {
     // Animate in
@@ -43,6 +56,15 @@ const InAppNotificationPopup = ({ notification, onDismiss, onNavigate, onViewLoc
     }, 300);
   };
 
+  const handleOpenChatPress = (e) => {
+    e.stopPropagation(); // Prevent the main press from firing
+    if (onOpenChat && notification) {
+      // The `onOpenChat` function in Home.js will handle the navigation
+      onOpenChat(notification);
+    }
+    handleDismiss();
+  };
+
   const handleViewLocationPress = (e) => {
     e.stopPropagation(); // Prevent the main press from firing
     if (onViewLocation && notification.data?.location) {
@@ -69,6 +91,8 @@ const InAppNotificationPopup = ({ notification, onDismiss, onNavigate, onViewLoc
         return { name: 'account-plus', color: '#3498db' };
       case 'friend_accepted':
         return { name: 'account-check', color: '#2ecc71' };
+      case 'chat_message':
+        return { name: 'chat-processing-outline', color: '#FF6B35' };
       default:
         return { name: 'bell', color: '#FF6B35' };
     }
@@ -77,15 +101,36 @@ const InAppNotificationPopup = ({ notification, onDismiss, onNavigate, onViewLoc
   if (!notification) return null;
 
   const iconInfo = getIconInfo(notification.type);
-  const profilePicture = notification.data?.profilePicture;
-  const message = `${notification.data?.senderName || ''} ${notification.message}`.trim();
-  const hasLocation = notification.type === 'sos' && notification.data?.location;
+  
+  // ENHANCED: Try multiple sources for profile picture
+  const profilePicture = notification.profilePicture || 
+                         notification.data?.profilePicture || 
+                         null;
+  
+  console.log('Profile picture for popup:', profilePicture);
+  
+  const senderName = notification.senderName || 
+                     notification.data?.senderName || 
+                     '';
+                     
+  const hasLocation = notification.type === 'sos' && (notification.data?.location || notification.location);
+  const isChatMessage = notification.type === 'chat_message';
+  const message = isChatMessage ? notification.message : `${senderName} ${notification.message}`.trim();
 
   return (
     <Animated.View style={[styles.container, { transform: [{ translateY: slideAnim }] }]}>
       <TouchableOpacity style={styles.touchable} onPress={handleMainPress} activeOpacity={0.8}>
         {profilePicture ? (
-          <Image source={{ uri: profilePicture }} style={styles.profilePicture} />
+          <Image 
+            source={{ uri: profilePicture }} 
+            style={styles.profilePicture}
+            onError={(error) => {
+              console.log('Profile picture failed to load:', error.nativeEvent.error);
+            }}
+            onLoad={() => {
+              console.log('Profile picture loaded successfully');
+            }}
+          />
         ) : (
           <View style={styles.iconContainer}>
             <Icon name={iconInfo.name} size={24} color={iconInfo.color} />
@@ -93,11 +138,17 @@ const InAppNotificationPopup = ({ notification, onDismiss, onNavigate, onViewLoc
         )}
         <View style={styles.textContainer}>
           <Text style={styles.title} numberOfLines={1}>{notification.title}</Text>
-          <Text style={styles.message} numberOfLines={hasLocation ? 1 : 2}>{message}</Text>
+          <Text style={styles.message} numberOfLines={hasLocation || isChatMessage ? 1 : 2}>{message}</Text>
           {hasLocation && (
             <TouchableOpacity style={styles.locationButton} onPress={handleViewLocationPress}>
               <Icon name="map-marker-outline" size={14} color="#3498db" />
               <Text style={styles.locationButtonText}>View Location</Text>
+            </TouchableOpacity>
+          )}
+          {isChatMessage && (
+            <TouchableOpacity style={styles.chatButton} onPress={handleOpenChatPress}>
+              <Icon name="message-reply-text-outline" size={14} color="#FF6B35" />
+              <Text style={styles.chatButtonText}>Open Chat</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -135,6 +186,19 @@ const styles = StyleSheet.create({
         alignSelf: 'flex-start',
     },
     locationButtonText: { color: '#3498db', fontSize: 12, fontWeight: '600', marginLeft: 4 },
+    chatButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 8,
+        backgroundColor: 'rgba(255, 107, 53, 0.15)',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+        alignSelf: 'flex-start',
+    },
+    chatButtonText: {
+        color: '#FF6B35', fontSize: 12, fontWeight: '600', marginLeft: 4
+    },
 });
 
 export default InAppNotificationPopup;

@@ -1,4 +1,4 @@
-import { StyleSheet, View, Dimensions, Image,AppState } from 'react-native';
+import { StyleSheet, View, Dimensions, Image } from 'react-native';
 import React, { useState, useEffect,useRef } from 'react';
 import Map from '../componets/Map';
 import TopBar from '../componets/TopBar';
@@ -8,8 +8,9 @@ import { MapProvider } from '../contexts/MapContext';
 import MyProfile from '../screens/MyProfile';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import { Alert, Linking, AppState } from 'react-native';
+import { serverTimestamp } from 'firebase/firestore';
 import * as FileSystem from 'expo-file-system';
-import { Alert, Linking } from 'react-native';
 import { getUserDocument } from '../../services/firestore';
 import * as Location from 'expo-location';
 import { useNotifications } from '../contexts/NotificationContext';
@@ -17,6 +18,7 @@ import { updateCurrentLocation } from '../../services/firestore';
 import * as TaskManager from 'expo-task-manager';
 import { SOSService } from '../services/SOSService';
 import WalkPartner from './WalkPartner';
+import { FirebaseService } from '../../backend/Firebase/FirebaseService';
 import QRCodeScanner from './QRCodeScanner';
 import SOSPage from './SOS';
 import QrCode from './QrCode';
@@ -36,6 +38,7 @@ import DownloadedMaps from './SafetyResource_Screens/downloadedMaps';
 import NotificationsPopup from './NotificationsPopup';
 import SafetyZones from './SafetyResource_Screens/safetyZones';
 import LocationViewer from './LocationViewer';
+import ChatScreen from './ChatScreen';
 
 const { width, height } = Dimensions.get('window');
 
@@ -87,12 +90,14 @@ const Home = ({handleLogout}) => {
   const [isPeopleActive, setIsPeopleActive] = useState(false);
   const [isTopBarManuallyExpanded, setIsTopBarManuallyExpanded] = useState(false);
   const [userData, setUserData] = useState();
-  const { activePopup, dismissPopup, unreadCount, markNotificationAsRead, markAllNotificationsAsRead } = useNotifications();
+  const { activePopup, dismissPopup, unreadCount, markNotificationAsRead, markAllNotificationsAsRead, clearAllNotifications } = useNotifications();
   const [locationViewerData, setLocationViewerData] = useState(null);
   const [isScanning, setIsScanning] = useState(false);
   const [scannedUserId, setScannedUserId] = useState(null);
   const [scannedSosId, setScannedSosId] = useState(null);
 
+  const [isChatScreen, setIsChatScreen] = useState(false);
+  const [chatTarget, setChatTarget] = useState(null);
   
   // State for profile image
   const [userImage, setUserImage] = useState(null);
@@ -117,6 +122,35 @@ const Home = ({handleLogout}) => {
         senderPhone: notification.phone,
         senderId: notification.senderId,
       });
+    }
+  };
+
+  const handleOpenChat = (notification) => {
+    console.log('Opening chat with notification:', notification);
+    
+    if (notification && notification.senderId) {
+      // Get the profile picture from multiple possible sources
+      const profilePicture = notification.profilePicture || 
+                            notification.data?.profilePicture || 
+                            null;
+      
+      console.log('Profile picture for chat:', profilePicture);
+      
+      setChatTarget({
+        id: notification.senderId,
+        name: notification.name || notification.data?.senderName || 'Unknown User',
+        // Try different formats that ChatScreen might expect
+        avatar: profilePicture ? { uri: profilePicture } : null,
+        profilePicture: profilePicture, // Also provide direct access
+        imageUrl: profilePicture, // Additional fallback
+        phone: notification.phone || notification.data?.senderPhone,
+        // Pass through any other data that might be useful
+        ...notification.data
+      });
+      
+      setIsChatScreen(true);
+      // Close the main notification popup if it's open
+      setIsNotification(false);
     }
   };
 
@@ -314,57 +348,83 @@ useEffect(() => {
   };
 }, []);
 
+  // Handle app state changes for presence, notifications, and location updates
+  useEffect(() => {
+    const handleAppStateChange = async (nextAppState) => {
+      const userId = userData?.userId;
 
-// Add app state awareness to reduce updates when app is in background
-useEffect(() => {
-  const subscription = AppState.addEventListener('change', nextAppState => {
-    if (nextAppState === 'background' || nextAppState === 'inactive') {
-      // Clear interval when app goes to background
-      if (locationUpdateInterval) {
-        clearInterval(locationUpdateInterval);
-        setLocationUpdateInterval(null);
-      }
-    } else if (nextAppState === 'active') {
-      // Restart interval when app comes to foreground
-      const interval = setInterval(async () => {
-        if (!userData) return;
-        
-        try {
-          const location = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced
-          });
-          await updateCurrentLocation(userData.userId, location.coords);
-        } catch (error) {
-          console.error("Error updating user location:", error);
+      if (nextAppState === 'active') {
+        console.log('📱 App is active.');
+        // Set user status to online
+        if (userId) {
+          await FirebaseService.updateUserStatus(userId, { status: 'online' });
         }
-      }, 30000);
-      
-      setLocationUpdateInterval(interval);
+        // Restart location update interval
+        const interval = setInterval(async () => {
+          if (!userId) return;
+          try {
+            const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+            await updateCurrentLocation(userId, location.coords);
+          } catch (error) { console.error("Error updating user location:", error); }
+        }, 30000);
+        setLocationUpdateInterval(interval);
+
+      } else if (nextAppState === 'background' || nextAppState === 'inactive') {
+        console.log('📱 App is in background.');
+        // Clear location update interval
+        if (locationUpdateInterval) {
+          clearInterval(locationUpdateInterval);
+          setLocationUpdateInterval(null);
+        }
+        // Dismiss any active notification popups
+        if (activePopup) {
+          dismissPopup();
+        }
+        // Set user status to offline
+        if (userId) {
+          await FirebaseService.updateUserStatus(userId, { 
+            status: 'offline',
+            lastSeen: serverTimestamp() 
+          });
+        }
+      }
+    };
+
+    // Set initial status to online when component mounts
+    if (userData?.userId) {
+      FirebaseService.updateUserStatus(userData.userId, { status: 'online' });
     }
-  });
-  
-  return () => {
-    subscription.remove();
-  };
-}, [userData]);
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    
+    return () => {
+      // On unmount (logout), set status to offline
+      if (userData?.userId) {
+        FirebaseService.updateUserStatus(userData.userId, { 
+          status: 'offline',
+          lastSeen: serverTimestamp()
+        });
+      }
+      subscription.remove();
+    };
+  }, [userData, activePopup, dismissPopup, locationUpdateInterval]);
 
   // Function to cache image
   const cacheImage = async (imageUrl) => {
     try {
-      // Create a unique filename for the cached image
-      const filename = imageUrl.substring(imageUrl.lastIndexOf('/') + 1);
-      const cachePath = `${FileSystem.cacheDirectory}${filename}`;
+      // Create a unique, safe local path from the URL
+      const pathSegment = new URL(imageUrl).pathname.split('/o/')[1];
+      const decodedPath = decodeURIComponent(pathSegment.split('?')[0]);
+      const cachePath = `${FileSystem.cacheDirectory}${decodedPath}`;
       
-      // Check if image is already cached
       const cachedFileInfo = await FileSystem.getInfoAsync(cachePath);
-      
       if (cachedFileInfo.exists) {
-        console.log('Using cached image');
         return cachePath;
       }
       
-      // Download and cache the image
-      console.log('Downloading and caching image');
+      const directory = cachePath.substring(0, cachePath.lastIndexOf('/'));
+      await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
+
       const { uri } = await FileSystem.downloadAsync(imageUrl, cachePath);
       return uri;
     } catch (error) {
@@ -372,25 +432,6 @@ useEffect(() => {
       return imageUrl; // Fallback to original URL
     }
   };
-
-  // Handle app state changes for notifications
-  useEffect(() => {
-    const handleAppStateChange = (nextAppState) => {
-      if (nextAppState === 'active') {
-        // App became active - notifications will be handled by NotificationContext
-        console.log('📱 App became active - notification listener active');
-      } else if (nextAppState === 'background' || nextAppState === 'inactive') {
-        // App going to background - clear any active popups
-        if (activePopup) {
-          dismissPopup();
-        }
-        console.log('📱 App going to background - dismissed active popups');
-      }
-    };
-
-    const subscription = AppState.addEventListener('change', handleAppStateChange);
-    return () => subscription.remove();
-  }, [activePopup, dismissPopup]);
 
   // Load profile image and downloaded maps from AsyncStorage
   useEffect(() => {
@@ -783,6 +824,19 @@ useEffect(() => {
     );
   }
 
+  if (isChatScreen) {
+    return (
+      <ChatScreen
+        person={chatTarget}
+        userData={userData}
+        onClose={() => {
+          setIsChatScreen(false);
+          setChatTarget(null);
+        }}
+      />
+    );
+  }
+
   return (
   <MapProvider value={{ mapRef, userLocation, setUserLocation }}>
       <View style={styles.container}>
@@ -829,6 +883,7 @@ useEffect(() => {
             userData={userData}
             setIsNotification={setIsNotification}
             onViewLocation={handleViewLocation}
+            onOpenChat={handleOpenChat}
             markNotificationAsRead={async (notificationId) => {
               console.log('📖 Manual mark as read from popup:', notificationId);
               return await markNotificationAsRead(notificationId);
@@ -837,6 +892,10 @@ useEffect(() => {
               console.log('📖 Manual mark all as read from popup');
               return await markAllNotificationsAsRead();
             }}
+            clearAllNotifications={async () => {
+              console.log('🗑️ Clearing all notifications from popup');
+              return await clearAllNotifications();
+            }}
           />
         )}
 
@@ -844,18 +903,8 @@ useEffect(() => {
         {activePopup && !activePopup.read && (
           <InAppNotificationPopup
             notification={activePopup}
-            onDismiss={async () => {
-              if (activePopup && activePopup.id) {
-                console.log('🔕 Dismissing popup and marking as read:', activePopup.id);
-                // Mark as read in Firebase to prevent future popups
-                const success = await markNotificationAsRead(activePopup.id);
-                if (success) {
-                  console.log('✅ Notification marked as read successfully');
-                } else {
-                  console.error('❌ Failed to mark notification as read');
-                }
-              }
-              // Remove the popup from current view
+            onDismiss={() => {
+              console.log('🔕 Dismissing popup from view only.');
               dismissPopup();
             }}
             onNavigate={() => {
@@ -867,6 +916,7 @@ useEffect(() => {
               }
             }}
             onViewLocation={handleViewLocation}
+            onOpenChat={handleOpenChat}
           />
         )}
       </View>
