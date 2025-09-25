@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Video } from 'expo-av';
+import { useTheme } from '../../../contexts/ColorContext'; // Add this import
 import LikeAnimation from './LikeAnimation'
 import { formatLikes, formatDistance, calculateDistance } from '../../../../utilities/helpers'
 
@@ -22,6 +23,9 @@ const FeedCard = ({
   showLikeAnimation,
   onLikeAnimationEnd
 }) => {
+  const themeContext = useTheme();
+  const colors = themeContext.colors;
+
   let distanceText = 'Location unknown';
   let isNear = false;
 
@@ -37,10 +41,13 @@ const FeedCard = ({
     isNear = distance < 1;
   }
 
-  const textColor = isNear ? '#fff' : '#000';
-  const subTextColor = isNear ? '#f0f0f0' : '#666';
-  const iconColor = isNear ? '#fff' : '#333';
+  // Theme-aware colors with proximity override
+  const textColor = isNear ? '#fff' : colors.text;
+  const subTextColor = isNear ? '#f0f0f0' : colors.textSecondary;
+  const iconColor = isNear ? '#fff' : colors.iconPrimary;
   const likedIconColor = item.liked ? '#ff3040' : iconColor;
+  const cardBackgroundColor = isNear ? '#ff5621' : colors.card;
+  const shadowColor = colors.isDark ? '#000' : '#000';
 
   return (
     <Pressable
@@ -50,7 +57,8 @@ const FeedCard = ({
       style={({ pressed }) => [
         styles.card,
         { 
-          backgroundColor: isNear ? '#ff5621' : '#fff',
+          backgroundColor: cardBackgroundColor,
+          shadowColor: shadowColor,
           opacity: pressed ? 0.95 : 1,
         }
       ]}
@@ -59,8 +67,8 @@ const FeedCard = ({
         {item.avatar ? (
           <Image source={item.avatar} style={styles.avatar} />
         ) : (
-          <View style={[styles.avatar, styles.anonymousAvatar]}>
-            <Ionicons name="person" size={20} color="#999" />
+          <View style={[styles.avatar, { backgroundColor: colors.iconBackground }]}>
+            <Ionicons name="person" size={20} color={colors.iconSecondary} />
           </View>
         )}
         <View>
@@ -148,7 +156,6 @@ const styles = StyleSheet.create({
     margin: 10,
     borderRadius: 16,
     padding: 12,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -164,9 +171,6 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     marginRight: 10,
-  },
-  anonymousAvatar: {
-    backgroundColor: '#e0e0e0',
     justifyContent: 'center',
     alignItems: 'center',
   },

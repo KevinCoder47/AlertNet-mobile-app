@@ -1,9 +1,11 @@
 import { StyleSheet, View, TextInput, Image } from 'react-native';
 import React from 'react';
 import { useTheme } from '../contexts/ColorContext';
+import { useFontSize } from '../contexts/FontSizeContext' // Import font size context
 
 const TopBarSearch = () => {
   const { colors, isDark } = useTheme();
+  const { getScaledFontSize } = useFontSize();
 
   return (
     <View style={styles.searchContainer}>
@@ -13,7 +15,7 @@ const TopBarSearch = () => {
           style={styles.searchIcon} 
         />
         <TextInput
-          style={[styles.searchInput, {color: colors.text}]}
+          style={[styles.searchInput, {color: colors.text}, {fontSize: getScaledFontSize(16)}]}
           placeholder="Search something..."
           placeholderTextColor= {isDark ? "#BDBDBD" : "#757575"}
         />
@@ -51,7 +53,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     height: 46,
-    fontSize: 14,
+    //fontSize: 14,
     fontFamily: 'Helvetica Light',
     color: '#333',
     marginTop: 5

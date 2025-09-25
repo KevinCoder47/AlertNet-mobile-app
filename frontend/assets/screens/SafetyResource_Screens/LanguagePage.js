@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
+import { useFontSize } from '../../contexts/FontSizeContext'; // Import font size context
 
 // Language Context for app-wide language state
 const LanguageContext = createContext();
@@ -106,6 +107,7 @@ const languages = [
 
 const LanguagePage = ({setIsLanguagePage, setIsSafetyResources}) => {
   const { currentLanguage, setCurrentLanguage } = useLanguage();
+  const { getScaledFontSize } = useFontSize(); // Use font size hook
   
   // State to track the temporarily selected language (before saving)
   const [selectedLanguage, setSelectedLanguage] = useState(currentLanguage);
@@ -160,16 +162,18 @@ const LanguagePage = ({setIsLanguagePage, setIsSafetyResources}) => {
             setIsSafetyResources(true)
           }}
         >
-          <Text style={styles.backArrow}>←</Text>
+          <Text style={[styles.backArrow, { fontSize: getScaledFontSize(28) }]}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{t.language}</Text>
+        <Text style={[styles.headerTitle, { fontSize: getScaledFontSize(20) }]}>
+          {t.language}
+        </Text>
       </View>
 
       {/* --- Search Bar --- */}
       <View style={styles.searchContainer}>
-        <Text style={styles.searchIcon}>🔍</Text>
+        <Text style={[styles.searchIcon, { fontSize: getScaledFontSize(18) }]}>🔍</Text>
         <TextInput
-          style={styles.searchInput}
+          style={[styles.searchInput, { fontSize: getScaledFontSize(16) }]}
           placeholder={t.search}
           placeholderTextColor="#999"
           value={searchQuery}
@@ -188,14 +192,24 @@ const LanguagePage = ({setIsLanguagePage, setIsSafetyResources}) => {
               onPress={() => setSelectedLanguage(lang.name)}
               activeOpacity={0.7}
             >
-              <Text style={[styles.langCode, isSelected && styles.selectedLangCode]}>
+              <Text style={[
+                styles.langCode, 
+                isSelected && styles.selectedLangCode,
+                { fontSize: getScaledFontSize(16) }
+              ]}>
                 {lang.code}
               </Text>
               <View style={styles.langTextContainer}>
-                <Text style={[styles.langName, isSelected && styles.selectedLangName]}>
+                <Text style={[
+                  styles.langName, 
+                  isSelected && styles.selectedLangName,
+                  { fontSize: getScaledFontSize(16) }
+                ]}>
                   {lang.name}
                 </Text>
-                <Text style={styles.langNative}>{lang.native}</Text>
+                <Text style={[styles.langNative, { fontSize: getScaledFontSize(14) }]}>
+                  {lang.native}
+                </Text>
               </View>
               <View style={[styles.radioCircle, isSelected && styles.selectedRadioCircle]}>
                 {isSelected && <View style={styles.radioDot} />}
@@ -217,7 +231,8 @@ const LanguagePage = ({setIsLanguagePage, setIsSafetyResources}) => {
         >
           <Text style={[
             styles.saveButtonText,
-            selectedLanguage !== currentLanguage && styles.saveButtonTextActive
+            selectedLanguage !== currentLanguage && styles.saveButtonTextActive,
+            { fontSize: getScaledFontSize(16) }
           ]}>
             {t.save}
           </Text>
@@ -228,7 +243,7 @@ const LanguagePage = ({setIsLanguagePage, setIsSafetyResources}) => {
 };
 
 // --- Styles ---
-// Identical to original with small additions for active save button
+// Updated styles with font sizes removed and added inline
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -242,11 +257,9 @@ const styles = StyleSheet.create({
     paddingBottom: 15,
   },
   backArrow: {
-    fontSize: 28,
     color: '#333',
   },
   headerTitle: {
-    fontSize: 20,
     fontWeight: 'bold',
     color: '#000',
     textAlign: 'center',
@@ -265,13 +278,11 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   searchIcon: {
-    fontSize: 18,
     marginRight: 10,
   },
   searchInput: {
     flex: 1,
     height: 50,
-    fontSize: 16,
     color: '#333',
   },
   listContainer: {
@@ -292,7 +303,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
   langCode: {
-    fontSize: 16,
     fontWeight: 'bold',
     color: '#555',
     width: 40,
@@ -304,7 +314,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   langName: {
-    fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
   },
@@ -312,7 +321,6 @@ const styles = StyleSheet.create({
     color: '#e74c3c',
   },
   langNative: {
-    fontSize: 14,
     color: '#888',
   },
   radioCircle: {
@@ -357,7 +365,6 @@ const styles = StyleSheet.create({
   },
   saveButtonText: {
     color: '#e74c3c',
-    fontSize: 16,
     fontWeight: 'bold',
   },
   saveButtonTextActive: {

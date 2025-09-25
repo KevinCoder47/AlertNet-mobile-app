@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather'; // Using Feather for the arrow-left icon
 import Constants from 'expo-constants';
+import { useFontSize } from '../../contexts/FontSizeContext'; // Import font size context
 
 const tipsData = [
   {
@@ -51,6 +52,8 @@ const tipsData = [
 
 // 1. ACCEPT NAVIGATION PROPS
 const WalkingAloneTips = ({ setIsWalkingAloneTips, setIsSafetyResources }) => {
+  const { getScaledFontSize } = useFontSize(); // Use font size hook
+
   return (
     <View style={styles.safeArea}>
       {/* Header section is now outside the ScrollView for consistent positioning */}
@@ -66,8 +69,12 @@ const WalkingAloneTips = ({ setIsWalkingAloneTips, setIsSafetyResources }) => {
         </TouchableOpacity>
 
         <View style={styles.header}>
-          <Text style={styles.title}>Tips for Walking Alone</Text>
-          <Text style={styles.subtitle}>Stay Alert. Stay Safe.</Text>
+          <Text style={[styles.title, { fontSize: getScaledFontSize(26) }]}>
+            Tips for Walking Alone
+          </Text>
+          <Text style={[styles.subtitle, { fontSize: getScaledFontSize(18) }]}>
+            Stay Alert. Stay Safe.
+          </Text>
         </View>
       </View>
 
@@ -78,14 +85,16 @@ const WalkingAloneTips = ({ setIsWalkingAloneTips, setIsSafetyResources }) => {
       >
         {tipsData.map((section, index) => (
           <View key={index} style={styles.section}>
-            <Text style={styles.sectionTitle}>{section.title}</Text>
+            <Text style={[styles.sectionTitle, { fontSize: getScaledFontSize(16) }]}>
+              {section.title}
+            </Text>
             <View style={[styles.cardContainer, section.image && styles.cardContainerWithImage]}>
               {section.image && (
                 <Image source={section.image} style={styles.inlineImage} />
               )}
               <View style={styles.card}>
                 {section.points.map((point, pIndex) => (
-                  <Text key={pIndex} style={styles.pointText}>
+                  <Text key={pIndex} style={[styles.pointText, { fontSize: getScaledFontSize(15) }]}>
                     {point}
                   </Text>
                 ))}
@@ -128,12 +137,10 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   title: {
-    fontSize: 26,
     fontWeight: 'bold',
     color: '#000',
   },
   subtitle: {
-    fontSize: 18,
     color: '#333',
     marginTop: 4,
   },
@@ -141,7 +148,6 @@ const styles = StyleSheet.create({
     marginBottom: 25,
   },
   sectionTitle: {
-    fontSize: 16,
     fontWeight: 'bold',
     color: '#D35400', // A reddish-orange color
     marginBottom: 10,
@@ -160,7 +166,6 @@ const styles = StyleSheet.create({
     flex: 1, // Allows card to take remaining space if there's an image
   },
   pointText: {
-    fontSize: 15,
     color: '#333',
     lineHeight: 24,
     marginBottom: 8,

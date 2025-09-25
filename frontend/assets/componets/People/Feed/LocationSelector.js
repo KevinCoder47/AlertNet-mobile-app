@@ -3,6 +3,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
+import { useTheme } from '../../../contexts/ColorContext';
 
 const LocationSelector = ({ 
   location, 
@@ -11,6 +12,9 @@ const LocationSelector = ({
   loadingLocation, 
   setLoadingLocation 
 }) => {
+  const themeContext = useTheme();
+  const colors = themeContext.colors;
+
   const getCurrentLocation = async () => {
     try {
       setLoadingLocation(true);
@@ -57,28 +61,28 @@ const LocationSelector = ({
   return (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
-        <Ionicons name="location" size={20} color="#333" />
-        <Text style={styles.sectionTitle}>Set Location</Text>
+        <Ionicons name="location" size={20} color={colors.iconPrimary} />
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Set Location</Text>
       </View>
       <View style={styles.locationContainer}>
         <TouchableOpacity 
-          style={styles.currentLocationButton}
+          style={[styles.currentLocationButton, { backgroundColor: colors.inputBackground }]}
           onPress={getCurrentLocation}
           disabled={loadingLocation}
         >
-          <View style={styles.mapPreview}>
+          <View style={[styles.mapPreview, { backgroundColor: colors.iconBackground }]}>
             {loadingLocation ? (
-              <Ionicons name="refresh" size={20} color="#666" />
+              <Ionicons name="refresh" size={20} color={colors.iconSecondary} />
             ) : (
-              <Ionicons name="location" size={20} color="#666" />
+              <Ionicons name="location" size={20} color={colors.iconSecondary} />
             )}
           </View>
           <View style={styles.locationTextContainer}>
-            <Text style={styles.currentLocationText}>
+            <Text style={[styles.currentLocationText, { color: colors.text }]}>
               {loadingLocation ? 'Getting Location...' : coordinates ? 'Location Set' : 'Set Current Location'}
             </Text>
             {coordinates && (
-              <Text style={styles.locationPreview}>
+              <Text style={[styles.locationPreview, { color: colors.textSecondary }]}>
                 {location || 'Current Location'}
               </Text>
             )}
@@ -104,7 +108,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
     marginLeft: 8,
   },
   locationContainer: {
@@ -113,14 +116,12 @@ const styles = StyleSheet.create({
   currentLocationButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
     borderRadius: 8,
     padding: 12,
   },
   mapPreview: {
     width: 40,
     height: 40,
-    backgroundColor: '#e0e0e0',
     borderRadius: 6,
     justifyContent: 'center',
     alignItems: 'center',
@@ -132,11 +133,9 @@ const styles = StyleSheet.create({
   currentLocationText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#333',
   },
   locationPreview: {
     fontSize: 12,
-    color: '#666',
     marginTop: 2,
   },
 });
