@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, Dimensions, TouchableOpacity, ScrollView, Modal, TextInput, Alert, Linking, Animated, PanResponder, Platform, useColorScheme, StatusBar } from 'react-native'
+import { StyleSheet, Text, View, Dimensions, TouchableOpacity, ScrollView, Modal, TextInput, Alert, Linking, Animated, PanResponder, Platform, StatusBar } from 'react-native'
 import { useTheme } from '../contexts/ColorContext';
 import React, { useState, useEffect, useRef } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -17,7 +17,7 @@ const getStatusBarHeight = () => {
 };
 
 const Helpline = ({ onClose = () => console.log('Close button pressed - please implement onClose prop') }) => {
-  const { colors } = useTheme()
+  const { colors, isDark } = useTheme() // Use your theme context instead of useColorScheme
   const [showAddContact, setShowAddContact] = useState(false)
   const [customContacts, setCustomContacts] = useState([])
   const [favorites, setFavorites] = useState([])
@@ -25,9 +25,7 @@ const Helpline = ({ onClose = () => console.log('Close button pressed - please i
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
   const [isExpanded, setIsExpanded] = useState(false)
 
-  // Color scheme detection like PeopleBar
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  // Remove the useColorScheme hook - we're using useTheme instead
   
   // Responsive dimensions (matching PeopleBar exactly)
   const statusBarHeight = getStatusBarHeight();
@@ -46,7 +44,7 @@ const Helpline = ({ onClose = () => console.log('Close button pressed - please i
     maxHeight,
   }).current;
 
-  const styles = getStyles(isDark);
+  const styles = getStyles(isDark, colors); // Pass colors to styles
 
   useEffect(() => {
     AsyncStorage.getItem('customContacts').then(data => {
@@ -327,7 +325,7 @@ const Helpline = ({ onClose = () => console.log('Close button pressed - please i
                   style={styles.collapseButton}
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
-                  <Ionicons name="chevron-down" size={20} color={isDark ? '#ccc' : '#555'} />
+                  <Ionicons name="chevron-down" size={20} color={colors.textSecondary || colors.secondary} />
                 </TouchableOpacity>
               )}
             </View>
@@ -397,14 +395,14 @@ const Helpline = ({ onClose = () => console.log('Close button pressed - please i
             <TextInput 
               style={styles.input} 
               placeholder="Name" 
-              placeholderTextColor={isDark ? "#999" : "#666"} 
+              placeholderTextColor={colors.placeholder || colors.secondary} 
               value={newContact.name} 
               onChangeText={(text) => setNewContact({ ...newContact, name: text })} 
             />
             <TextInput 
               style={styles.input} 
               placeholder="Phone Number" 
-              placeholderTextColor={isDark ? "#999" : "#666"} 
+              placeholderTextColor={colors.placeholder || colors.secondary} 
               keyboardType="phone-pad" 
               value={newContact.number} 
               onChangeText={(text) => setNewContact({ ...newContact, number: text })} 
@@ -412,7 +410,7 @@ const Helpline = ({ onClose = () => console.log('Close button pressed - please i
             <TextInput 
               style={styles.input} 
               placeholder="Description (optional)" 
-              placeholderTextColor={isDark ? "#999" : "#666"} 
+              placeholderTextColor={colors.placeholder || colors.secondary} 
               value={newContact.description} 
               onChangeText={(text) => setNewContact({ ...newContact, description: text })} 
             />
@@ -437,8 +435,8 @@ const Helpline = ({ onClose = () => console.log('Close button pressed - please i
   )
 }
 
-// Updated styles to match PeopleBar format
-const getStyles = (isDark) => StyleSheet.create({
+// Updated styles to use theme colors consistently
+const getStyles = (isDark, colors) => StyleSheet.create({
   container: {
     position: 'absolute',
     bottom: 60,
@@ -478,12 +476,12 @@ const getStyles = (isDark) => StyleSheet.create({
   dragHandle: {
     width: 30,
     height: 4,
-    backgroundColor: isDark ? '#e0e0e0' : '#333',
+    backgroundColor: colors.textSecondary || colors.secondary,
     borderRadius: 2,
   },
   swipeHint: {
     fontSize: 10,
-    color: isDark ? '#aaa' : '#666',
+    color: colors.textSecondary || colors.secondary,
     marginTop: 4,
     textAlign: 'center',
   },
@@ -497,7 +495,7 @@ const getStyles = (isDark) => StyleSheet.create({
   headerText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: isDark ? 'white' : 'black',
+    color: colors.text,
   },
   headerRight: {
     flexDirection: 'row',
@@ -506,7 +504,7 @@ const getStyles = (isDark) => StyleSheet.create({
   },
   lastUpdatedText: {
     fontSize: 10,
-    color: isDark ? '#aaa' : '#666',
+    color: colors.textSecondary || colors.secondary,
   },
   collapseButton: {
     padding: 4,
@@ -517,7 +515,7 @@ const getStyles = (isDark) => StyleSheet.create({
   },
   subtitle: {
     fontSize: 12,
-    color: isDark ? '#ccc' : '#666',
+    color: colors.textSecondary || colors.secondary,
   },
   contentContainer: {
     flex: 1,
@@ -534,11 +532,11 @@ const getStyles = (isDark) => StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 5,
     borderBottomWidth: 0.5,
-    borderBottomColor: isDark ? '#444' : '#ccc',
+    borderBottomColor: colors.separator || (isDark ? '#444' : '#ccc'),
     borderLeftWidth: 4,
     borderRadius: 8,
     marginVertical: 2,
-    backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+    backgroundColor: colors.surface || (isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'),
   },
   leftSection: {
     marginRight: 12,
@@ -555,7 +553,7 @@ const getStyles = (isDark) => StyleSheet.create({
     position: 'absolute',
     top: -6,
     right: -6,
-    backgroundColor: isDark ? '#333' : '#fff',
+    backgroundColor: colors.card || colors.background,
     borderRadius: 10,
     width: 18,
     height: 18,
@@ -578,7 +576,7 @@ const getStyles = (isDark) => StyleSheet.create({
   cardTitle: {
     fontWeight: '600',
     fontSize: 15,
-    color: isDark ? 'white' : '#111',
+    color: colors.text,
     flex: 1,
   },
   favoriteStarInline: {
@@ -586,12 +584,12 @@ const getStyles = (isDark) => StyleSheet.create({
   },
   cardDesc: {
     fontSize: 12,
-    color: isDark ? '#b0b0b0' : '#444',
+    color: colors.textSecondary || colors.secondary,
     marginBottom: 2,
   },
   cardNumber: {
     fontSize: 12,
-    color: isDark ? '#a0a0a0' : '#555',
+    color: colors.textSecondary || colors.secondary,
     fontWeight: '500',
   },
   rightSection: {
@@ -617,27 +615,27 @@ const getStyles = (isDark) => StyleSheet.create({
   },
   modalContent: {
     width: '90%',
-    backgroundColor: isDark ? '#1A1A1A' : '#fff',
+    backgroundColor: colors.card || colors.background,
     borderRadius: 16,
     padding: 20,
     borderWidth: 1,
-    borderColor: isDark ? '#333' : '#ddd',
+    borderColor: colors.border,
   },
   modalTitle: {
-    color: isDark ? '#fff' : '#333',
+    color: colors.text,
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 16,
     textAlign: 'center',
   },
   input: {
-    backgroundColor: isDark ? '#2C2C2C' : '#f5f5f5',
+    backgroundColor: colors.inputBackground || (isDark ? '#2C2C2C' : '#f5f5f5'),
     borderRadius: 8,
     padding: 12,
     marginBottom: 12,
-    color: isDark ? '#fff' : '#333',
+    color: colors.text,
     borderWidth: 1,
-    borderColor: isDark ? '#444' : '#ddd',
+    borderColor: colors.inputBorder || colors.border,
   },
   modalButtons: {
     flexDirection: 'row',

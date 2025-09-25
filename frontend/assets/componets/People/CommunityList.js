@@ -6,7 +6,6 @@ import {
   Image,
   FlatList,
   TouchableOpacity,
-  useColorScheme,
   RefreshControl,
   ScrollView,
   TextInput,
@@ -15,6 +14,8 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../contexts/ColorContext';
+ // Add this import
 
 // Enhanced EMS Channels Data
 const emsChannelsData = [
@@ -106,8 +107,8 @@ const broadcastMessages = [
 ];
 
 export default function AlertNetEMSChannels() {
-  const isDark = useColorScheme() === 'dark';
-  const styles = getStyles(isDark);
+  const { colors, isDark } = useTheme(); // Use theme context instead of useColorScheme
+  const styles = getStyles(isDark, colors); // Pass colors to styles
   
   // State management
   const [currentScreen, setCurrentScreen] = useState('channels'); // 'channels', 'detail', 'chat'
@@ -232,7 +233,7 @@ export default function AlertNetEMSChannels() {
           <Text style={styles.statText}>{item.lastMessageTime}</Text>
         </View>
       </View>
-      <Ionicons name="chevron-forward" size={18} color={isDark ? '#ccc' : '#444'} />
+      <Ionicons name="chevron-forward" size={18} color={colors.textSecondary || colors.secondary} />
     </TouchableOpacity>
   );
 
@@ -244,7 +245,7 @@ export default function AlertNetEMSChannels() {
         <Text style={styles.messageTimestamp}>{item.timestamp}</Text>
         {item.hasImage && (
           <View style={styles.messageImage}>
-            <Ionicons name="image" size={24} color={isDark ? '#666' : '#999'} />
+            <Ionicons name="image" size={24} color={colors.textSecondary || colors.secondary} />
             <Text style={styles.imageText}>Accident Scene Photo</Text>
           </View>
         )}
@@ -270,7 +271,7 @@ export default function AlertNetEMSChannels() {
           ))}
         </View>
         <TouchableOpacity onPress={() => handleShare(item.id)}>
-          <Ionicons name="share-social" size={16} color={isDark ? '#666' : '#8696a0'} />
+          <Ionicons name="share-social" size={16} color={colors.textSecondary || colors.secondary} />
         </TouchableOpacity>
       </View>
     </View>
@@ -306,7 +307,7 @@ export default function AlertNetEMSChannels() {
     <View style={styles.container}>
       <View style={styles.channelHeader}>
         <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={24} color={isDark ? '#000' : '#000'} />
+          <Ionicons name="chevron-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <View style={styles.channelAvatar}>
           <Text style={styles.avatarEmoji}>{selectedChannel?.logo}</Text>
@@ -342,7 +343,7 @@ export default function AlertNetEMSChannels() {
             );
           }}
         >
-          <Ionicons name="ellipsis-vertical" size={20} color={isDark ? '#666' : '#666'} />
+          <Ionicons name="ellipsis-vertical" size={20} color={colors.textSecondary || colors.secondary} />
         </TouchableOpacity>
       </View>
 
@@ -363,7 +364,7 @@ export default function AlertNetEMSChannels() {
     <View style={styles.container}>
       <View style={styles.chatHeaderContainer}>
         <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={24} color={isDark ? '#000' : '#000'} />
+          <Ionicons name="chevron-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <View style={styles.chatHeaderInfo}>
           <Text style={styles.chatHeaderTitle}>{selectedChannel?.name}</Text>
@@ -423,14 +424,14 @@ export default function AlertNetEMSChannels() {
 
           <View style={styles.chatInputContainer}>
             <TouchableOpacity style={styles.attachBtn}>
-              <Ionicons name="add" size={24} color={isDark ? '#666' : '#999'} />
+              <Ionicons name="add" size={24} color={colors.textSecondary || colors.secondary} />
             </TouchableOpacity>
             <TextInput
               style={styles.chatInput}
               value={newMessage}
               onChangeText={setNewMessage}
               placeholder="Message..."
-              placeholderTextColor={isDark ? '#666' : '#999'}
+              placeholderTextColor={colors.placeholder || colors.secondary}
               multiline
             />
             <TouchableOpacity style={styles.sendBtn} onPress={handleSendMessage}>
@@ -445,10 +446,18 @@ export default function AlertNetEMSChannels() {
           <View style={styles.emergencyForm}>
             <Text style={styles.formTitle}>📝 {selectedChannel?.emergencyAction} Form</Text>
             <Text style={styles.formLabel}>Incident Type</Text>
-            <TextInput style={styles.formInput} placeholder="Select incident type..." />
+            <TextInput 
+              style={styles.formInput} 
+              placeholder="Select incident type..." 
+              placeholderTextColor={colors.placeholder || colors.secondary}
+            />
             
             <Text style={styles.formLabel}>Location</Text>
-            <TextInput style={styles.formInput} placeholder="Street address or landmark" />
+            <TextInput 
+              style={styles.formInput} 
+              placeholder="Street address or landmark" 
+              placeholderTextColor={colors.placeholder || colors.secondary}
+            />
             <TouchableOpacity 
               style={styles.locationBtn}
               onPress={() => handleEmergencyAction('location')}
@@ -460,6 +469,7 @@ export default function AlertNetEMSChannels() {
             <TextInput 
               style={[styles.formInput, styles.textArea]} 
               placeholder="Describe what happened..."
+              placeholderTextColor={colors.placeholder || colors.secondary}
               multiline
               numberOfLines={4}
             />
@@ -479,17 +489,34 @@ export default function AlertNetEMSChannels() {
           <View style={styles.emergencyForm}>
             <Text style={styles.formTitle}>📋 Open New Case</Text>
             <Text style={styles.formLabel}>Case Type</Text>
-            <TextInput style={styles.formInput} placeholder="Select case type..." />
+            <TextInput 
+              style={styles.formInput} 
+              placeholder="Select case type..." 
+              placeholderTextColor={colors.placeholder || colors.secondary}
+            />
             
             <Text style={styles.formLabel}>Your Details</Text>
-            <TextInput style={styles.formInput} placeholder="Full name" />
-            <TextInput style={styles.formInput} placeholder="ID number" />
-            <TextInput style={styles.formInput} placeholder="Contact number" />
+            <TextInput 
+              style={styles.formInput} 
+              placeholder="Full name" 
+              placeholderTextColor={colors.placeholder || colors.secondary}
+            />
+            <TextInput 
+              style={styles.formInput} 
+              placeholder="ID number" 
+              placeholderTextColor={colors.placeholder || colors.secondary}
+            />
+            <TextInput 
+              style={styles.formInput} 
+              placeholder="Contact number" 
+              placeholderTextColor={colors.placeholder || colors.secondary}
+            />
             
             <Text style={styles.formLabel}>Incident Details</Text>
             <TextInput 
               style={[styles.formInput, styles.textArea]} 
               placeholder="Provide detailed information..."
+              placeholderTextColor={colors.placeholder || colors.secondary}
               multiline
               numberOfLines={4}
             />
@@ -516,15 +543,15 @@ export default function AlertNetEMSChannels() {
   );
 }
 
-const getStyles = (isDark) =>
+const getStyles = (isDark, colors) =>
   StyleSheet.create({
     safeArea: {
       flex: 1,
-      backgroundColor: isDark ? '#1a1a1a' : '#f5f5f5',
+      backgroundColor: colors.surface || colors.background,
     },
     container: {
       flex: 1,
-      backgroundColor: isDark ? '#1a1a1a' : '#f5f5f5',
+      backgroundColor: colors.surface || colors.background,
     },
     header: {
       flexDirection: 'row',
@@ -566,8 +593,8 @@ const getStyles = (isDark) =>
       paddingHorizontal: 20,
       paddingVertical: 15,
       borderBottomWidth: 0.5,
-      borderColor: isDark ? '#333' : '#e8e8e8',
-      backgroundColor: isDark ? '#1a1a1a' : '#fff',
+      borderColor: colors.separator || colors.border,
+      backgroundColor: colors.card || colors.background,
     },
     channelAvatar: {
       width: 50,
@@ -587,12 +614,12 @@ const getStyles = (isDark) =>
     channelName: {
       fontSize: 16,
       fontWeight: '600',
-      color: isDark ? '#fff' : '#000',
+      color: colors.text,
       marginBottom: 3,
     },
     channelDescription: {
       fontSize: 13,
-      color: isDark ? '#aaa' : '#667781',
+      color: colors.textSecondary || colors.secondary,
       marginBottom: 3,
     },
     channelStats: {
@@ -601,16 +628,16 @@ const getStyles = (isDark) =>
     },
     statText: {
       fontSize: 12,
-      color: isDark ? '#666' : '#8696a0',
+      color: colors.textSecondary || colors.secondary,
     },
     channelHeader: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: isDark ? '#1a1a1a' : '#fff',
+      backgroundColor: colors.card || colors.background,
       paddingHorizontal: 20,
       paddingVertical: 15,
       borderBottomWidth: 0.5,
-      borderColor: isDark ? '#333' : '#e8e8e8',
+      borderColor: colors.separator || colors.border,
     },
     channelHeaderInfo: {
       flex: 1,
@@ -626,34 +653,34 @@ const getStyles = (isDark) =>
     chatHeaderContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: isDark ? '#1a1a1a' : '#fff',
+      backgroundColor: colors.card || colors.background,
       paddingHorizontal: 15,
       paddingVertical: 15,
       borderBottomWidth: 0.5,
-      borderColor: isDark ? '#333' : '#e8e8e8',
+      borderColor: colors.separator || colors.border,
       gap: 15,
     },
     chatHeaderInfo: {
       flex: 1,
     },
     chatHeaderTitle: {
-      color: isDark ? '#fff' : '#000',
+      color: colors.text,
       fontSize: 18,
       fontWeight: '600',
     },
     chatHeaderSubtitle: {
-      color: isDark ? '#666' : '#8696a0',
+      color: colors.textSecondary || colors.secondary,
       fontSize: 13,
       marginTop: 2,
     },
     channelHeaderName: {
       fontSize: 16,
       fontWeight: '600',
-      color: isDark ? '#fff' : '#000',
+      color: colors.text,
     },
     followerCount: {
       fontSize: 12,
-      color: isDark ? '#666' : '#8696a0',
+      color: colors.textSecondary || colors.secondary,
     },
     followBtn: {
       backgroundColor: '#25d366',
@@ -662,7 +689,7 @@ const getStyles = (isDark) =>
       borderRadius: 20,
     },
     followingBtn: {
-      backgroundColor: isDark ? '#333' : '#e8e8e8',
+      backgroundColor: colors.inputBackground || (isDark ? '#333' : '#e8e8e8'),
     },
     followBtnText: {
       color: '#fff',
@@ -673,7 +700,7 @@ const getStyles = (isDark) =>
       paddingVertical: 10,
     },
     messageCard: {
-      backgroundColor: isDark ? '#1f1f1f' : '#fff',
+      backgroundColor: colors.card || colors.background,
       marginHorizontal: 10,
       marginBottom: 8,
       borderRadius: 12,
@@ -689,18 +716,18 @@ const getStyles = (isDark) =>
     },
     messageText: {
       fontSize: 15,
-      color: isDark ? '#fff' : '#000',
+      color: colors.text,
       lineHeight: 22,
       marginBottom: 8,
     },
     messageTimestamp: {
       fontSize: 12,
-      color: isDark ? '#666' : '#8696a0',
+      color: colors.textSecondary || colors.secondary,
       alignSelf: 'flex-end',
     },
     messageImage: {
       height: 100,
-      backgroundColor: isDark ? '#333' : '#f0f0f0',
+      backgroundColor: colors.inputBackground || (isDark ? '#333' : '#f0f0f0'),
       borderRadius: 4,
       marginTop: 10,
       alignItems: 'center',
@@ -708,7 +735,7 @@ const getStyles = (isDark) =>
     },
     imageText: {
       fontSize: 12,
-      color: isDark ? '#666' : '#999',
+      color: colors.textSecondary || colors.secondary,
       marginTop: 5,
     },
     messageActions: {
@@ -717,7 +744,7 @@ const getStyles = (isDark) =>
       alignItems: 'center',
       paddingTop: 8,
       borderTopWidth: 0.5,
-      borderColor: isDark ? '#333' : '#f0f0f0',
+      borderColor: colors.separator || colors.border,
     },
     reactions: {
       flexDirection: 'row',
@@ -729,11 +756,11 @@ const getStyles = (isDark) =>
     },
     reactionText: {
       fontSize: 14,
-      color: isDark ? '#aaa' : '#666',
+      color: colors.textSecondary || colors.secondary,
     },
     shareBtn: {
       fontSize: 12,
-      color: isDark ? '#666' : '#8696a0',
+      color: colors.textSecondary || colors.secondary,
     },
     talkToEMSBtn: {
       position: 'absolute',
@@ -753,9 +780,9 @@ const getStyles = (isDark) =>
     },
     tabsContainer: {
       flexDirection: 'row',
-      backgroundColor: isDark ? '#2a2a2a' : '#f8f9fa',
+      backgroundColor: colors.inputBackground || (isDark ? '#2a2a2a' : '#f8f9fa'),
       borderBottomWidth: 0.5,
-      borderColor: isDark ? '#333' : '#e8e8e8',
+      borderColor: colors.separator || colors.border,
     },
     tab: {
       flex: 1,
@@ -763,20 +790,20 @@ const getStyles = (isDark) =>
       alignItems: 'center',
     },
     activeTab: {
-      backgroundColor: isDark ? '#1a1a1a' : '#fff',
+      backgroundColor: colors.card || colors.background,
       borderBottomWidth: 2,
       borderBottomColor: '#075e54',
     },
     tabText: {
       fontSize: 12,
-      color: isDark ? '#666' : '#6c757d',
+      color: colors.textSecondary || colors.secondary,
     },
     activeTabText: {
       color: '#075e54',
       fontWeight: '600',
     },
     quickActions: {
-      backgroundColor: isDark ? '#2a2a2a' : '#f8f9fa',
+      backgroundColor: colors.inputBackground || (isDark ? '#2a2a2a' : '#f8f9fa'),
       marginHorizontal: 15,
       marginTop: 10,
       marginBottom: 15,
@@ -822,7 +849,7 @@ const getStyles = (isDark) =>
       borderBottomRightRadius: 4,
     },
     emsMessage: {
-      backgroundColor: isDark ? '#2a2a2a' : '#ffffff',
+      backgroundColor: colors.card || colors.background,
       alignSelf: 'flex-start',
       borderBottomLeftRadius: 4,
       shadowColor: '#000',
@@ -833,12 +860,12 @@ const getStyles = (isDark) =>
     },
     chatMessageText: {
       fontSize: 15,
-      color: isDark ? '#fff' : '#000',
+      color: colors.text,
       lineHeight: 20,
     },
     chatTimestamp: {
       fontSize: 11,
-      color: isDark ? '#888' : '#666',
+      color: colors.textSecondary || colors.secondary,
       marginTop: 4,
       alignSelf: 'flex-end',
     },
@@ -847,9 +874,9 @@ const getStyles = (isDark) =>
       alignItems: 'flex-end',
       paddingHorizontal: 15,
       paddingVertical: 12,
-      backgroundColor: isDark ? '#1a1a1a' : '#fff',
+      backgroundColor: colors.card || colors.background,
       borderTopWidth: 0.5,
-      borderColor: isDark ? '#333' : '#e8e8e8',
+      borderColor: colors.separator || colors.border,
       gap: 8,
     },
     attachBtn: {
@@ -860,13 +887,13 @@ const getStyles = (isDark) =>
     chatInput: {
       flex: 1,
       borderWidth: 1,
-      borderColor: isDark ? '#333' : '#e8e8e8',
+      borderColor: colors.inputBorder || colors.border,
       borderRadius: 20,
       paddingHorizontal: 16,
       paddingVertical: 12,
       maxHeight: 100,
-      color: isDark ? '#fff' : '#000',
-      backgroundColor: isDark ? '#2a2a2a' : '#f8f9fa',
+      color: colors.text,
+      backgroundColor: colors.inputBackground || (isDark ? '#2a2a2a' : '#f8f9fa'),
       fontSize: 15,
     },
     sendBtn: {
@@ -881,12 +908,12 @@ const getStyles = (isDark) =>
       flex: 1,
     },
     emergencyForm: {
-      backgroundColor: isDark ? '#2a2a2a' : '#fff3cd',
+      backgroundColor: colors.card || (isDark ? '#2a2a2a' : '#fff3cd'),
       margin: 10,
       padding: 20,
       borderRadius: 8,
       borderWidth: 1,
-      borderColor: isDark ? '#333' : '#ffeaa7',
+      borderColor: colors.border || (isDark ? '#333' : '#ffeaa7'),
     },
     formTitle: {
       fontSize: 16,
@@ -896,20 +923,20 @@ const getStyles = (isDark) =>
     },
     formLabel: {
       fontSize: 12,
-      color: isDark ? '#ccc' : '#495057',
+      color: colors.textSecondary || colors.secondary,
       marginBottom: 5,
       marginTop: 10,
       fontWeight: '500',
     },
     formInput: {
-      backgroundColor: isDark ? '#1a1a1a' : '#fff',
+      backgroundColor: colors.inputBackground || colors.background,
       borderWidth: 1,
-      borderColor: isDark ? '#333' : '#ddd',
+      borderColor: colors.inputBorder || colors.border,
       borderRadius: 4,
       paddingHorizontal: 12,
       paddingVertical: 10,
       fontSize: 14,
-      color: isDark ? '#fff' : '#000',
+      color: colors.text,
       marginBottom: 5,
     },
     textArea: {

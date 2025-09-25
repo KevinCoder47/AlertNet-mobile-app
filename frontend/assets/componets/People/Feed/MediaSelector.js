@@ -4,8 +4,12 @@ import { View, Text, StyleSheet, TouchableOpacity, Image, Alert } from 'react-na
 import { Ionicons } from '@expo/vector-icons';
 import { Video } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
+import { useTheme } from '../../../contexts/ColorContext';
 
 const MediaSelector = ({ selectedMedia, onMediaSelect, onMediaRemove }) => {
+  const themeContext = useTheme();
+  const colors = themeContext.colors;
+
   const pickImageFromGallery = async () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -76,14 +80,17 @@ const MediaSelector = ({ selectedMedia, onMediaSelect, onMediaRemove }) => {
 
   return (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>
-        Add media <Text style={styles.optionalText}>(optional)</Text>
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>
+        Add media <Text style={[styles.optionalText, { color: colors.textTertiary }]}>(optional)</Text>
       </Text>
       
       {selectedMedia && (
         <View style={styles.selectedMediaContainer}>
           {selectedMedia.type === 'image' ? (
-            <Image source={{ uri: selectedMedia.uri }} style={styles.selectedMediaPreview} />
+            <Image 
+              source={{ uri: selectedMedia.uri }} 
+              style={[styles.selectedMediaPreview, { backgroundColor: colors.surface }]} 
+            />
           ) : (
             <Video
               source={{ uri: selectedMedia.uri }}
@@ -93,7 +100,7 @@ const MediaSelector = ({ selectedMedia, onMediaSelect, onMediaRemove }) => {
               resizeMode="cover"
               shouldPlay={false}
               useNativeControls
-              style={styles.selectedMediaPreview}
+              style={[styles.selectedMediaPreview, { backgroundColor: colors.surface }]}
             />
           )}
           <TouchableOpacity 
@@ -106,11 +113,29 @@ const MediaSelector = ({ selectedMedia, onMediaSelect, onMediaRemove }) => {
       )}
       
       <View style={styles.mediaButtons}>
-        <TouchableOpacity style={styles.mediaButton} onPress={takePhoto}>
-          <Ionicons name="camera" size={24} color="#666" />
+        <TouchableOpacity 
+          style={[
+            styles.mediaButton, 
+            { 
+              backgroundColor: colors.inputBackground, 
+              borderColor: colors.inputBorder 
+            }
+          ]} 
+          onPress={takePhoto}
+        >
+          <Ionicons name="camera" size={24} color={colors.iconSecondary} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.mediaButton} onPress={showMediaOptions}>
-          <Ionicons name="images" size={24} color="#666" />
+        <TouchableOpacity 
+          style={[
+            styles.mediaButton, 
+            { 
+              backgroundColor: colors.inputBackground, 
+              borderColor: colors.inputBorder 
+            }
+          ]} 
+          onPress={showMediaOptions}
+        >
+          <Ionicons name="images" size={24} color={colors.iconSecondary} />
         </TouchableOpacity>
       </View>
     </View>
@@ -124,11 +149,9 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
     marginBottom: 12,
   },
   optionalText: {
-    color: '#999',
     fontWeight: '400',
   },
   selectedMediaContainer: {
@@ -139,7 +162,6 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 150,
     borderRadius: 12,
-    backgroundColor: '#f0f0f0',
   },
   removeMediaButton: {
     position: 'absolute',
@@ -159,12 +181,10 @@ const styles = StyleSheet.create({
   mediaButton: {
     width: 50,
     height: 50,
-    backgroundColor: '#f5f5f5',
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#e0e0e0',
   },
 });
 

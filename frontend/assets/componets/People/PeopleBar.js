@@ -10,7 +10,6 @@ import {
   UIManager,
   StyleSheet,
   Dimensions,
-  useColorScheme,
   RefreshControl,
   PanResponder,
   Animated,
@@ -19,6 +18,7 @@ import {
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useTheme } from '../../contexts/ColorContext';
 import PhoneOverlay from './PhoneOverlay';
 import FriendList from './FriendsList';
 import CommunityList from './CommunityList';
@@ -79,6 +79,10 @@ const PeopleBar = () => {
   // Real-time listeners
   const friendsUnsubscribe = useRef(null);
   
+  // Use your theme context instead of useColorScheme
+  const { colors, isDark } = useTheme();
+  const styles = getStyles(isDark, colors); // Pass colors to styles
+  
   // Responsive dimensions
   const statusBarHeight = getStatusBarHeight();
   const baseHeight = height * 0.33;
@@ -95,10 +99,6 @@ const PeopleBar = () => {
     minHeight: baseHeight,
     maxHeight,
   }).current;
-  
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const styles = getStyles(isDark);
 
   // Load user data and initialize friends listener
   useEffect(() => {
@@ -412,7 +412,7 @@ const PeopleBar = () => {
           </View>
         </View>
 
-        <Ionicons name="chevron-forward" size={18} color={isDark ? '#ccc' : '#555'} />
+        <Ionicons name="chevron-forward" size={18} color={colors.textSecondary || colors.secondary} />
       </TouchableOpacity>
     );
   };
@@ -457,7 +457,7 @@ const PeopleBar = () => {
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
-      <Ionicons name="people-outline" size={48} color={isDark ? '#666' : '#ccc'} />
+      <Ionicons name="people-outline" size={48} color={colors.textSecondary || colors.secondary} />
       <Text style={styles.emptyStateText}>No friends yet</Text>
       <Text style={styles.emptyStateSubtext}>Send friend requests to see your friends here</Text>
     </View>
@@ -508,7 +508,7 @@ const PeopleBar = () => {
                   style={styles.collapseButton}
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
-                  <Ionicons name="chevron-down" size={20} color={isDark ? '#ccc' : '#555'} />
+                  <Ionicons name="chevron-down" size={20} color={colors.textSecondary || colors.secondary} />
                 </TouchableOpacity>
               )}
             </View>
@@ -567,7 +567,8 @@ const PeopleBar = () => {
   );
 };
 
-const getStyles = (isDark) => StyleSheet.create({
+// Updated styles to use theme colors
+const getStyles = (isDark, colors) => StyleSheet.create({
   container: {
     position: 'absolute',
     bottom: 60,
@@ -607,12 +608,12 @@ const getStyles = (isDark) => StyleSheet.create({
   dragHandle: {
     width: 30,
     height: 4,
-    backgroundColor: isDark ? '#e0e0e0' : '#333',
+    backgroundColor: colors.textSecondary || colors.secondary,
     borderRadius: 2,
   },
   swipeHint: {
     fontSize: 10,
-    color: isDark ? '#aaa' : '#666',
+    color: colors.textSecondary || colors.secondary,
     marginTop: 4,
     textAlign: 'center',
   },
@@ -626,7 +627,7 @@ const getStyles = (isDark) => StyleSheet.create({
   headerText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: isDark ? 'white' : 'black',
+    color: colors.text,
   },
   headerRight: {
     flexDirection: 'row',
@@ -635,7 +636,7 @@ const getStyles = (isDark) => StyleSheet.create({
   },
   lastUpdatedText: {
     fontSize: 10,
-    color: isDark ? '#aaa' : '#666',
+    color: colors.textSecondary || colors.secondary,
   },
   collapseButton: {
     padding: 4,
@@ -655,7 +656,7 @@ const getStyles = (isDark) => StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 5,
     borderBottomWidth: 0.5,
-    borderBottomColor: isDark ? '#444' : '#ccc',
+    borderBottomColor: colors.separator || colors.border,
   },
   avatarSection: {
     position: 'relative',
@@ -671,14 +672,14 @@ const getStyles = (isDark) => StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: isDark ? '#555' : '#ddd',
+    backgroundColor: colors.inputBackground || (isDark ? '#555' : '#ddd'),
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarInitial: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: isDark ? '#fff' : '#333',
+    color: colors.text,
   },
   statusDot: {
     position: 'absolute',
@@ -688,7 +689,7 @@ const getStyles = (isDark) => StyleSheet.create({
     height: 10,
     borderRadius: 5,
     borderWidth: 1.5,
-    borderColor: '#fff',
+    borderColor: colors.card || colors.background,
   },
   batteryInfo: {
     flexDirection: 'row',
@@ -708,12 +709,12 @@ const getStyles = (isDark) => StyleSheet.create({
   personName: {
     fontWeight: '600',
     fontSize: 15,
-    color: isDark ? 'white' : '#111',
+    color: colors.text,
     marginBottom: 2,
   },
   personLocation: {
     fontSize: 12,
-    color: isDark ? '#b0b0b0' : '#444',
+    color: colors.textSecondary || colors.secondary,
     marginBottom: 2,
   },
   statusRow: { 
@@ -726,12 +727,12 @@ const getStyles = (isDark) => StyleSheet.create({
     fontWeight: '500',
   },
   divider: { 
-    color: '#666', 
+    color: colors.textSecondary || colors.secondary, 
     marginHorizontal: 5,
   },
   personDistance: { 
     fontSize: 12, 
-    color: isDark ? '#a0a0a0' : '#555',
+    color: colors.textSecondary || colors.secondary,
     flex: 1,
   },
   addButton: { 
@@ -740,7 +741,7 @@ const getStyles = (isDark) => StyleSheet.create({
     alignItems: 'center',
   },
   addButtonText: { 
-    color: isDark ? 'white' : '#222', 
+    color: colors.text, 
     fontSize: 14, 
     fontWeight: '500',
   },
@@ -760,7 +761,7 @@ const getStyles = (isDark) => StyleSheet.create({
     alignItems: 'center',
   },
   activeTab: {
-    backgroundColor: isDark ? '#333' : '#fff',
+    backgroundColor: colors.card || colors.background,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -775,11 +776,11 @@ const getStyles = (isDark) => StyleSheet.create({
   },
   tabText: {
     fontSize: 14,
-    color: isDark ? '#aaa' : '#666',
+    color: colors.textSecondary || colors.secondary,
     fontWeight: '500',
   },
   activeTabText: {
-    color: isDark ? '#fff' : '#333',
+    color: colors.text,
     fontWeight: '600',
   },
   emptyState: {
@@ -791,12 +792,12 @@ const getStyles = (isDark) => StyleSheet.create({
   emptyStateText: {
     fontSize: 16,
     fontWeight: '600',
-    color: isDark ? '#ccc' : '#666',
+    color: colors.textSecondary || colors.secondary,
     marginTop: 12,
   },
   emptyStateSubtext: {
     fontSize: 12,
-    color: isDark ? '#999' : '#888',
+    color: colors.textTertiary || colors.secondary,
     marginTop: 4,
     textAlign: 'center',
   },
@@ -820,7 +821,7 @@ const getStyles = (isDark) => StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    color: isDark ? '#ccc' : '#666',
+    color: colors.textSecondary || colors.secondary,
   },
   // New style for NotificationBell container
   notificationBellContainer: {

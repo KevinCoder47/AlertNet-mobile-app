@@ -8,7 +8,6 @@ import {
   Modal,
   KeyboardAvoidingView,
   Platform,
-  useColorScheme,
   TouchableWithoutFeedback,
   Keyboard,
   ActivityIndicator,
@@ -18,6 +17,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as Battery from 'expo-battery';
 import * as Network from 'expo-network';
+import { useTheme } from '../../contexts/ColorContext';
 import { FirebaseService } from '../../../backend/Firebase/FirebaseService';
 
 const { width, height } = Dimensions.get('window');
@@ -36,8 +36,10 @@ const PhoneOverlay = ({ visible, onClose, myPhone, userEmail }) => {
   });
 
   const debounceTimeout = useRef(null);
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  
+  // Use your theme context instead of useColorScheme
+  const { colors, isDark } = useTheme();
+  const styles = getStyles(isDark, colors); // Pass colors to styles
 
   // Animation for status bar
   const statusOpacity = useRef(new Animated.Value(1)).current;
@@ -280,8 +282,6 @@ const PhoneOverlay = ({ visible, onClose, myPhone, userEmail }) => {
            !formData.phone.trim();
   };
 
-  const styles = getStyles(isDark);
-
   return (
     <Modal 
       animationType="slide" 
@@ -341,7 +341,7 @@ const PhoneOverlay = ({ visible, onClose, myPhone, userEmail }) => {
                     onPress={handleClose}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                   >
-                    <Ionicons name="close" size={28} color={isDark ? '#ccc' : '#555'} />
+                    <Ionicons name="close" size={28} color={colors.textSecondary || colors.secondary} />
                   </TouchableOpacity>
                 </View>
 
@@ -351,7 +351,7 @@ const PhoneOverlay = ({ visible, onClose, myPhone, userEmail }) => {
                     <TextInput
                       style={styles.input}
                       placeholder="First name"
-                      placeholderTextColor={isDark ? '#aaa' : '#666'}
+                      placeholderTextColor={colors.placeholder || colors.secondary}
                       value={formData.firstName}
                       onChangeText={(text) => handleInputChange('firstName', text)}
                       autoFocus
@@ -362,7 +362,7 @@ const PhoneOverlay = ({ visible, onClose, myPhone, userEmail }) => {
                     <TextInput
                       style={styles.input}
                       placeholder="Last name"
-                      placeholderTextColor={isDark ? '#aaa' : '#666'}
+                      placeholderTextColor={colors.placeholder || colors.secondary}
                       value={formData.lastName}
                       onChangeText={(text) => handleInputChange('lastName', text)}
                       returnKeyType="next"
@@ -373,7 +373,7 @@ const PhoneOverlay = ({ visible, onClose, myPhone, userEmail }) => {
                       <TextInput
                         style={[styles.input, styles.phoneInput]}
                         placeholder="Phone number"
-                        placeholderTextColor={isDark ? '#aaa' : '#666'}
+                        placeholderTextColor={colors.placeholder || colors.secondary}
                         keyboardType="phone-pad"
                         value={formData.phone}
                         onChangeText={(text) => handleInputChange('phone', text)}
@@ -445,7 +445,8 @@ const PhoneOverlay = ({ visible, onClose, myPhone, userEmail }) => {
   );
 };
 
-const getStyles = (isDark) => StyleSheet.create({
+// Updated styles to use theme colors
+const getStyles = (isDark, colors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.7)',
@@ -457,7 +458,7 @@ const getStyles = (isDark) => StyleSheet.create({
     width: '100%',
   },
   overlay: {
-    backgroundColor: isDark ? '#121212' : 'white',
+    backgroundColor: colors.card || colors.background,
     borderRadius: 14,
     padding: width * 0.05, // 5% of screen width
     minHeight: height * 0.45, // 45% of screen height
@@ -505,18 +506,18 @@ const getStyles = (isDark) => StyleSheet.create({
   title: { 
     fontSize: 18, 
     fontWeight: '600', 
-    color: isDark ? 'white' : 'black',
+    color: colors.text,
   },
   input: {
     borderWidth: 1,
-    borderColor: isDark ? '#333' : '#ddd',
+    borderColor: colors.inputBorder || colors.border,
     borderRadius: 8,
     paddingHorizontal: 15,
     paddingVertical: Platform.OS === 'ios' ? 12 : 10,
     fontSize: 16,
     marginBottom: 15,
-    color: isDark ? 'white' : 'black',
-    backgroundColor: isDark ? '#222' : '#fff',
+    color: colors.text,
+    backgroundColor: colors.inputBackground || colors.background,
     minHeight: 48, // Ensure consistent height across devices
   },
   phoneInputContainer: { 
@@ -561,7 +562,7 @@ const getStyles = (isDark) => StyleSheet.create({
   footerText: { 
     marginTop: 15, 
     fontSize: 12, 
-    color: isDark ? '#aaa' : '#666', 
+    color: colors.textSecondary || colors.secondary, 
     textAlign: 'center', 
     lineHeight: 16,
     paddingHorizontal: 10,

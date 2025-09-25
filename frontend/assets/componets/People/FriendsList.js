@@ -6,12 +6,12 @@ import {
   TouchableOpacity,
   StyleSheet,
   FlatList,
-  useColorScheme,
   Linking,
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useTheme } from '../../contexts/ColorContext';
 
 const getBatteryIconName = (batteryPercentStr) => {
   const percent = parseInt(batteryPercentStr);
@@ -23,9 +23,9 @@ const getBatteryIconName = (batteryPercentStr) => {
 };
 
 const FriendList = ({ friendsData = [] }) => {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const styles = getStyles(isDark);
+  // Use your theme context instead of useColorScheme
+  const { colors, isDark } = useTheme();
+  const styles = getStyles(isDark, colors); // Pass colors to styles
   const navigation = useNavigation();
 
   const handleCall = async (friend) => {
@@ -125,7 +125,7 @@ const FriendList = ({ friendsData = [] }) => {
             onPress={() => handleMessage(friend)}
             activeOpacity={0.7}
           >
-            <Ionicons name="chatbubble" size={18} color={isDark ? '#007AFF' : '#007AFF'} />
+            <Ionicons name="chatbubble" size={18} color="#007AFF" />
           </TouchableOpacity>
           
           <TouchableOpacity 
@@ -133,7 +133,7 @@ const FriendList = ({ friendsData = [] }) => {
             onPress={() => handleCall(friend)}
             activeOpacity={0.7}
           >
-            <Ionicons name="call" size={18} color={isDark ? '#34C759' : '#34C759'} />
+            <Ionicons name="call" size={18} color="#34C759" />
           </TouchableOpacity>
         </View>
       </TouchableOpacity>
@@ -142,7 +142,7 @@ const FriendList = ({ friendsData = [] }) => {
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
-      <Ionicons name="people-outline" size={64} color={isDark ? '#666' : '#ccc'} />
+      <Ionicons name="people-outline" size={64} color={colors.textSecondary || colors.secondary} />
       <Text style={styles.emptyStateText}>No friends connected</Text>
       <Text style={styles.emptyStateSubtext}>
         Your accepted friends will appear here with their live status
@@ -166,7 +166,8 @@ const FriendList = ({ friendsData = [] }) => {
   );
 };
 
-const getStyles = (isDark) => StyleSheet.create({
+// Updated styles to use theme colors
+const getStyles = (isDark, colors) => StyleSheet.create({
   container: {
     flex: 1,
   },
@@ -179,7 +180,7 @@ const getStyles = (isDark) => StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 5,
     borderBottomWidth: 0.5,
-    borderBottomColor: isDark ? '#444' : '#e0e0e0',
+    borderBottomColor: colors.separator || colors.border,
   },
   avatarSection: {
     position: 'relative',
@@ -191,22 +192,22 @@ const getStyles = (isDark) => StyleSheet.create({
     height: 50,
     borderRadius: 25,
     borderWidth: 2,
-    borderColor: isDark ? '#555' : '#e0e0e0',
+    borderColor: colors.border,
   },
   defaultAvatar: {
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: isDark ? '#555' : '#e0e0e0',
+    backgroundColor: colors.inputBackground || (isDark ? '#555' : '#e0e0e0'),
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: isDark ? '#666' : '#d0d0d0',
+    borderColor: colors.border,
   },
   avatarInitial: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: isDark ? '#fff' : '#333',
+    color: colors.text,
   },
   statusDot: {
     position: 'absolute',
@@ -216,7 +217,7 @@ const getStyles = (isDark) => StyleSheet.create({
     height: 12,
     borderRadius: 6,
     borderWidth: 2,
-    borderColor: isDark ? '#000' : '#fff',
+    borderColor: colors.card || colors.background,
   },
   batteryInfo: {
     flexDirection: 'row',
@@ -240,12 +241,12 @@ const getStyles = (isDark) => StyleSheet.create({
   friendName: {
     fontWeight: '700',
     fontSize: 16,
-    color: isDark ? 'white' : '#111',
+    color: colors.text,
     marginBottom: 3,
   },
   friendLocation: {
     fontSize: 13,
-    color: isDark ? '#b0b0b0' : '#666',
+    color: colors.textSecondary || colors.secondary,
     marginBottom: 2,
   },
   statusRow: { 
@@ -258,13 +259,13 @@ const getStyles = (isDark) => StyleSheet.create({
     fontWeight: '600',
   },
   divider: { 
-    color: isDark ? '#777' : '#999', 
+    color: colors.textSecondary || colors.secondary, 
     marginHorizontal: 6,
     fontSize: 12,
   },
   friendDistance: { 
     fontSize: 12, 
-    color: isDark ? '#a0a0a0' : '#777',
+    color: colors.textSecondary || colors.secondary,
     flex: 1,
     fontWeight: '500',
   },
@@ -299,13 +300,13 @@ const getStyles = (isDark) => StyleSheet.create({
   emptyStateText: {
     fontSize: 18,
     fontWeight: '600',
-    color: isDark ? '#ccc' : '#666',
+    color: colors.textSecondary || colors.secondary,
     marginTop: 16,
     textAlign: 'center',
   },
   emptyStateSubtext: {
     fontSize: 14,
-    color: isDark ? '#999' : '#888',
+    color: colors.textTertiary || colors.secondary,
     marginTop: 8,
     textAlign: 'center',
     lineHeight: 20,

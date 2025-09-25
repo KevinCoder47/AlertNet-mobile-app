@@ -11,7 +11,6 @@ import {
   Platform,
   StatusBar,
   PixelRatio,
-  useColorScheme,
   Pressable,
   Modal,
   Animated,
@@ -23,7 +22,7 @@ import { Audio } from 'expo-av';
 import { BlurView } from 'expo-blur';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as Clipboard from 'expo-clipboard';
-
+import { useTheme } from '../../contexts/ColorContext';
 
 const scaleFont = (size) => size * PixelRatio.getFontScale();
 
@@ -39,31 +38,32 @@ export default function ChatScreen() {
     distance: '— km away',
   };
 
-  const scheme = useColorScheme();
-  const isDark = scheme === 'dark';
+  // Use your theme context instead of useColorScheme
+  const { colors: themeColors, isDark } = useTheme();
 
+  // Updated color scheme to use your theme colors
   const colors = {
-    header: isDark ? '#15171c' : '#f0f0f0',
-    textPrimary: isDark ? '#fff' : '#1a1a1a',
-    textSecondary: isDark ? '#cfd3da' : '#555',
-    bullet: isDark ? '#6b7078' : '#888',
-    bannerText: isDark ? '#cfd3da' : '#555',
-    inputBg: isDark ? '#2a2a2a' : '#f0f0f0',
-    inputText: isDark ? '#fff' : '#000',
-    chatBg: isDark ? '#0a0b0e' : '#fff',
+    header: themeColors.card || themeColors.background,
+    textPrimary: themeColors.text,
+    textSecondary: themeColors.textSecondary || themeColors.secondary,
+    bullet: themeColors.textSecondary || themeColors.secondary,
+    bannerText: themeColors.textSecondary || themeColors.secondary,
+    inputBg: themeColors.inputBackground || (isDark ? '#2a2a2a' : '#f0f0f0'),
+    inputText: themeColors.text,
+    chatBg: themeColors.background,
     myMessageBg: isDark ? '#35d07f' : '#0a9f58',
-    friendMessageBg: isDark ? '#333' : '#e1e1e1',
-    messageText: isDark ? '#fff' : '#000',
-    responseBtnBg: isDark ? '#555' : '#ddd',
+    friendMessageBg: themeColors.surface || (isDark ? '#333' : '#e1e1e1'),
+    messageText: themeColors.text,
+    responseBtnBg: themeColors.inputBackground || (isDark ? '#555' : '#ddd'),
     responseBtnSelectedBg: '#35d07f',
-    bottomBarBg: isDark ? '#1c1c1c' : '#eaeaea',
+    bottomBarBg: themeColors.surface || (isDark ? '#1c1c1c' : '#eaeaea'),
     micBtnBg: isDark ? '#333' : '#888',
     sendBtnBg: isDark ? '#333' : '#888',
-    checkInBtnBg: isDark ? '#2d2d2d' : '#ccc',
-    safetyBtnBg: isDark ? '#444' : '#bbb',
-    checkInText: isDark ? '#fff' : '#000',
-    safetyText: isDark ? '#fff' : '#000',
-    responseText: isDark ? '#fff' : '#000',
+    checkInBtnBg: themeColors.inputBackground || (isDark ? '#2d2d2d' : '#ccc'),
+    safetyBtnBg: themeColors.inputBackground || (isDark ? '#444' : '#bbb'),
+    checkInText: themeColors.text,
+    safetyText: themeColors.text,
+    responseText: themeColors.text,
   };
 
   const statusOnline = (person.status || '').toLowerCase() === 'online';
@@ -81,7 +81,7 @@ export default function ChatScreen() {
 
   const [messages, setMessages] = useState([
     { id: '1', text: 'Hey, how are you?', sender: 'friend' },
-    { id: '2', text: 'I’m good, thanks!', sender: 'me' },
+    { id: '2', text: 'I am good, thanks!', sender: 'me' },
   ]);
   const [input, setInput] = useState('');
   const [replyingTo, setReplyingTo] = useState(null);
@@ -278,7 +278,7 @@ export default function ChatScreen() {
       {selectedMessage && (
         <View
           style={{
-            backgroundColor: selectedMessage.sender === 'me' ? colors.myMessageBg : colors.friendMessageBg, // <-- preserve color
+            backgroundColor: selectedMessage.sender === 'me' ? colors.myMessageBg : colors.friendMessageBg,
             padding: 16,
             borderRadius: 16,
             marginBottom: 20,
@@ -288,7 +288,7 @@ export default function ChatScreen() {
             shadowRadius: 6,
             elevation: 8,
             maxWidth: '75%',
-            alignSelf: selectedMessage.sender === 'me' ? 'flex-end' : 'flex-start', // <-- keep left/right alignment
+            alignSelf: selectedMessage.sender === 'me' ? 'flex-end' : 'flex-start',
           }}
         >
           <Text style={{ fontSize: 16, color: colors.messageText }}>
@@ -298,51 +298,49 @@ export default function ChatScreen() {
       )}
 
       {/* Options popup */}
+      <Animated.View
+        style={{
+          backgroundColor: themeColors.card || themeColors.background,
+          borderRadius: 16,
+          padding: 16,
+          width: '80%',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.3,
+          shadowRadius: 6,
+          elevation: 8,
+        }}
+      >
+        {['Reply', 'Copy', 'Delete', 'Report'].map((opt) => (
+          <TouchableOpacity
+            key={opt}
+            style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10 }}
+            onPress={() => {
+              handleOptionPress(opt);
+              closeModal();
+            }}
+          >
+            <Ionicons
+              name={
+                opt === 'Reply'
+                  ? 'chatbubble-ellipses-outline'
+                  : opt === 'Copy'
+                  ? 'copy-outline'
+                  : opt === 'Delete'
+                  ? 'trash-outline'
+                  : 'warning-outline'
+              }
+              size={22}
+              style={{ marginRight: 10, color: opt === 'Delete' ? 'red' : themeColors.text }}
+            />
+            <Text style={{ fontSize: 16, color: opt === 'Delete' ? 'red' : themeColors.text }}>{opt}</Text>
+          </TouchableOpacity>
+        ))}
 
-<Animated.View
-  style={{
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    width: '80%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 8,
-  }}
->
-{['Reply', 'Copy', 'Delete', 'Report'].map((opt) => (
-  <TouchableOpacity
-    key={opt}
-    style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10 }}
-    onPress={() => {
-      handleOptionPress(opt);
-      closeModal();
-    }}
-  >
-    <Ionicons
-      name={
-        opt === 'Reply'
-          ? 'chatbubble-ellipses-outline'
-          : opt === 'Copy'
-          ? 'copy-outline'
-          : opt === 'Delete'
-          ? 'trash-outline'
-          : 'warning-outline'
-      }
-      size={22}
-      style={{ marginRight: 10, color: opt === 'Delete' ? 'red' : '#000' }}
-    />
-    <Text style={{ fontSize: 16, color: opt === 'Delete' ? 'red' : '#000' }}>{opt}</Text>
-  </TouchableOpacity>
-))}
-
-
-  <TouchableOpacity onPress={closeModal} style={{ marginTop: 10, alignItems: 'center' }}>
-    <Text style={{ fontWeight: '700', color: 'red' }}>Cancel</Text>
-  </TouchableOpacity>
-</Animated.View>
+        <TouchableOpacity onPress={closeModal} style={{ marginTop: 10, alignItems: 'center' }}>
+          <Text style={{ fontWeight: '700', color: 'red' }}>Cancel</Text>
+        </TouchableOpacity>
+      </Animated.View>
     </BlurView>
   </TouchableWithoutFeedback>
 </Modal>
@@ -353,12 +351,12 @@ export default function ChatScreen() {
         keyboardVerticalOffset={0}
       >
         {replyingTo && (
-          <View style={[styles.replyBanner, { backgroundColor: '#888', marginHorizontal: 12 }]}>
-            <Text style={styles.replyBannerText}>
+          <View style={[styles.replyBanner, { backgroundColor: colors.inputBg, marginHorizontal: 12 }]}>
+            <Text style={[styles.replyBannerText, { color: colors.textSecondary }]}>
               Replying to {replyingTo.sender === 'me' ? 'You' : person.name}: {replyingTo.text}
             </Text>
             <TouchableOpacity onPress={() => setReplyingTo(null)}>
-              <Ionicons name="close" size={18} color="#fff" />
+              <Ionicons name="close" size={18} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
         )}
@@ -376,7 +374,7 @@ export default function ChatScreen() {
           <TextInput
             style={[styles.chatInput, { backgroundColor: colors.inputBg, color: colors.inputText }]}
             placeholder="Type a message..."
-            placeholderTextColor="#888"
+            placeholderTextColor={themeColors.placeholder || themeColors.secondary}
             value={input}
             onChangeText={setInput}
             onSubmitEditing={sendMessage}
@@ -448,9 +446,5 @@ const styles = StyleSheet.create({
   safetyText: { fontSize: 13, fontWeight: '600' },
   sendBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
   replyBanner: { backgroundColor: 'rgba(0,0,0,0.1)', padding: 4, borderLeftWidth: 3, borderLeftColor: '#35d07f', marginBottom: 4, borderRadius: 4, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  replyBannerText: { fontSize: 12, color: '#fff', flex: 1, marginRight: 4 },
+  replyBannerText: { fontSize: 12, flex: 1, marginRight: 4 },
 });
-
-
-
-
