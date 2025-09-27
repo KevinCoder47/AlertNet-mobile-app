@@ -1682,5 +1682,38 @@ export const FirebaseService = {
       console.error('Error getting notification stats:', error);
       return { success: false, error: error.message };
     }
+  },
+
+  /**
+   * Send walk request to nearby users
+   * @param {Object} walkData - Walk request details
+   * @returns {Promise<string>} - The document ID of the created walk request
+   */
+  sendWalkRequest: async (walkData) => {
+    try {
+      const docRef = await addDoc(collection(db, 'walkRequests'), {
+        ...walkData,
+        timestamp: new Date(),
+        status: 'pending'
+      });
+      console.log('Walk request created with ID:', docRef.id);
+      return docRef.id;
+    } catch (error) {
+      console.error('Error sending walk request:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Subscribe to walk requests topic
+   * (Future implementation - location-based subscriptions)
+   */
+  subscribeToWalkRequests: async () => {
+    try {
+      console.log('Subscribing to walk requests topic (placeholder)');
+      // In production, implement topic subscription based on user’s location
+    } catch (error) {
+      console.error('Error subscribing to walk requests:', error);
+    }
   }
 };

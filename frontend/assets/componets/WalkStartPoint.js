@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, View, Dimensions, Image, TouchableOpacity, Modal, FlatList, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
+import { FirebaseService } from '../../backend/Firebase/FirebaseService';
+import { useNotifications } from '../contexts/NotificationContext';
 
 
 const { width, height } = Dimensions.get('window');
@@ -11,12 +13,50 @@ const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 
 const WalkStartPoint = ({ setIsDestinationDone, setIsSearchPartner, setIsStartPoint, onStartPointSelect }) => {
   console.log("WalkStartPoint component rendered");
+  const [isSending, setIsSending] = useState(false); // Add loading state
   const [isDark] = useState(false);
   const [showMeetUpDropdown, setShowMeetUpDropdown] = useState(false);
   const [showGenderDropdown, setShowGenderDropdown] = useState(false);
   const [selectedMeetUpPoint, setSelectedMeetUpPoint] = useState('APB Campus West Entrance');
   const [selectedGender, setSelectedGender] = useState('Any');
   const [showStreetViewModal, setShowStreetViewModal] = useState(false);
+  const { sendWalkRequest } = useNotifications();
+  const handleSearch = async () => {
+    console.log("Search button pressed");
+    
+    if (isSending) {
+      console.log("Already sending a request, please wait...");
+      return;
+    }
+    setIsSearchPartner(true);
+    setIsStartPoint(false);
+    setIsSending(true);
+
+    const walkData = {
+      walkFrom: 'UJ APB Campus',
+      walkTo: 'Res - Richmond 50 Rd',
+      time: '5 mins',
+      partnerName: 'Kevin Serakalala',
+      partnerInitials: 'KS',
+      currentTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      requestId: Math.random().toString(36).substring(7),
+    };
+
+    try {
+      // Send the walk request via FCM
+      await sendWalkRequest(walkData);
+      
+      // Show searching UI
+      setIsSearchPartner(true);
+      setIsStartPoint(false);
+      
+    } catch (error) {
+      console.error("💥 Error in handleSearch:", error);
+      alert("Failed to send walk request. Please try again.");
+    } finally {
+      setIsSending(false);
+    }
+  };
 
   const colors = {
     background: isDark ? '#121212' : '#FFFFFF',
@@ -339,14 +379,12 @@ const InteractiveStreetView = ({ point }) => {
       {/* Search button */}
       <TouchableOpacity
         style={[styles.searchButton, { backgroundColor: isDark ? '#212121' : 'black' }]}
-        onPress={() => {
-          console.log("Search button pressed");
-          setIsSearchPartner(true);
-          setIsStartPoint(false);
-        }}
+        onPress={handleSearch}
       >
         <Text style={styles.searchButtonText}>Search</Text>
       </TouchableOpacity>
+
+      
 
       {/* Interactive Street View Full Screen Modal */}
       <Modal

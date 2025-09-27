@@ -10,7 +10,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { Alert, Linking, AppState } from 'react-native';
 import { serverTimestamp } from 'firebase/firestore';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Crypto from 'expo-crypto';
 import { getUserDocument } from '../../services/firestore';
 import * as Location from 'expo-location';
 import { useNotifications } from '../contexts/NotificationContext';
@@ -409,27 +410,58 @@ useEffect(() => {
     };
   }, [userData, activePopup, dismissPopup, locationUpdateInterval]);
 
-  // Function to cache image
+  // Function to cache image using a hash of the URL and a cache directory
   const cacheImage = async (imageUrl) => {
     try {
-      // Create a unique, safe local path from the URL
-      const pathSegment = new URL(imageUrl).pathname.split('/o/')[1];
-      const decodedPath = decodeURIComponent(pathSegment.split('?')[0]);
-      const cachePath = `${FileSystem.cacheDirectory}${decodedPath}`;
-      
+      // Use a hash of the URL for a unique filename
+      const hash = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        imageUrl
+      );
+      const cacheDir = `${FileSystem.cacheDirectory}profileImages/`;
+      const cachePath = `${cacheDir}${hash}`;
+
+      // Check if the file already exists
       const cachedFileInfo = await FileSystem.getInfoAsync(cachePath);
       if (cachedFileInfo.exists) {
         return cachePath;
       }
-      
-      const directory = cachePath.substring(0, cachePath.lastIndexOf('/'));
-      await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
 
+      // Ensure directory exists
+      await FileSystem.makeDirectoryAsync(cacheDir, { intermediates: true });
+
+      // Download and cache the image
       const { uri } = await FileSystem.downloadAsync(imageUrl, cachePath);
       return uri;
     } catch (error) {
       console.error('Error caching image:', error);
       return imageUrl; // Fallback to original URL
+    }
+  };
+
+  // Function to clean up old cached images, keeping only the most recent one
+  const cleanupImageCache = async () => {
+    try {
+      const cacheDir = `${FileSystem.cacheDirectory}profileImages/`;
+      const files = await FileSystem.readDirectoryAsync(cacheDir);
+      if (files.length <= 1) return; // Nothing to clean up
+
+      // Get file info (modification times)
+      const fileInfos = await Promise.all(
+        files.map(async (file) => {
+          const info = await FileSystem.getInfoAsync(`${cacheDir}${file}`);
+          return { file, mtime: info.modificationTime || 0 };
+        })
+      );
+      // Sort by modification time descending
+      fileInfos.sort((a, b) => b.mtime - a.mtime);
+      // Keep the most recent file, delete the rest
+      const filesToDelete = fileInfos.slice(1).map((f) => f.file);
+      for (const file of filesToDelete) {
+        await FileSystem.deleteAsync(`${cacheDir}${file}`, { idempotent: true });
+      }
+    } catch (error) {
+      // Directory may not exist yet, ignore
     }
   };
 
@@ -450,6 +482,7 @@ useEffect(() => {
             const cachedUri = await cacheImage(userData.imageUrl);
             setCachedImagePath(cachedUri);
             setUserImage(cachedUri);
+            await cleanupImageCache();
           } 
           // Priority 2: Fall back to local image path
           else if (userData.localImagePath) {
