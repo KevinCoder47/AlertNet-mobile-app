@@ -1,14 +1,15 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, View, Text, Button } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import React, { useEffect } from 'react';
 import { ThemeProvider } from './assets/contexts/ColorContext';
 import AppNavigator from './assets/navigation/AppNavigator';
 import { ScheduledSlotsProvider } from './assets/contexts/ScheduledSlotsContext';
 import { LanguageProvider } from './assets/screens/SafetyResource_Screens/LanguagePage';
 import { NotificationProvider } from './assets/contexts/NotificationContext';
-import { FontSizeProvider } from './assets/contexts/FontSizeContext'; // 👈 import here
+import { FontSizeProvider } from './assets/contexts/FontSizeContext';
 import { SOSService } from './assets/services/SOSService';
 import './backend/Firebase/FirebaseConfig';
+import NotificationHandler from './assets/componets/NotificationHandler';
 
 export default function App() {
   useEffect(() => {
@@ -32,8 +33,12 @@ export default function App() {
       <LanguageProvider>
         <ScheduledSlotsProvider>
           <ThemeProvider>
-            <FontSizeProvider>  {/* 👈 wrap here */}
-              <AppNavigator />
+            <FontSizeProvider>
+              <View style={styles.container}>
+                <AppNavigator />
+                <NotificationHandler /> {/* Add this line */}
+                <StatusBar style="auto" />
+              </View>
             </FontSizeProvider>
           </ThemeProvider>
         </ScheduledSlotsProvider>
@@ -45,7 +50,5 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
 });

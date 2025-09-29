@@ -136,11 +136,14 @@ export default function SafetyMap({userImage, friendsDetails, setFriendsDetails,
 
   // Function to add a small offset to coordinates to prevent overlapping
   const getOffsetCoordinates = (baseLat, baseLng, index) => {
-    // Add a small offset based on index to prevent markers from overlapping
-    const offset = 0.0001; // Approximately 10 meters
+    const OFFSET_DISTANCE = 0.0003; // Approx ~30 meters
+    const gridSize = 3; // 3x3 grid
+    const row = Math.floor(index / gridSize);
+    const col = index % gridSize;
+
     return {
-      latitude: baseLat + (offset * (index % 3 - 1)), // -offset, 0, or +offset
-      longitude: baseLng + (offset * (Math.floor(index / 3) % 3 - 1)), // -offset, 0, or +offset
+      latitude: baseLat + (row - 1) * OFFSET_DISTANCE, // -1, 0, +1
+      longitude: baseLng + (col - 1) * OFFSET_DISTANCE,
     };
   };
 
@@ -254,6 +257,7 @@ export default function SafetyMap({userImage, friendsDetails, setFriendsDetails,
             title="My Location"
             anchor={{ x: 0.5, y: 1 }} 
             pinColor={Platform.OS === 'android' ? "#FF0000" : undefined} // Android-only
+            zIndex={1000}
           >
             {Platform.OS === 'ios' && <UserMapMarker userImage={userImage} />}
           </Marker>
@@ -273,6 +277,7 @@ export default function SafetyMap({userImage, friendsDetails, setFriendsDetails,
                 key={uid}
                 coordinate={offsetCoords}
                 title={friend.name}
+                zIndex={1}
               >
                 <Image 
                   source={{ uri: friend.imageUrl }} 

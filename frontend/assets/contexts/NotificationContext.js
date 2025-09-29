@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Vibration, Platform, AppState } from 'react-native';
+import { Vibration, Platform, AppState, Alert } from 'react-native';
+// import messaging from '@react-native-firebase/messaging';
 import { FirebaseService } from '../../backend/Firebase/FirebaseService';
 
 const NotificationContext = createContext();
@@ -12,6 +13,8 @@ export const useNotifications = () => {
   }
   return context;
 };
+
+
 
 export const NotificationProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
@@ -25,6 +28,9 @@ export const NotificationProvider = ({ children }) => {
   // Track which notifications have been shown to prevent re-showing
   const [shownNotifications, setShownNotifications] = useState(new Set());
   const [lastProcessedNotification, setLastProcessedNotification] = useState(null);
+
+  const [currentWalkRequest, setCurrentWalkRequest] = useState(null);
+  const [isNotificationVisible, setIsNotificationVisible] = useState(false);
 
   // Refs for cleanup
   const unsubscribeNotifications = useRef(null);
@@ -59,6 +65,63 @@ export const NotificationProvider = ({ children }) => {
       subscription?.remove();
     };
   }, []);
+  // FCM listeners for walk requests
+  // useEffect(() => {
+  //   const unsubscribe = messaging().onMessage(async remoteMessage => {
+  //     console.log('FCM Message received:', remoteMessage);
+  //     if (remoteMessage.data && remoteMessage.data.type === 'walk_request') {
+  //       handleIncomingWalkRequest(JSON.parse(remoteMessage.data.walkData));
+  //     }
+  //   });
+  //
+  //   messaging().setBackgroundMessageHandler(async remoteMessage => {
+  //     console.log('Background FCM Message:', remoteMessage);
+  //     if (remoteMessage.data && remoteMessage.data.type === 'walk_request') {
+  //       handleIncomingWalkRequest(JSON.parse(remoteMessage.data.walkData));
+  //     }
+  //   });
+  //
+  //   return unsubscribe;
+  // }, []);
+
+  const sendWalkRequest = async (walkData) => {
+    try {
+      console.log('Sending walk request:', walkData);
+      const response = await fetch('https://your-backend.com/api/walk-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...walkData,
+          timestamp: new Date().toISOString(),
+          requestId: Math.random().toString(36).substring(7),
+        }),
+      });
+      if (response.ok) {
+        console.log('Walk request sent successfully');
+      }
+    } catch (error) {
+      console.error('Error sending walk request:', error);
+    }
+  };
+
+  const handleIncomingWalkRequest = (walkData) => {
+    console.log('Received walk request:', walkData);
+    setCurrentWalkRequest(walkData);
+    setIsNotificationVisible(true);
+  };
+
+  const acceptWalkRequest = () => {
+    console.log('Walk request accepted:', currentWalkRequest);
+    Alert.alert('Request Accepted', `You've accepted the walk request from ${currentWalkRequest.partnerName}`);
+    setIsNotificationVisible(false);
+    setCurrentWalkRequest(null);
+  };
+
+  const declineWalkRequest = () => {
+    console.log('Walk request declined');
+    setIsNotificationVisible(false);
+    setCurrentWalkRequest(null);
+  };
 
   // Load shown notifications from storage
   useEffect(() => {
@@ -553,6 +616,14 @@ const handleNewNotification = async (notification) => {
     getUnreadNotifications,
     getNotificationsByType,
     playNotificationByType,
+
+    // Walk request features
+    sendWalkRequest,
+    currentWalkRequest,
+    isNotificationVisible,
+    acceptWalkRequest,
+    declineWalkRequest,
+    setIsNotificationVisible,
   };
 
   return (
