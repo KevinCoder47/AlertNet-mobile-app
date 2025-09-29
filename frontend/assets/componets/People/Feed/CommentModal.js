@@ -13,8 +13,10 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../../contexts/ColorContext'; // Add this import
 
 const CommentModal = ({ visible, onClose, post, onAddComment }) => {
+  const { colors } = useTheme();
   const [commentText, setCommentText] = useState('');
 
   const handleAddComment = () => {
@@ -33,23 +35,23 @@ const CommentModal = ({ visible, onClose, post, onAddComment }) => {
   const CommentItem = ({ comment }) => (
     <View style={styles.commentItem}>
       <View style={styles.commentAvatar}>
-        <Ionicons name="person-circle" size={32} color="#ccc" />
+        <Ionicons name="person-circle" size={32} color={colors.iconSecondary} />
       </View>
       <View style={styles.commentContent}>
-        <View style={styles.commentBubble}>
-          <Text style={styles.commentName}>{comment.name}</Text>
-          <Text style={styles.commentText}>{comment.text}</Text>
+        <View style={[styles.commentBubble, { backgroundColor: colors.surface }]}>
+          <Text style={[styles.commentName, { color: colors.text }]}>{comment.name}</Text>
+          <Text style={[styles.commentText, { color: colors.text }]}>{comment.text}</Text>
         </View>
-        <Text style={styles.commentTime}>{comment.time}</Text>
+        <Text style={[styles.commentTime, { color: colors.textSecondary }]}>{comment.time}</Text>
       </View>
     </View>
   );
 
   const EmptyComments = () => (
     <View style={styles.noCommentsContainer}>
-      <Ionicons name="chatbubble-outline" size={48} color="#ccc" />
-      <Text style={styles.noCommentsText}>No comments yet</Text>
-      <Text style={styles.noCommentsSubtext}>Be the first to comment</Text>
+      <Ionicons name="chatbubble-outline" size={48} color={colors.iconSecondary} />
+      <Text style={[styles.noCommentsText, { color: colors.textSecondary }]}>No comments yet</Text>
+      <Text style={[styles.noCommentsSubtext, { color: colors.textTertiary }]}>Be the first to comment</Text>
     </View>
   );
 
@@ -60,12 +62,12 @@ const CommentModal = ({ visible, onClose, post, onAddComment }) => {
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <SafeAreaView style={styles.commentModalContainer}>
-        <View style={styles.commentHeader}>
+      <SafeAreaView style={[styles.commentModalContainer, { backgroundColor: colors.background }]}>
+        <View style={[styles.commentHeader, { borderBottomColor: colors.separator }]}>
           <TouchableOpacity onPress={onClose}>
-            <Ionicons name="close" size={24} color="#333" />
+            <Ionicons name="close" size={24} color={colors.iconPrimary} />
           </TouchableOpacity>
-          <Text style={styles.commentHeaderTitle}>Comments</Text>
+          <Text style={[styles.commentHeaderTitle, { color: colors.text }]}>Comments</Text>
           <View style={{ width: 24 }} />
         </View>
 
@@ -81,12 +83,22 @@ const CommentModal = ({ visible, onClose, post, onAddComment }) => {
 
         <KeyboardAvoidingView 
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.commentInputContainer}
+          style={[styles.commentInputContainer, { 
+            borderTopColor: colors.separator,
+            backgroundColor: colors.background 
+          }]}
         >
           <View style={styles.commentInputWrapper}>
             <TextInput
-              style={styles.commentInput}
+              style={[
+                styles.commentInput,
+                {
+                  backgroundColor: colors.inputBackground,
+                  color: colors.text,
+                }
+              ]}
               placeholder="Add a comment..."
+              placeholderTextColor={colors.placeholder}
               value={commentText}
               onChangeText={setCommentText}
               multiline
@@ -103,7 +115,7 @@ const CommentModal = ({ visible, onClose, post, onAddComment }) => {
               <Ionicons 
                 name="send" 
                 size={20} 
-                color={commentText.trim() ? '#ff5621' : '#ccc'} 
+                color={commentText.trim() ? '#ff5621' : colors.iconSecondary} 
               />
             </TouchableOpacity>
           </View>
@@ -116,7 +128,6 @@ const CommentModal = ({ visible, onClose, post, onAddComment }) => {
 const styles = StyleSheet.create({
   commentModalContainer: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   commentHeader: {
     flexDirection: 'row',
@@ -125,12 +136,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
   },
   commentHeaderTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
   },
   commentsList: {
     flex: 1,
@@ -149,7 +158,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   commentBubble: {
-    backgroundColor: '#f0f0f0',
     borderRadius: 16,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -158,17 +166,14 @@ const styles = StyleSheet.create({
   commentName: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#333',
     marginBottom: 2,
   },
   commentText: {
     fontSize: 14,
-    color: '#333',
     lineHeight: 18,
   },
   commentTime: {
     fontSize: 11,
-    color: '#666',
     marginLeft: 12,
   },
   noCommentsContainer: {
@@ -179,18 +184,14 @@ const styles = StyleSheet.create({
   },
   noCommentsText: {
     fontSize: 16,
-    color: '#666',
     marginTop: 12,
   },
   noCommentsSubtext: {
     fontSize: 14,
-    color: '#999',
     marginTop: 4,
   },
   commentInputContainer: {
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-    backgroundColor: '#fff',
   },
   commentInputWrapper: {
     flexDirection: 'row',
@@ -201,13 +202,11 @@ const styles = StyleSheet.create({
   },
   commentInput: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 10,
     maxHeight: 100,
     fontSize: 14,
-    color: '#333',
   },
   sendButton: {
     padding: 8,

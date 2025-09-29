@@ -3,8 +3,11 @@ import { StyleSheet, Text, View, Image, TouchableOpacity, ScrollView } from 'rea
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Polyline } from 'react-native-maps';
 import Icon from 'react-native-vector-icons/FontAwesome';
+import { useFontSize } from '../../contexts/FontSizeContext'; // Import font size context
 
-const PreviousWalks = ({ setIsPreviousWalks, setIsSafetyResources }) => { // 1. Accept navigation props
+const PreviousWalks = ({ setIsPreviousWalks, setIsSafetyResources }) => {
+  const { getScaledFontSize } = useFontSize(); // Use font size hook
+  
   const walks = [
     {
       id: 1,
@@ -61,7 +64,7 @@ const PreviousWalks = ({ setIsPreviousWalks, setIsSafetyResources }) => { // 1. 
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
       <View style={styles.header}>
-        {/* 2. Add onPress handler to the back button */}
+        {/* Back button with navigation */}
         <TouchableOpacity
             onPress={() => {
                 setIsPreviousWalks(false);
@@ -70,24 +73,30 @@ const PreviousWalks = ({ setIsPreviousWalks, setIsSafetyResources }) => { // 1. 
         >
           <Icon name="arrow-left" size={20} color="#000" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Previous walks</Text>
+        <Text style={[styles.headerTitle, { fontSize: getScaledFontSize(20) }]}>
+          Previous walks
+        </Text>
         <TouchableOpacity>
           <Icon name="calendar" size={20} color="#000" />
         </TouchableOpacity>
       </View>
 
       <View style={styles.dateSelector}>
-        <Text style={styles.date}>Mon 18</Text>
-        <Text style={styles.date}>Tue 19</Text>
-        <Text style={styles.date}>Wed 20</Text>
-        <Text style={[styles.date, styles.activeDate]}>Thu 21</Text>
-        <Text style={styles.date}>Fri 22</Text>
-        <Text style={styles.date}>Sat 23</Text>
-        <Text style={styles.date}>Sun 24</Text>
+        <Text style={[styles.date, { fontSize: getScaledFontSize(16) }]}>Mon 18</Text>
+        <Text style={[styles.date, { fontSize: getScaledFontSize(16) }]}>Tue 19</Text>
+        <Text style={[styles.date, { fontSize: getScaledFontSize(16) }]}>Wed 20</Text>
+        <Text style={[styles.date, styles.activeDate, { fontSize: getScaledFontSize(16) }]}>
+          Thu 21
+        </Text>
+        <Text style={[styles.date, { fontSize: getScaledFontSize(16) }]}>Fri 22</Text>
+        <Text style={[styles.date, { fontSize: getScaledFontSize(16) }]}>Sat 23</Text>
+        <Text style={[styles.date, { fontSize: getScaledFontSize(16) }]}>Sun 24</Text>
       </View>
 
       <View style={styles.tripsHeader}>
-        <Text style={styles.tripsCount}>2 trips</Text>
+        <Text style={[styles.tripsCount, { fontSize: getScaledFontSize(16) }]}>
+          2 trips
+        </Text>
         <TouchableOpacity>
           <Icon name="filter" size={20} color="#000" />
         </TouchableOpacity>
@@ -99,17 +108,21 @@ const PreviousWalks = ({ setIsPreviousWalks, setIsSafetyResources }) => { // 1. 
             <View style={styles.userInfo}>
               <Image source={walk.avatar} style={styles.avatar} />
               <View>
-                <Text style={styles.name}>{walk.name}</Text>
+                <Text style={[styles.name, { fontSize: getScaledFontSize(18) }]}>
+                  {walk.name}
+                </Text>
                 <View style={styles.ratingContainer}>
                   {walk.status ? (
-                    <Text style={styles.requestSent}>{walk.status}</Text>
+                    <Text style={[styles.requestSent, { fontSize: getScaledFontSize(12) }]}>
+                      {walk.status}
+                    </Text>
                   ) : (
                     <>
                       <TouchableOpacity style={styles.rateButton}>
-                        <Text>Rate</Text>
+                        <Text style={{ fontSize: getScaledFontSize(12) }}>Rate</Text>
                       </TouchableOpacity>
                       <TouchableOpacity style={styles.reportButton}>
-                        <Text>Report</Text>
+                        <Text style={{ fontSize: getScaledFontSize(12) }}>Report</Text>
                       </TouchableOpacity>
                     </>
                   )}
@@ -138,13 +151,13 @@ const PreviousWalks = ({ setIsPreviousWalks, setIsSafetyResources }) => { // 1. 
                 />
               </MapView>
               <View style={styles.walkDetails}>
-                <Text>{walk.start}</Text>
+                <Text style={{ fontSize: getScaledFontSize(14) }}>{walk.start}</Text>
                 <Icon name="arrow-right" size={16} color="#000" />
-                <Text>{walk.end}</Text>
+                <Text style={{ fontSize: getScaledFontSize(14) }}>{walk.end}</Text>
               </View>
               <View style={styles.walkStats}>
-                <Text>{walk.duration}</Text>
-                <Text>{walk.distance}</Text>
+                <Text style={{ fontSize: getScaledFontSize(14) }}>{walk.duration}</Text>
+                <Text style={{ fontSize: getScaledFontSize(14) }}>{walk.distance}</Text>
               </View>
             </View>
           </View>
@@ -172,7 +185,6 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
     },
     headerTitle: {
-        fontSize: 20,
         fontWeight: 'bold',
     },
     dateSelector: {
@@ -182,7 +194,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
     },
     date: {
-        fontSize: 16,
+        // fontSize removed - now handled inline
     },
     activeDate: {
         color: '#FFA500',
@@ -195,7 +207,6 @@ const styles = StyleSheet.create({
         padding: 16,
     },
     tripsCount: {
-        fontSize: 16,
         fontWeight: 'bold',
     },
     walkCard: {
@@ -215,7 +226,6 @@ const styles = StyleSheet.create({
         marginRight: 16,
     },
     name: {
-        fontSize: 18,
         fontWeight: 'bold',
     },
     ratingContainer: {

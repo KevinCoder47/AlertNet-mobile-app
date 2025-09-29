@@ -2,8 +2,11 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
+import { useFontSize } from '../../contexts/FontSizeContext'; // Import font size context
 
 export default function Unsafe({ setIsUnsafePage, setIsSafetyResources }) {
+  const { getScaledFontSize } = useFontSize(); // Use font size hook
+
   return (
     <View style={styles.safeArea}>
       <View style={styles.container}>
@@ -26,26 +29,42 @@ export default function Unsafe({ setIsUnsafePage, setIsSafetyResources }) {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerTextContainer}>
-            <Text style={styles.headerTitle}>Feeling Unsafe?</Text>
-            <Text style={styles.headerSubtitle}>Follow these steps...</Text>
+            <Text style={[styles.headerTitle, { fontSize: getScaledFontSize(18) }]}>
+              Feeling Unsafe?
+            </Text>
+            <Text style={[styles.headerSubtitle, { fontSize: getScaledFontSize(14) }]}>
+              Follow these steps...
+            </Text>
           </View>
         </View>
 
       {/* Quick Action Buttons Section */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>1. Quick Action Buttons</Text>
+        <Text style={[styles.sectionTitle, { fontSize: getScaledFontSize(16) }]}>
+          1. Quick Action Buttons
+        </Text>
         
         <View style={styles.actionItem}>
           <View style={styles.itemContainer}>
-            <Text style={styles.actionTitle}>Panic Word Activated</Text>
-            <Text style={styles.actionDescription}>Say your emergency word now.</Text>
+            <Text style={[styles.actionTitle, { fontSize: getScaledFontSize(16) }]}>
+              Panic Word Activated
+            </Text>
+            <Text style={[styles.actionDescription, { fontSize: getScaledFontSize(14) }]}>
+              Say your emergency word now.
+            </Text>
             <View style={styles.statusContainer}>
               <View style={styles.statusDot}></View>
-              <Text style={styles.statusText}>IT IS NOT ACTIVATED</Text>
-              <Text style={styles.activateText}>click here to activate</Text>
+              <Text style={[styles.statusText, { fontSize: getScaledFontSize(12) }]}>
+                IT IS NOT ACTIVATED
+              </Text>
+              <Text style={[styles.activateText, { fontSize: getScaledFontSize(12) }]}>
+                click here to activate
+              </Text>
             </View>
             <TouchableOpacity style={styles.voiceTriggerButton}>
-              <Text style={styles.voiceTriggerText}>Voice Trigger</Text>
+              <Text style={[styles.voiceTriggerText, { fontSize: getScaledFontSize(12) }]}>
+                Voice Trigger
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -55,12 +74,18 @@ export default function Unsafe({ setIsUnsafePage, setIsSafetyResources }) {
             <View style={styles.sosContainer}>
               <View style={styles.sosIconContainer}>
                 <View style={styles.sosIcon}>
-                  <Text style={styles.sosText}>SOS</Text>
+                  <Text style={[styles.sosText, { fontSize: getScaledFontSize(11) }]}>
+                    SOS
+                  </Text>
                 </View>
               </View>
               <View style={styles.sosContent}>
-                <Text style={styles.actionTitle}>Trigger SOS</Text>
-                <Text style={styles.actionDescription}>Discreetly alert your emergency contacts.</Text>
+                <Text style={[styles.actionTitle, { fontSize: getScaledFontSize(16) }]}>
+                  Trigger SOS
+                </Text>
+                <Text style={[styles.actionDescription, { fontSize: getScaledFontSize(14) }]}>
+                  Discreetly alert your emergency contacts.
+                </Text>
               </View>
             </View>
           </View>
@@ -73,8 +98,12 @@ export default function Unsafe({ setIsUnsafePage, setIsSafetyResources }) {
                 <MaterialIcons name="location-on" size={28} color="#fff" />
               </View>
               <View style={styles.locationContent}>
-                <Text style={styles.actionTitle}>Share Location</Text>
-                <Text style={styles.actionDescription}>Live updates to trusted contacts.</Text>
+                <Text style={[styles.actionTitle, { fontSize: getScaledFontSize(16) }]}>
+                  Share Location
+                </Text>
+                <Text style={[styles.actionDescription, { fontSize: getScaledFontSize(14) }]}>
+                  Live updates to trusted contacts.
+                </Text>
               </View>
             </View>
           </View>
@@ -83,12 +112,16 @@ export default function Unsafe({ setIsUnsafePage, setIsSafetyResources }) {
 
       {/* Situational Advice Section */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>2. Situational Advice</Text>
+        <Text style={[styles.sectionTitle, { fontSize: getScaledFontSize(16) }]}>
+          2. Situational Advice
+        </Text>
         
         <View style={styles.adviceItem}>
           <View style={styles.itemContainer}>
-            <Text style={styles.adviceTitle}>Trust Your Instincts</Text>
-            <Text style={styles.adviceDescription}>
+            <Text style={[styles.adviceTitle, { fontSize: getScaledFontSize(16) }]}>
+              Trust Your Instincts
+            </Text>
+            <Text style={[styles.adviceDescription, { fontSize: getScaledFontSize(14) }]}>
               If something feels off, it probably is. Cross the street or change direction.
             </Text>
           </View>
@@ -96,8 +129,10 @@ export default function Unsafe({ setIsUnsafePage, setIsSafetyResources }) {
 
         <View style={styles.adviceItem}>
           <View style={styles.itemContainer}>
-            <Text style={styles.adviceTitle}>Call Someone</Text>
-            <Text style={styles.adviceDescription}>
+            <Text style={[styles.adviceTitle, { fontSize: getScaledFontSize(16) }]}>
+              Call Someone
+            </Text>
+            <Text style={[styles.adviceDescription, { fontSize: getScaledFontSize(14) }]}>
               Speak to a friend or use the in-app emergency call.
             </Text>
           </View>
@@ -105,8 +140,10 @@ export default function Unsafe({ setIsUnsafePage, setIsSafetyResources }) {
 
         <View style={styles.adviceItem}>
           <View style={styles.itemContainer}>
-            <Text style={styles.adviceTitle}>Head to Safety</Text>
-            <Text style={styles.adviceDescription}>
+            <Text style={[styles.adviceTitle, { fontSize: getScaledFontSize(16) }]}>
+              Head to Safety
+            </Text>
+            <Text style={[styles.adviceDescription, { fontSize: getScaledFontSize(14) }]}>
               Try to walk in a safe zone areas.
             </Text>
           </View>
@@ -114,8 +151,10 @@ export default function Unsafe({ setIsUnsafePage, setIsSafetyResources }) {
 
         <View style={styles.adviceItem}>
           <View style={styles.itemContainer}>
-            <Text style={styles.adviceTitle}>Ask for Help</Text>
-            <Text style={styles.adviceDescription}>
+            <Text style={[styles.adviceTitle, { fontSize: getScaledFontSize(16) }]}>
+              Ask for Help
+            </Text>
+            <Text style={[styles.adviceDescription, { fontSize: getScaledFontSize(14) }]}>
               Enter a shop, approach a guard, or ask a bystander.
             </Text>
           </View>
@@ -123,7 +162,9 @@ export default function Unsafe({ setIsUnsafePage, setIsSafetyResources }) {
       </View>
 
       {/* Safety Priority Message */}
-      <Text style={styles.safetyMessage}>Your safety is our priority.</Text>
+      <Text style={[styles.safetyMessage, { fontSize: getScaledFontSize(14) }]}>
+        Your safety is our priority.
+      </Text>
 
         <TouchableOpacity
           style={styles.backButton}
@@ -132,7 +173,9 @@ export default function Unsafe({ setIsUnsafePage, setIsSafetyResources }) {
             setIsSafetyResources(true);
           }}
         >
-          <Text style={styles.backButtonText}>Back to Safety Resources</Text>
+          <Text style={[styles.backButtonText, { fontSize: getScaledFontSize(16) }]}>
+            Back to Safety Resources
+          </Text>
         </TouchableOpacity>
               </ScrollView>
       </View>
@@ -181,13 +224,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
     marginBottom: 2,
   },
   headerSubtitle: {
-    fontSize: 14,
     color: '#666',
   },
   section: {
@@ -202,7 +243,6 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   sectionTitle: {
-    fontSize: 16,
     fontWeight: 'bold',
     color: '#e74c3c',
     marginBottom: 16,
@@ -211,13 +251,11 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   actionTitle: {
-    fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
     marginBottom: 4,
   },
   actionDescription: {
-    fontSize: 14,
     color: '#666',
     marginBottom: 8,
   },
@@ -234,13 +272,11 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   statusText: {
-    fontSize: 12,
     color: '#e74c3c',
     fontWeight: '600',
     marginRight: 8,
   },
   activateText: {
-    fontSize: 12,
     color: '#007AFF',
     textDecorationLine: 'underline',
   },
@@ -254,7 +290,6 @@ const styles = StyleSheet.create({
   },
   voiceTriggerText: {
     color: '#fff',
-    fontSize: 12,
   },
   sosContainer: {
     flexDirection: 'row',
@@ -279,7 +314,6 @@ const styles = StyleSheet.create({
   },
   sosText: {
     color: '#fff',
-    fontSize: 11,
     fontWeight: 'bold',
   },
   sosContent: {
@@ -305,22 +339,31 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   adviceTitle: {
-    fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
     marginBottom: 4,
   },
   adviceDescription: {
-    fontSize: 14,
     color: '#666',
     lineHeight: 20,
   },
   safetyMessage: {
     textAlign: 'center',
-    fontSize: 14,
     color: '#e74c3c',
     fontWeight: '600',
     marginBottom: 40,
     marginTop: 20,
+  },
+  backButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  backButtonText: {
+    color: '#fff',
+    fontWeight: '600',
   },
 });

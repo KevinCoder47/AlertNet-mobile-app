@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import * as Location from 'expo-location';
+import { useTheme } from '../../../contexts/ColorContext';
 
 // Import our sub-components
 import FeedCard from './FeedCard';
@@ -23,6 +24,10 @@ import AddAlertModal from './AddAlertModal';
 import { feedDataService } from '../../../services/feedDataService';
 
 const FeedList = () => {
+  const themeContext = useTheme();
+  const colors = themeContext.colors;
+  const isDark = themeContext.isDark;
+  
   // State management
   const [refreshing, setRefreshing] = useState(false);
   const [feedData, setFeedData] = useState([]);
@@ -202,8 +207,18 @@ const FeedList = () => {
   );
 
   const AddButton = () => (
-    <View style={styles.addButtonContainer}>
-      <BlurView intensity={70} tint="light" style={styles.blurWrapper}>
+    <View style={[styles.addButtonContainer, { backgroundColor: colors.overlay }]}>
+      <BlurView 
+        intensity={70} 
+        tint={isDark ? "dark" : "light"} 
+        style={[
+          styles.blurWrapper,
+          {
+            backgroundColor: colors.overlay,
+            borderColor: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.5)',
+          }
+        ]}
+      >
         <TouchableOpacity
           onPress={() => setShowAddModal(true)}
           activeOpacity={0.7}
@@ -218,21 +233,26 @@ const FeedList = () => {
   // Show loading state if service isn't available
   if (!feedDataService) {
     return (
-      <View style={[styles.container, styles.centered]}>
-        <Text style={styles.errorText}>Feed service is not available</Text>
-        <Text style={styles.errorSubtext}>Please check your internet connection and try again</Text>
+      <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
+        <Text style={[styles.errorText, { color: colors.text }]}>Feed service is not available</Text>
+        <Text style={[styles.errorSubtext, { color: colors.secondary }]}>Please check your internet connection and try again</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <FlatList
         data={feedData}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh}
+            tintColor={colors.text}
+            colors={[colors.text]}
+          />
         }
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
@@ -270,7 +290,6 @@ const FeedList = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
   },
   centered: {
     justifyContent: 'center',
@@ -279,13 +298,11 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
     marginBottom: 8,
     textAlign: 'center',
   },
   errorSubtext: {
     fontSize: 14,
-    color: '#666',
     textAlign: 'center',
     paddingHorizontal: 20,
   },
@@ -300,7 +317,6 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 60,
     overflow: 'hidden',
-    backgroundColor: 'rgba(0,0,0,0.3)', 
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
@@ -313,9 +329,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 30,
-    backgroundColor: 'rgba(0,0,0,0.3)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.5)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,

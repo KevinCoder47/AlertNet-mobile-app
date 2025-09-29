@@ -9,6 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { SOSService } from '../../services/SOSService';
+import { useFontSize } from '../../contexts/FontSizeContext';
 
 import Feather from '@expo/vector-icons/Feather';
 import * as Location from 'expo-location';
@@ -16,10 +17,12 @@ import Constants from 'expo-constants';
 
 
 
+
 export default function TestSOS({ setIsSafetyResources, setIsTestSOS }) {
   const [sosTriggered, setSosTriggered] = useState(false);
   const [locationEnabled, setLocationEnabled] = useState(false);
   const [locationStatus, setLocationStatus] = useState("Checking...");
+  const { getScaledFontSize } = useFontSize();
 
   useEffect(() => {
     // Check for location services when the component mounts
@@ -107,42 +110,42 @@ export default function TestSOS({ setIsSafetyResources, setIsTestSOS }) {
           <TouchableOpacity onPress={() => { setIsTestSOS(false); setIsSafetyResources(true); }}>
             <Feather name="arrow-left" size={24} color="black" />
           </TouchableOpacity>
-          <Text style={styles.title}>Test SOS</Text>
+          <Text style={[styles.title, {fontSize: getScaledFontSize(24)}]}>Test SOS</Text>
           <View style={{ width: 24 }} />
         </View>
 
         {/* Subheading */}
-        <Text style={styles.subtitle}>
-          Learn how to activate the SOS feature and <Text style={styles.bold}>test its function safely.</Text>
+        <Text style={[styles.subtitle, {fontSize: getScaledFontSize(16)}]}>
+          Learn how to activate the SOS feature and <Text style={[styles.bold, {fontSize: getScaledFontSize(16)}]}>test its function safely.</Text>
         </Text>
 
         {/* Instruction Box */}
         <View style={[styles.infoBox, styles.infoBoxRow]}>
           <View style={styles.sosButtonPlaceholder}>
             {/* This button is for visual instruction only, not functional */}
-            <View style={styles.sosButton}><Text style={styles.sosButtonText}>SOS</Text></View>
+            <View style={styles.sosButton}><Text style={[styles.sosButtonText, {fontSize: getScaledFontSize(16)}]}>SOS</Text></View>
           </View>
           <View style={styles.instructions}>
-            <Text style={styles.step}><Text style={styles.bold}>1.</Text> Press the <Text style={styles.bold}>TEST NOW Button</Text> below.</Text>
-            <Text style={styles.step}><Text style={styles.bold}>2.</Text> App will <Text style={styles.bold}>test emergency contacts and location</Text>.</Text>
-            <Text style={styles.step}>
-              <Text style={styles.bold}>3.</Text> Location is <Text style={[styles.bold, { color: locationEnabled ? 'green' : 'red' }]}>{locationStatus}</Text>.
+            <Text style={[styles.step, {fontSize: getScaledFontSize(12)}]}><Text style={styles.bold}>1.</Text> Press the <Text style={[styles.bold, {fontSize: getScaledFontSize(12)}]}>TEST NOW Button</Text> below.</Text>
+            <Text style={[styles.step, {fontSize: getScaledFontSize(12)}]}><Text style={[styles.bold, {fontSize: getScaledFontSize(12)}]}>2.</Text> App will <Text style={[styles.bold, {fontSize: getScaledFontSize(12)}]}>test emergency contacts and location</Text>.</Text>
+            <Text style={[styles.step, {fontSize: getScaledFontSize(12)}]}>
+              <Text style={[styles.bold, {fontSize: getScaledFontSize(12)}]}>3.</Text> Location is <Text style={[styles.bold, { color: locationEnabled ? 'green' : 'red' }, {fontSize: getScaledFontSize(12)}]}>{locationStatus}</Text>.
             </Text>
           </View>
         </View>
 
         {/* Info Boxes */}
-        <View style={styles.infoBox}><Text style={styles.infoText}>Use this <Text style={styles.bold}>Test at least once a month</Text> to ensure everything is working.</Text></View>
-        <View style={styles.infoBox}><Text style={styles.infoText}>Our SOS is <Text style={styles.bold}>Voice activated</Text> (Optional), <Text style={styles.bold}>Triggered by your phone button</Text> (Default), and can be <Text style={styles.bold}>Triggered on the app</Text>.</Text></View>
+        <View style={styles.infoBox}><Text style={[styles.infoText, {fontSize: getScaledFontSize(12)}]}>Use this <Text style={[styles.bold, {fontSize: getScaledFontSize(12)}]}>Test at least once a month</Text> to ensure everything is working.</Text></View>
+        <View style={styles.infoBox}><Text style={[styles.infoText, {fontSize: getScaledFontSize(12)}]}>Our SOS is <Text style={[styles.bold, {fontSize: getScaledFontSize(12)}]}>Voice activated</Text> (Optional), <Text style={[styles.bold, {fontSize: getScaledFontSize(12)}]}>Triggered by your phone button</Text> (Default), and can be <Text style={[styles.bold, {fontSize: getScaledFontSize(12)}]}>Triggered on the app</Text>.</Text></View>
 
         {/* Final Test Button */}
         <View style={styles.testNow}>
-          <Text style={styles.testNowTitle}>TEST NOW</Text>
-          <Text style={styles.testNowSubtitle}>This is only a Test</Text>
+          <Text style={[styles.testNowTitle, {fontSize: getScaledFontSize(14)}]}>TEST NOW</Text>
+          <Text style={[styles.testNowSubtitle, {fontSize: getScaledFontSize(12)}]}>This is only a Test</Text>
           <View style={styles.redBtnWrapper}>
             <TouchableOpacity onPress={handlePress} activeOpacity={0.8}>
               <View style={[styles.sosButton, sosTriggered && styles.sosButtonTriggered]}>
-                <Text style={styles.sosButtonText}>SOS</Text>
+                <Text style={[styles.sosButtonText, {fontSize: getScaledFontSize(16)}]}>SOS</Text>
               </View>
             </TouchableOpacity>
           </View>
@@ -166,21 +169,30 @@ const styles = StyleSheet.create({
     justifyContent: "space-between", 
     marginBottom: 20 
   },
-  title: { fontSize: 20, fontWeight: "bold", textAlign: "center" },
-  subtitle: { fontSize: 14, color: "#444", textAlign: "center", marginBottom: 20 },
+  title: { //fontSize: 20, 
+    fontWeight: "bold", textAlign: "center" },
+  subtitle: { //fontSize: 14, 
+    color: "#444", textAlign: "center", marginBottom: 20 },
   bold: { fontWeight: "bold" },
   infoBox: { backgroundColor: "#F5F5F5", borderRadius: 10, padding: 15, marginBottom: 15 },
   infoBoxRow: { flexDirection: 'row', alignItems: 'center', gap: 15 },
-  infoText: { fontSize: 14, color: "#333", lineHeight: 20 },
+  infoText: { //fontSize: 14, 
+    color: "#333", lineHeight: 20 },
   sosButtonPlaceholder: { alignItems: "center" },
   instructions: { gap: 10, flex: 1 },
-  step: { fontSize: 14, color: "#333", lineHeight: 20 },
+  step: { //fontSize: 14, 
+    color: "#333", lineHeight: 20 },
   testNow: { alignItems: "center", marginTop: 30 },
-  testNowTitle: { fontSize: 16, fontWeight: "bold", marginBottom: 5 },
-  testNowSubtitle: { fontSize: 14, color: "#666", marginBottom: 20 },
+  testNowTitle: { //fontSize: 16, 
+    fontWeight: "bold", marginBottom: 5 },
+  testNowSubtitle: { //fontSize: 14, 
+    color: "#666", marginBottom: 20 },
   redBtnWrapper: { alignItems: "center" },
-  holdFeedback: { marginTop: 15, color: 'blue', fontSize: 14, fontWeight: 'bold' },
+  holdFeedback: { marginTop: 15, color: 'blue', //fontSize: 14, 
+    fontWeight: 'bold' },
   sosButton: { width: 80, height: 80, borderRadius: 40, backgroundColor: 'red', justifyContent: 'center', alignItems: 'center', elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 2 },
-  sosButtonText: { color: 'white', fontWeight: 'bold', fontSize: 20 },
+  sosButtonText: { color: 'white', fontWeight: 'bold', //fontSize: 20 
+
+  },
   sosButtonTriggered: { backgroundColor: '#c00' }, // Darker red when triggered
 });

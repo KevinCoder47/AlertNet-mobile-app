@@ -9,7 +9,6 @@ import {
   ScrollView,
   Linking,
   Platform,
-  useColorScheme,
   Dimensions,
   StatusBar,
   PixelRatio,
@@ -21,6 +20,7 @@ import { Ionicons, MaterialIcons, MaterialCommunityIcons, Feather } from '@expo/
 import ViewShot from 'react-native-view-shot';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
+import { useTheme } from '../../../assets/contexts/ColorContext';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -49,6 +49,8 @@ export default function Profile() {
   const navigation = useNavigation();
   const { params } = useRoute();
   const person = params?.person || {};
+  const themeContext = useTheme();
+  const colors = themeContext.colors;
 
   const [isEmergency, setIsEmergency] = useState(false);
   const [isLiveLoc, setIsLiveLoc] = useState(true);
@@ -109,33 +111,16 @@ export default function Profile() {
     );
   };
 
-  const scheme = useColorScheme();
-  const isDark = scheme === 'dark';
-
-  const colors = {
-    background: isDark ? '#0a0b0e' : '#e6e6e6',
-    header: isDark ? '#15171c' : '#f0f0f0',
-    card: isDark ? '#1b1f26' : '#ffffff',
-    textPrimary: isDark ? '#fff' : '#1a1a1a',
-    textSecondary: isDark ? '#cfd3da' : '#555',
-    bullet: isDark ? '#6b7078' : '#888',
-    divider: isDark ? '#22252b' : '#d0d0d0',
-    switchActive: '#35d07f',
-    remove: '#ff6b6b',
-    iconColor: isDark ? '#cfcfcf' : '#444',
-    mapOverlay: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.1)',
-  };
-
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* HEADER */}
-      <View style={[styles.headerWrap, { backgroundColor: colors.header }]}>
+      <View style={[styles.headerWrap, { backgroundColor: colors.surface }]}>
         <View style={styles.headerRow}>
           <TouchableOpacity
             style={styles.backBtn}
             onPress={() => navigation.goBack()}
           >
-            <Ionicons name="chevron-back" size={22} color={colors.textPrimary} />
+            <Ionicons name="chevron-back" size={22} color={colors.text} />
           </TouchableOpacity>
 
           <View style={styles.avatarWrap}>
@@ -143,9 +128,9 @@ export default function Profile() {
               <Image source={person.avatar} style={styles.avatar} />
             )}
             <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-            <View style={[styles.batteryPill, { backgroundColor: colors.mapOverlay }]}>
-              <Ionicons name={batteryIcon} size={11} color={colors.textPrimary} />
-              <Text style={[styles.batteryPillText, { color: colors.textPrimary }]}>
+            <View style={[styles.batteryPill, { backgroundColor: colors.overlay }]}>
+              <Ionicons name={batteryIcon} size={11} color={colors.text} />
+              <Text style={[styles.batteryPillText, { color: colors.text }]}>
                 {person.battery || '--%'}
               </Text>
             </View>
@@ -153,7 +138,7 @@ export default function Profile() {
 
           <View style={{ flex: 1 }}>
             <View style={styles.nameRow}>
-              <Text style={[styles.name, { color: colors.textPrimary }]}>
+              <Text style={[styles.name, { color: colors.text }]}>
                 {person.name || 'Unknown User'}
               </Text>
               <MaterialIcons
@@ -166,7 +151,7 @@ export default function Profile() {
 
             <View style={[styles.subRow]}>
               <Text style={[styles.locationText, { color: colors.textSecondary }]}>{person.location}</Text>
-              <Text style={[styles.bullet, { color: colors.bullet }]}> • </Text>
+              <Text style={[styles.bullet, { color: colors.textTertiary }]}> • </Text>
               <Text style={[styles.distanceText, { color: colors.textSecondary }]}>{person.distance || '— km away'}</Text>
             </View>
           </View>
@@ -177,29 +162,29 @@ export default function Profile() {
       <ScrollView
         style={styles.scrollContent}
         contentContainerStyle={{ paddingBottom: 32 }}
-        indicatorStyle={isDark ? 'white' : 'black'}
+        indicatorStyle={colors.isDark ? 'white' : 'black'}
       >
         {/* ACTION ROW */}
         <View style={styles.actionsRow}>
           <View style={[styles.checkInCard, { backgroundColor: colors.card }]}>
             <TouchableOpacity
-              style={[styles.checkInBtn, { backgroundColor: colors.switchActive }]}
+              style={[styles.checkInBtn, { backgroundColor: colors.success }]}
               onPress={() => Alert.alert('Check-In', 'Check-in sent')}
             >
-              <Text style={[styles.checkInText, { color: isDark ? '#0a0b0e' : '#fff' }]}>Check-In</Text>
+              <Text style={[styles.checkInText, { color: colors.isDark ? colors.background : '#fff' }]}>Check-In</Text>
             </TouchableOpacity>
             <View style={styles.checkInSmallBtns}>
               <TouchableOpacity
-                style={[styles.smallCircleOk, { backgroundColor: colors.switchActive }]}
+                style={[styles.smallCircleOk, { backgroundColor: colors.success }]}
                 onPress={() => Alert.alert('Confirmed', 'OK pressed')}
               >
-                <Ionicons name="checkmark" size={20} color={isDark ? '#0a0b0e' : '#fff'} />
+                <Ionicons name="checkmark" size={20} color={colors.isDark ? colors.background : '#fff'} />
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.smallCircleCancel, { backgroundColor: isDark ? '#2b2f36' : '#ccc' }]}
+                style={[styles.smallCircleCancel, { backgroundColor: colors.iconBackground }]}
                 onPress={() => Alert.alert('Cancelled', 'Cancel pressed')}
               >
-                <Ionicons name="close" size={16} color={isDark ? '#e0e0e0' : '#333'} />
+                <Ionicons name="close" size={16} color={colors.iconSecondary} />
               </TouchableOpacity>
             </View>
           </View>
@@ -208,12 +193,12 @@ export default function Profile() {
             style={[styles.safetyCard, { backgroundColor: colors.card }]}
             onPress={() => Alert.alert('Safety Request', 'Request sent')}
           >
-            <Text style={[styles.safetyText, { color: colors.textPrimary }]}>Safety Request</Text>
-            <MaterialCommunityIcons name="shield-check" size={18} color={colors.switchActive} />
+            <Text style={[styles.safetyText, { color: colors.text }]}>Safety Request</Text>
+            <MaterialCommunityIcons name="shield-check" size={18} color={colors.success} />
           </TouchableOpacity>
         </View>
 
-        <View style={[styles.sectionDivider, { backgroundColor: colors.divider }]} />
+        <View style={[styles.sectionDivider, { backgroundColor: colors.separator }]} />
 
         {/* COMMUNICATIONS */}
         <View style={styles.commsRow}>
@@ -222,15 +207,15 @@ export default function Profile() {
             onPress={() => navigation.navigate('ChatScreen', { person })}
           >
             <Text style={[styles.viewChatsText, { color: colors.textSecondary }]}>View Chats</Text>
-            <Ionicons name="chatbubble-ellipses" size={20} color={colors.iconColor} />
+            <Ionicons name="chatbubble-ellipses" size={20} color={colors.iconPrimary} />
           </TouchableOpacity>
 
           <View style={styles.callVideoRow}>
             <TouchableOpacity style={[styles.circleIcon, { backgroundColor: colors.card, marginRight: 6 }]}>
-              <Ionicons name="call" size={20} color={colors.iconColor} />
+              <Ionicons name="call" size={20} color={colors.iconPrimary} />
             </TouchableOpacity>
             <TouchableOpacity style={[styles.circleIcon, { backgroundColor: colors.card }]}>
-              <Feather name="video" size={20} color={colors.iconColor} />
+              <Feather name="video" size={20} color={colors.iconPrimary} />
             </TouchableOpacity>
           </View>
         </View>
@@ -239,30 +224,30 @@ export default function Profile() {
         {/* OPTIONS */}
         <View style={[styles.optionsContainer, { backgroundColor: colors.card }]}>
           <View style={styles.optionRow}>
-            <MaterialCommunityIcons name="shield-outline" size={18} color={colors.switchActive} />
-            <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>Set as Emergency Contact</Text>
+            <MaterialCommunityIcons name="shield-outline" size={18} color={colors.success} />
+            <Text style={[styles.optionLabel, { color: colors.text }]}>Set as Emergency Contact</Text>
             <Switch
               value={isEmergency}
               onValueChange={setIsEmergency}
-              trackColor={{ false: '#767577', true: colors.switchActive }}
+              trackColor={{ false: '#767577', true: colors.success }}
               thumbColor={isEmergency ? '#fff' : '#f4f3f4'}
             />
           </View>
-          <View style={[styles.optionDivider, { backgroundColor: colors.divider }]} />
+          <View style={[styles.optionDivider, { backgroundColor: colors.separator }]} />
 
           <View style={[styles.optionRow, styles.optionRowLast]}>
-            <MaterialCommunityIcons name="map-marker-radius-outline" size={18} color={colors.switchActive} />
-            <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>Share Live Location</Text>
+            <MaterialCommunityIcons name="map-marker-radius-outline" size={18} color={colors.success} />
+            <Text style={[styles.optionLabel, { color: colors.text }]}>Share Live Location</Text>
             <Switch
               value={isLiveLoc}
               onValueChange={setIsLiveLoc}
-              trackColor={{ false: '#767577', true: colors.switchActive }}
+              trackColor={{ false: '#767577', true: colors.success }}
               thumbColor={isLiveLoc ? '#fff' : '#f4f3f4'}
             />
           </View>
         </View>
 
-        <View style={[styles.sectionDivider, { backgroundColor: colors.divider }]} />
+        <View style={[styles.sectionDivider, { backgroundColor: colors.separator }]} />
 
         {/* MAP + ROUTE CARD */}
         <View style={[styles.routeCard, { backgroundColor: colors.card }]}>
@@ -284,20 +269,20 @@ export default function Profile() {
           </ViewShot>
 
           <TouchableOpacity
-            style={[styles.recenterBtn, { backgroundColor: colors.switchActive }]}
+            style={[styles.recenterBtn, { backgroundColor: colors.success }]}
             onPress={recenterMap}
           >
             <Ionicons name="locate" size={20} color="#fff" />
           </TouchableOpacity>
 
           <View style={styles.routeSide}>
-            <Text style={[styles.routeEta, { color: colors.textPrimary }]}>
+            <Text style={[styles.routeEta, { color: colors.text }]}>
               <Text style={{ fontWeight: '700' }}>{person.eta || '35 min'}</Text> Away
             </Text>
             <Text style={[styles.routeKm, { color: colors.textSecondary }]}>{person.distance || '5 km'}</Text>
 
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
-              <TouchableOpacity style={styles.navigateBtn} onPress={navigateToLocation}>
+              <TouchableOpacity style={[styles.navigateBtn, { backgroundColor: colors.success }]} onPress={navigateToLocation}>
                 <Text style={styles.navigateBtnText}>Navigate</Text>
               </TouchableOpacity>
 
@@ -308,16 +293,16 @@ export default function Profile() {
           </View>
         </View>
 
-        <View style={[styles.sectionDivider, { backgroundColor: colors.divider }]} />
+        <View style={[styles.sectionDivider, { backgroundColor: colors.separator }]} />
 
         {/* REMOVE CONTACT */}
         <TouchableOpacity style={styles.removeRow} onPress={() => Alert.alert('Removed', 'Contact removed')}>
           <MaterialCommunityIcons
             name="trash-can-outline"
             size={20}
-            color={colors.remove}
+            color={colors.danger}
           />
-          <Text style={[styles.removeText, { color: colors.remove }]}>Remove Contact</Text>
+          <Text style={[styles.removeText, { color: colors.danger }]}>Remove Contact</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -380,13 +365,9 @@ const styles = StyleSheet.create({
   routeSide: { marginTop: 12 },
   routeEta: { fontSize: scaleFont(14) },
   routeKm: { fontSize: scaleFont(12) },
-  navigateBtn: { borderRadius: 12, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#35d07f', alignItems: 'center', width: '48%' },
+  navigateBtn: { borderRadius: 12, paddingVertical: 8, paddingHorizontal: 12, alignItems: 'center', width: '48%' },
   navigateBtnText: { color: '#fff', fontWeight: '600' },
   recenterBtn: { position: 'absolute', right: 20, bottom: 110, width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', elevation: 5 },
   removeRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 16, marginLeft: 20 },
   removeText: { marginLeft: 6, fontWeight: '700' },
 });
-
-
-
-

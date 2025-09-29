@@ -11,6 +11,7 @@ import {
   TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../../contexts/ColorContext'; // Add this import
 import CategorySelection, { categories } from './CategorySelection';
 import LocationSelector from './LocationSelector';
 import MediaSelector from './MediaSelector';
@@ -24,6 +25,10 @@ const AddAlertModal = ({ visible, onClose, onAddPost, userLocation }) => {
   const [postAnonymously, setPostAnonymously] = useState(false);
   const [selectedMedia, setSelectedMedia] = useState(null);
   const [loadingLocation, setLoadingLocation] = useState(false);
+
+  // Add theme context
+  const { colors, isDark } = useTheme();
+  const styles = getStyles(isDark, colors);
 
   const resetForm = () => {
     setSelectedCategory(null);
@@ -85,7 +90,7 @@ const AddAlertModal = ({ visible, onClose, onAddPost, userLocation }) => {
       <SafeAreaView style={styles.modalContainer}>
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Ionicons name="close" size={24} color="#333" />
+            <Ionicons name="close" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Add Alert</Text>
           <TouchableOpacity
@@ -126,7 +131,7 @@ const AddAlertModal = ({ visible, onClose, onAddPost, userLocation }) => {
             <TextInput
               style={styles.descriptionInput}
               placeholder="Describe what's happening, when it started, and any important details."
-              placeholderTextColor="#999"
+              placeholderTextColor={colors.placeholder || colors.secondary}
               multiline
               numberOfLines={4}
               textAlignVertical="top"
@@ -167,10 +172,11 @@ const AddAlertModal = ({ visible, onClose, onAddPost, userLocation }) => {
   );
 };
 
-const styles = StyleSheet.create({
+// Updated styles function to use theme colors
+const getStyles = (isDark, colors) => StyleSheet.create({
   modalContainer: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -179,7 +185,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: colors.separator || colors.border,
+    backgroundColor: colors.card || colors.background,
   },
   closeButton: {
     width: 40,
@@ -190,7 +197,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
   },
   postButton: {
     paddingHorizontal: 16,
@@ -199,7 +206,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ff5621',
   },
   postButtonDisabled: {
-    backgroundColor: '#e0e0e0',
+    backgroundColor: colors.inputBackground || (isDark ? '#444' : '#e0e0e0'),
   },
   postButtonText: {
     color: '#fff',
@@ -207,7 +214,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   postButtonTextDisabled: {
-    color: '#999',
+    color: colors.textSecondary || colors.secondary,
   },
   modalContent: {
     flex: 1,
@@ -219,23 +226,25 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
     marginBottom: 12,
   },
   descriptionInput: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.inputBackground || (isDark ? '#2a2a2a' : '#f5f5f5'),
     borderRadius: 12,
     padding: 16,
     fontSize: 14,
-    color: '#333',
+    color: colors.text,
     minHeight: 100,
     maxHeight: 150,
     textAlignVertical: 'top',
+    borderWidth: 1,
+    borderColor: colors.inputBorder || colors.border,
   },
   characterCount: {
     textAlign: 'right',
     fontSize: 12,
-    color: '#999',
+    color: colors.textSecondary || colors.secondary,
     marginTop: 4,
   },
   checkboxContainer: {
@@ -248,10 +257,10 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 4,
     borderWidth: 2,
-    borderColor: '#e0e0e0',
+    borderColor: colors.inputBorder || colors.border,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: colors.card || colors.background,
   },
   checkedBox: {
     backgroundColor: '#ff5621',
@@ -259,13 +268,13 @@ const styles = StyleSheet.create({
   },
   checkboxLabel: {
     fontSize: 14,
-    color: '#333',
+    color: colors.text,
     marginLeft: 8,
     fontWeight: '500',
   },
   checkboxDescription: {
     fontSize: 12,
-    color: '#666',
+    color: colors.textSecondary || colors.secondary,
     marginLeft: 28,
   },
 });

@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { View as SafeView } from 'react-native'
 import TopBarSearch from './TopBarSearch'
 import { useTheme } from '../contexts/ColorContext'
+import { useFontSize } from '../contexts/FontSizeContext' // Import font size context
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -16,6 +17,7 @@ const TopBarComponents = ({
   const [userName, setUserName] = useState("Guest");
   const [location, setLocation] = useState("School, AuklandPark, Johannesburg");
   const { colors, isDark } = useTheme();
+  const { getScaledFontSize } = useFontSize(); // Use font size hook
   
 const [userData, setUserData] = useState(null);
 
@@ -70,8 +72,24 @@ useEffect(() => {
         {/* User name and location */}
         <View style={{ gap: 4, marginTop: 0, marginLeft: 10 }}>
           <View style={{ flexDirection: "row" }}>
-            <Text style={[styles.text, { fontFamily: "Helvetica Light",color: colors.text }]}>Hello, </Text>
-            <Text style={[styles.text, { fontFamily: "Helvetica Bold", color: colors.text }]}>
+            <Text style={[
+              styles.text, 
+              { 
+                fontFamily: "Helvetica Light",
+                color: colors.text,
+                fontSize: getScaledFontSize(16)
+              }
+            ]}>
+              Hello, 
+            </Text>
+            <Text style={[
+              styles.text, 
+              { 
+                fontFamily: "Helvetica Bold", 
+                color: colors.text,
+                fontSize: getScaledFontSize(16)
+              }
+            ]}>
               {userName}
             </Text>
           </View>
@@ -79,7 +97,13 @@ useEffect(() => {
           {/* location */}
           <View style={{ flexDirection: "row", alignItems: "center" }}>
             <Image source={require('../icons/near-me.png')} style={{ width: 15, height: 15, marginRight: 5 }} />
-            <Text style={{ fontSize: 10, fontFamily: "Helvetica Light",color: colors.text  }}>{location}</Text>
+            <Text style={{ 
+              fontSize: getScaledFontSize(10), 
+              fontFamily: "Helvetica Light",
+              color: colors.text  
+            }}>
+              {location}
+            </Text>
           </View>
         </View>
         
@@ -89,7 +113,9 @@ useEffect(() => {
             <Image source={isDark ? require('../icons/notification-dark.png') : require('../icons/notification-light.png')} style = {{width: 20, height: 20}} />
             {unreadCount > 0 && (
               <View style={styles.badge}>
-                <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+                <Text style={[styles.badgeText, { fontSize: getScaledFontSize(10) }]}>
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </Text>
               </View>
             )}
           </TouchableOpacity>
@@ -134,11 +160,10 @@ const styles = StyleSheet.create({
   },
   userName: {
     marginLeft: 10,
-    fontSize: 16,
     fontWeight: '500'
   },
   text: {
-    fontSize: 16,
+    // fontSize removed - now handled inline with getScaledFontSize
   },
   notificationButton: {
     width: 24,
@@ -161,7 +186,6 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     color: 'white',
-    fontSize: 10,
     fontWeight: 'bold',
   },
 })
