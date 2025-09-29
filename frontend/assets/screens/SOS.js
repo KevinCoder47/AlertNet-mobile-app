@@ -12,14 +12,17 @@ import {
   StyleSheet,
 } from 'react-native';
 import { SOSFirebaseService } from '../../backend/Firebase/SOSFirebaseService';
+import { useFontSize } from '../contexts/FontSizeContext';
 import QRCode from 'react-native-qrcode-svg';
 import Constants from 'expo-constants';
 
 export default function SOS({ setIsSOS, setIsQrCode, setIsSafetyResources, sosSessionId, userData }) {
+  const { getScaledFontSize } = useFontSize();
   const [activityLog, setActivityLog] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const scrollViewRef = useRef(null);
 
+  const styles = getStyles(getScaledFontSize);
 
   useEffect(() => {
     if (!sosSessionId) {
@@ -128,7 +131,7 @@ export default function SOS({ setIsSOS, setIsQrCode, setIsSafetyResources, sosSe
             style={{
               color: 'white',
               fontWeight: 'bold',
-              fontSize: 20,
+              fontSize: getScaledFontSize(20),
               textTransform: 'lowercase',
               fontVariant: ['small-caps'],
               flex: 1,
@@ -154,7 +157,7 @@ export default function SOS({ setIsSOS, setIsQrCode, setIsSafetyResources, sosSe
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-start' }}>
           <Text
             style={{
-              fontSize: 25,
+              fontSize: getScaledFontSize(25),
               color: 'white',
               fontWeight: 'bold',
               marginTop: 40,
@@ -165,7 +168,7 @@ export default function SOS({ setIsSOS, setIsQrCode, setIsSafetyResources, sosSe
 
           <Text
             style={{
-              fontSize: 12,
+              fontSize: getScaledFontSize(12),
               color: 'white',
               marginTop: 20,
               textAlign: 'center',
@@ -177,7 +180,7 @@ export default function SOS({ setIsSOS, setIsQrCode, setIsSafetyResources, sosSe
           <Text
             style={{
               color: 'white',
-              fontSize: 12,
+              fontSize: getScaledFontSize(12),
               textAlign: 'center',
             }}
           >
@@ -222,7 +225,7 @@ export default function SOS({ setIsSOS, setIsQrCode, setIsSafetyResources, sosSe
             }}
             activeOpacity={0.7}
           >
-            <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 14 }}>
+            <Text style={{ color: 'white', fontWeight: 'bold', fontSize: getScaledFontSize(14) }}>
               I'm Safe Now
             </Text>
           </TouchableOpacity>
@@ -266,7 +269,7 @@ export default function SOS({ setIsSOS, setIsQrCode, setIsSafetyResources, sosSe
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (getScaledFontSize) => StyleSheet.create({
   qrCodeContainer: {
     marginTop: 50,
     padding: 10,
@@ -276,7 +279,7 @@ const styles = StyleSheet.create({
   logEntry: {
     color: 'white',
     marginTop: 15,
-    fontSize: 11,
+    fontSize: getScaledFontSize(11),
   },
   logTime: {
     color: 'white',

@@ -4,24 +4,26 @@ import {
   Text,
   StyleSheet,
   SafeAreaView,
-  Image,
   TouchableOpacity,
   ScrollView,
   Alert,
   TextInput,
 } from 'react-native';
 import { SOSService } from '../../services/SOSService';
-import { useFontSize } from '../../contexts/FontSizeContext'; // Import font size context
+import { useFontSize } from '../../contexts/FontSizeContext';
+import { useTheme } from '../../contexts/ColorContext'; // ✅ theme
 
 const EmergencyContacts = ({ setIsEmergencyContacts, setIsSafetyResources }) => {
-  const { getScaledFontSize } = useFontSize(); // Use font size hook
+  const { getScaledFontSize } = useFontSize();
+  const { colors } = useTheme(); // ✅ theme
+
   const [contacts, setContacts] = useState([]);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newContact, setNewContact] = useState({ 
-    name: '', 
-    phoneNumber: '', 
+  const [newContact, setNewContact] = useState({
+    name: '',
+    phoneNumber: '',
     relationship: 'Family',
-    isPrimary: false 
+    isPrimary: false,
   });
 
   useEffect(() => {
@@ -38,14 +40,13 @@ const EmergencyContacts = ({ setIsEmergencyContacts, setIsSafetyResources }) => 
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
-
     try {
       await SOSService.addEmergencyContact({
         name: newContact.name,
         phoneNumber: newContact.phoneNumber,
         relationship: newContact.relationship,
         isPrimary: newContact.isPrimary,
-        isVerified: false
+        isVerified: false,
       });
       await loadContacts();
       setNewContact({ name: '', phoneNumber: '', relationship: 'Family', isPrimary: false });
@@ -63,94 +64,96 @@ const EmergencyContacts = ({ setIsEmergencyContacts, setIsSafetyResources }) => 
       Alert.alert('Error', 'Failed to remove contact');
     }
   };
-  
+
+  const selectedRelationshipBg = '#FFA500'; // orange accent
+
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.surface }]}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        {/* --- Header --- */}
+        {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.backButton}
             onPress={() => {
               setIsEmergencyContacts(false);
               setIsSafetyResources(true);
             }}
           >
-            <Text style={[styles.backButtonText, { fontSize: getScaledFontSize(28) }]}>←</Text>
+            <Text style={[styles.backButtonText, { fontSize: getScaledFontSize(28), color: colors.text }]}>←</Text>
           </TouchableOpacity>
-          <Text style={[styles.title, { fontSize: getScaledFontSize(22) }]}>
+          <Text style={[styles.title, { fontSize: getScaledFontSize(22), color: colors.text }]}>
             Emergency Contact
           </Text>
-          <Text style={[styles.subtitle, { fontSize: getScaledFontSize(14) }]}>
+          <Text style={[styles.subtitle, { fontSize: getScaledFontSize(14), color: colors.textSecondary || colors.text }]}>
             This contact will be notified in case of an emergency
           </Text>
         </View>
 
-        {/* --- Contacts List --- */}
+        {/* Contacts List */}
         <View style={styles.listContainer}>
-          <View style={styles.separator} />
+          <View style={[styles.separator, { backgroundColor: selectedRelationshipBg }]} />
           {contacts.map(contact => (
-            <View key={contact.id} style={styles.contactCard}>
+            <View key={contact.id} style={[styles.contactCard, { backgroundColor: colors.card }]}>
               <View style={styles.profileImagePlaceholder}>
-                <Text style={[styles.profileInitial, { fontSize: getScaledFontSize(24) }]}>
+                <Text style={[styles.profileInitial, { fontSize: getScaledFontSize(24), color: colors.text }]}>
                   {contact.name.charAt(0)}
                 </Text>
               </View>
               <View style={styles.contactInfo}>
-                <Text style={[styles.contactName, { fontSize: getScaledFontSize(16) }]}>
+                <Text style={[styles.contactName, { fontSize: getScaledFontSize(16), color: colors.text }]}>
                   {contact.name}
                 </Text>
-                <Text style={[styles.contactNumber, { fontSize: getScaledFontSize(14) }]}>
+                <Text style={[styles.contactNumber, { fontSize: getScaledFontSize(14), color: colors.textSecondary || colors.text }]}>
                   Contact No: {contact.phoneNumber}
                 </Text>
-                <Text style={[styles.contactRelationship, { fontSize: getScaledFontSize(12) }]}>
+                <Text style={[styles.contactRelationship, { fontSize: getScaledFontSize(12), color: colors.textSecondary || colors.text }]}>
                   {contact.relationship} {contact.isPrimary ? '(Primary)' : ''}
                 </Text>
               </View>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.removeButton}
                 onPress={() => removeContact(contact.id)}
               >
-                <Text style={[styles.removeButtonText, { fontSize: getScaledFontSize(14) }]}>
-                  Remove
-                </Text>
+                <Text style={[styles.removeButtonText, { fontSize: getScaledFontSize(14), color: colors.error }]}>Remove</Text>
               </TouchableOpacity>
             </View>
           ))}
-          <View style={styles.separator} />
+          <View style={[styles.separator, { backgroundColor: selectedRelationshipBg }]} />
         </View>
 
-        {/* --- Add Contact Form --- */}
+        {/* Add Contact Form */}
         {showAddForm && (
-          <View style={styles.addForm}>
+          <View style={[styles.addForm, { backgroundColor: colors.card }]}>
             <TextInput
-              style={[styles.input, { fontSize: getScaledFontSize(16) }]}
+              style={[styles.input, { fontSize: getScaledFontSize(16), backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
               placeholder="Contact Name"
+              placeholderTextColor={colors.textSecondary || colors.text}
               value={newContact.name}
-              onChangeText={(text) => setNewContact({...newContact, name: text})}
+              onChangeText={(text) => setNewContact({ ...newContact, name: text })}
             />
             <TextInput
-              style={[styles.input, { fontSize: getScaledFontSize(16) }]}
+              style={[styles.input, { fontSize: getScaledFontSize(16), backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
               placeholder="Phone Number"
+              placeholderTextColor={colors.textSecondary || colors.text}
               value={newContact.phoneNumber}
-              onChangeText={(text) => setNewContact({...newContact, phoneNumber: text})}
+              onChangeText={(text) => setNewContact({ ...newContact, phoneNumber: text })}
               keyboardType="phone-pad"
             />
             <View style={styles.pickerContainer}>
-              <Text style={[styles.pickerLabel, { fontSize: getScaledFontSize(16) }]}>
-                Relationship:
-              </Text>
+              <Text style={[styles.pickerLabel, { fontSize: getScaledFontSize(16), color: colors.text }]}>Relationship:</Text>
               <View style={styles.relationshipButtons}>
                 {['Family', 'Friend', 'Colleague', 'Other'].map(rel => (
                   <TouchableOpacity
                     key={rel}
-                    style={[styles.relationshipButton, newContact.relationship === rel && styles.selectedRelationship]}
-                    onPress={() => setNewContact({...newContact, relationship: rel})}
+                    style={[
+                      styles.relationshipButton,
+                      newContact.relationship === rel && { backgroundColor: selectedRelationshipBg, borderColor: selectedRelationshipBg }
+                    ]}
+                    onPress={() => setNewContact({ ...newContact, relationship: rel })}
                   >
                     <Text style={[
-                      styles.relationshipText, 
-                      newContact.relationship === rel && styles.selectedRelationshipText,
-                      { fontSize: getScaledFontSize(14) }
+                      styles.relationshipText,
+                      { color: newContact.relationship === rel ? '#fff' : colors.textSecondary || colors.text, fontSize: getScaledFontSize(14) }
                     ]}>
                       {rel}
                     </Text>
@@ -160,231 +163,70 @@ const EmergencyContacts = ({ setIsEmergencyContacts, setIsSafetyResources }) => 
             </View>
             <TouchableOpacity
               style={styles.primaryToggle}
-              onPress={() => setNewContact({...newContact, isPrimary: !newContact.isPrimary})}
+              onPress={() => setNewContact({ ...newContact, isPrimary: !newContact.isPrimary })}
             >
-              <Text style={[styles.primaryToggleText, { fontSize: getScaledFontSize(16) }]}>
+              <Text style={[styles.primaryToggleText, { fontSize: getScaledFontSize(16), color: colors.text }]}>
                 {newContact.isPrimary ? '✓' : '○'} Primary Contact
               </Text>
             </TouchableOpacity>
             <View style={styles.formButtons}>
-              <TouchableOpacity style={styles.cancelButton} onPress={() => setShowAddForm(false)}>
-                <Text style={[styles.cancelButtonText, { fontSize: getScaledFontSize(16) }]}>
-                  Cancel
-                </Text>
+              <TouchableOpacity style={[styles.cancelButton, { backgroundColor: colors.border }]} onPress={() => setShowAddForm(false)}>
+                <Text style={[styles.cancelButtonText, { fontSize: getScaledFontSize(16), color: colors.text }]}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.saveButton} onPress={addContact}>
-                <Text style={[styles.saveButtonText, { fontSize: getScaledFontSize(16) }]}>
-                  Save
-                </Text>
+              <TouchableOpacity style={[styles.saveButton, { backgroundColor: selectedRelationshipBg }]} onPress={addContact}>
+                <Text style={[styles.saveButtonText, { fontSize: getScaledFontSize(16), color: '#fff' }]}>Save</Text>
               </TouchableOpacity>
             </View>
           </View>
         )}
 
-        {/* --- Add Button --- */}
-        <TouchableOpacity 
-          style={styles.addButton}
+        {/* Add Button */}
+        <TouchableOpacity
+          style={[styles.addButton, { backgroundColor: selectedRelationshipBg }]}
           onPress={() => setShowAddForm(true)}
         >
-          <Text style={[styles.addButtonText, { fontSize: getScaledFontSize(16) }]}>
-            +ADD
-          </Text>
+          <Text style={[styles.addButtonText, { fontSize: getScaledFontSize(16), color: '#fff' }]}>+ADD</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
 };
 
-// --- Styles ---
-// Updated styles with font sizes removed and added inline
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
-  scrollContainer: {
-    paddingHorizontal: 20,
-  },
-  header: {
-    alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 30,
-  },
-  backButton: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    padding: 5,
-  },
-  backButtonText: {
-    color: '#000000',
-  },
-  title: {
-    fontWeight: 'bold',
-    color: '#000000',
-  },
-  subtitle: {
-    color: '#555555',
-    textAlign: 'center',
-    marginTop: 8,
-    maxWidth: '80%',
-  },
-  listContainer: {
-    marginBottom: 30,
-  },
-  separator: {
-    height: 1,
-    backgroundColor: '#f0c0b8', // Light reddish line from design annotations
-    marginHorizontal: 10,
-  },
-  contactCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#383838', // Dark charcoal color
-    borderRadius: 20,
-    padding: 12,
-    marginVertical: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 8,
-  },
-  profileImagePlaceholder: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#666',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 15,
-  },
-  profileInitial: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-  contactInfo: {
-    flex: 1, // Takes up available space
-  },
-  contactName: {
-    fontWeight: 'bold',
-    color: '#ffffff',
-  },
-  contactNumber: {
-    color: '#cccccc',
-    marginTop: 4,
-  },
-  contactRelationship: {
-    color: '#aaaaaa',
-    marginTop: 2,
-    fontStyle: 'italic',
-  },
-  removeButton: {
-    backgroundColor: '#d32f2f',
-    paddingVertical: 6,
-    paddingHorizontal: 15,
-    borderRadius: 15,
-  },
-  removeButtonText: {
-    color: '#ffffff',
-    fontWeight: '500',
-  },
-  addForm: {
-    backgroundColor: '#f5f5f5',
-    padding: 20,
-    borderRadius: 10,
-    marginBottom: 20,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    padding: 10,
-    borderRadius: 5,
-    marginBottom: 10,
-    backgroundColor: '#fff',
-  },
-  formButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  cancelButton: {
-    backgroundColor: '#666',
-    padding: 10,
-    borderRadius: 5,
-    flex: 0.45,
-  },
-  cancelButtonText: {
-    color: '#fff',
-    textAlign: 'center',
-    fontWeight: 'bold',
-  },
-  saveButton: {
-    backgroundColor: '#4caf50',
-    padding: 10,
-    borderRadius: 5,
-    flex: 0.45,
-  },
-  saveButtonText: {
-    color: '#fff',
-    textAlign: 'center',
-    fontWeight: 'bold',
-  },
-  pickerContainer: {
-    marginBottom: 15,
-  },
-  pickerLabel: {
-    fontWeight: 'bold',
-    marginBottom: 8,
-    color: '#333',
-  },
-  relationshipButtons: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  relationshipButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 15,
-    backgroundColor: '#e0e0e0',
-    borderWidth: 1,
-    borderColor: '#ccc',
-  },
-  selectedRelationship: {
-    backgroundColor: '#4caf50',
-    borderColor: '#4caf50',
-  },
-  relationshipText: {
-    color: '#666',
-  },
-  selectedRelationshipText: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-  primaryToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    marginBottom: 10,
-  },
-  primaryToggleText: {
-    color: '#333',
-    marginLeft: 5,
-  },
-  addButton: {
-    backgroundColor: '#a0a0a0',
-    paddingVertical: 10,
-    paddingHorizontal: 25,
-    borderRadius: 8,
-    alignSelf: 'center',
-  },
-  addButtonText: {
-    color: '#ffffff',
-    fontWeight: 'bold',
-  },
+  container: { flex: 1 },
+  scrollContainer: { paddingHorizontal: 20 },
+  header: { alignItems: 'center', marginTop: 20, marginBottom: 30 },
+  backButton: { position: 'absolute', left: 0, top: 0, padding: 5 },
+  backButtonText: { fontWeight: 'bold' },
+  title: { fontWeight: 'bold' },
+  subtitle: { textAlign: 'center', marginTop: 8, maxWidth: '80%' },
+  listContainer: { marginBottom: 30 },
+  separator: { height: 1, marginHorizontal: 10 },
+  contactCard: { flexDirection: 'row', alignItems: 'center', borderRadius: 20, padding: 12, marginVertical: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 8 },
+  profileImagePlaceholder: { width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
+  profileInitial: { fontWeight: 'bold' },
+  contactInfo: { flex: 1 },
+  contactName: { fontWeight: 'bold' },
+  contactNumber: { marginTop: 4 },
+  contactRelationship: { marginTop: 2, fontStyle: 'italic' },
+  removeButton: { paddingVertical: 6, paddingHorizontal: 15, borderRadius: 15 },
+  removeButtonText: { fontWeight: '500' },
+  addForm: { padding: 20, borderRadius: 10, marginBottom: 20 },
+  input: { borderWidth: 1, padding: 10, borderRadius: 5, marginBottom: 10 },
+  formButtons: { flexDirection: 'row', justifyContent: 'space-between' },
+  cancelButton: { padding: 10, borderRadius: 5, flex: 0.45 },
+  cancelButtonText: { textAlign: 'center', fontWeight: 'bold' },
+  saveButton: { padding: 10, borderRadius: 5, flex: 0.45 },
+  saveButtonText: { textAlign: 'center', fontWeight: 'bold' },
+  pickerContainer: { marginBottom: 15 },
+  pickerLabel: { fontWeight: 'bold', marginBottom: 8 },
+  relationshipButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  relationshipButton: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 15, borderWidth: 1 },
+  relationshipText: {},
+  primaryToggle: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, marginBottom: 10 },
+  primaryToggleText: { marginLeft: 5 },
+  addButton: { paddingVertical: 10, paddingHorizontal: 25, borderRadius: 8, alignSelf: 'center', marginBottom: 20 },
+  addButtonText: { fontWeight: 'bold' },
 });
 
 export default EmergencyContacts;

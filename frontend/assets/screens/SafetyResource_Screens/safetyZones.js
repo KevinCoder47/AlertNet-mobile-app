@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   StyleSheet,
   View,
@@ -15,6 +15,8 @@ import {
 import Constants from 'expo-constants';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFontSize } from '../../contexts/FontSizeContext';
+import { useTheme } from '../../contexts/ColorContext'; // ✅ Theme import
 
 const { width } = Dimensions.get('window');
 
@@ -27,6 +29,8 @@ const safetyCategories = [
 ];
 
 const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
+  const { colors } = useTheme(); // ✅ Use theme
+  
   // Core state for safety zones
   const [safetyZones, setSafetyZones] = useState([]);
   const [nearbyLocations, setNearbyLocations] = useState([]);
@@ -44,6 +48,24 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
   const [currentLocation, setCurrentLocation] = useState(null);
   const [locationPermission, setLocationPermission] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
+
+  // Font scaling context
+  const { getScaledFontSize, fontSizeMultiplier } = useFontSize();
+
+  // Calculate responsive dimensions based on font scale
+  const responsiveDimensions = useMemo(() => {
+    const baseMultiplier = fontSizeMultiplier || 1;
+    const isLargeFont = baseMultiplier > 1.2;
+    
+    return {
+      iconCircleSize: isLargeFont ? 70 : 65,
+      iconSize: isLargeFont ? 32 : 30,
+      locationItemPadding: isLargeFont ? 20 : 18,
+      locationIconSize: isLargeFont ? 48 : 45,
+      locationIconFontSize: isLargeFont ? 24 : 22,
+      maxLabelWidth: isLargeFont ? 85 : 75,
+    };
+  }, [fontSizeMultiplier]);
 
   // Load saved zones on component mount
   useEffect(() => {
@@ -524,12 +546,14 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
   const renderCategoryOption = (option) => (
     <TouchableOpacity
       key={option.label}
-      style={styles.categoryOption}
+      style={[styles.categoryOption, { backgroundColor: colors.surface }]}
       onPress={() => setSelectedCategory(option.label)}
     >
       <View style={styles.categoryOptionContent}>
-        <Text style={styles.categoryOptionText}>{option.label}</Text>
-        <View style={styles.radioButton}>
+        <Text style={[styles.categoryOptionText, { color: colors.text, fontSize: getScaledFontSize(16) }]}>
+          {option.label}
+        </Text>
+        <View style={[styles.radioButton, { borderColor: colors.textSecondary || colors.text }]}>
           {selectedCategory === option.label && <View style={styles.radioButtonSelected} />}
         </View>
       </View>
@@ -540,8 +564,10 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
   const renderEmptyState = () => (
     <View style={styles.emptyStateContainer}>
       <Text style={styles.emptyStateIcon}>📍</Text>
-      <Text style={styles.emptyStateTitle}>No Safety Zones Yet</Text>
-      <Text style={styles.emptyStateText}>
+      <Text style={[styles.emptyStateTitle, { color: colors.text, fontSize: getScaledFontSize(20) }]}>
+        No Safety Zones Yet
+      </Text>
+      <Text style={[styles.emptyStateText, { color: colors.textSecondary || colors.text, fontSize: getScaledFontSize(16) }]}>
         Add your first safety zone by tapping the "add" button below. 
         You can save important locations like your home, work, or frequently visited places.
       </Text>
@@ -549,23 +575,27 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
   );
 
   return (
-    <View style={styles.safeArea}>
-      <View style={styles.container}>
-        <View style={styles.header}>
+    <View style={[styles.safeArea, { backgroundColor: colors.surface }]}>
+      <View style={[styles.container, { backgroundColor: colors.surface }]}>
+        <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border || '#F0F0F0' }]}>
           <TouchableOpacity 
             style={styles.backButton} 
             onPress={handleBackPress}
           >
-            <Text style={styles.backButtonText}>← Back</Text>
+            <Text style={[styles.backButtonText, { color: colors.primary || '#FF6347', fontSize: getScaledFontSize(16) }]}>
+              ← Back
+            </Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Safety Zone</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.title, { color: colors.text, fontSize: getScaledFontSize(28) }]}>
+            Safety Zone
+          </Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary || colors.text, fontSize: getScaledFontSize(14) }]}>
             {safetyZones.length} saved location{safetyZones.length !== 1 ? 's' : ''}
           </Text>
         </View>
 
         <ScrollView 
-          style={styles.scrollView} 
+          style={[styles.scrollView, { backgroundColor: colors.surface }]}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
@@ -580,10 +610,29 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
                   console.log('Filter by:', category.filter);
                 }}
               >
-                <View style={styles.iconCircle}>
-                  <Text style={styles.icon}>{category.icon}</Text>
+                <View style={[
+                  styles.iconCircle,
+                  {
+                    width: responsiveDimensions.iconCircleSize,
+                    height: responsiveDimensions.iconCircleSize,
+                    borderRadius: responsiveDimensions.iconCircleSize / 2,
+                  }
+                ]}>
+                  <Text style={[
+                    styles.icon,
+                    { fontSize: responsiveDimensions.iconSize }
+                  ]}>
+                    {category.icon}
+                  </Text>
                 </View>
-                <Text style={styles.iconLabel} numberOfLines={2}>
+                <Text style={[
+                  styles.iconLabel,
+                  {
+                    color: colors.text,
+                    fontSize: getScaledFontSize(13),
+                    maxWidth: responsiveDimensions.maxLabelWidth,
+                  }
+                ]} numberOfLines={2}>
                   {category.name}
                 </Text>
               </TouchableOpacity>
@@ -597,17 +646,42 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
             safetyZones.map((zone) => (
               <TouchableOpacity 
                 key={zone.id} 
-                style={styles.locationItem}
+                style={[
+                  styles.locationItem,
+                  {
+                    backgroundColor: colors.card || colors.surface,
+                    borderColor: colors.border || '#E8E8E8',
+                    padding: responsiveDimensions.locationItemPadding
+                  }
+                ]}
                 onLongPress={() => removeSafetyZone(zone.id)}
               >
-                <View style={styles.locationIconContainer}>
-                  <Text style={styles.locationIcon}>{zone.icon}</Text>
+                <View style={[
+                  styles.locationIconContainer,
+                  {
+                    width: responsiveDimensions.locationIconSize,
+                    height: responsiveDimensions.locationIconSize,
+                    borderRadius: responsiveDimensions.locationIconSize / 2,
+                  }
+                ]}>
+                  <Text style={[
+                    styles.locationIcon,
+                    { fontSize: responsiveDimensions.locationIconFontSize }
+                  ]}>
+                    {zone.icon}
+                  </Text>
                 </View>
                 <View style={styles.locationTextContainer}>
-                  <Text style={styles.locationType}>{zone.type}</Text>
-                  <Text style={styles.locationAddress}>{zone.address}</Text>
+                  <Text style={[styles.locationType, { color: colors.text, fontSize: getScaledFontSize(17) }]}>
+                    {zone.type}
+                  </Text>
+                  <Text style={[styles.locationAddress, { color: colors.textSecondary || colors.text, fontSize: getScaledFontSize(13) }]}>
+                    {zone.address}
+                  </Text>
                   {zone.notificationsEnabled && (
-                    <Text style={styles.notificationIndicator}>🔔 Notifications ON</Text>
+                    <Text style={[styles.notificationIndicator, { fontSize: getScaledFontSize(12) }]}>
+                      🔔 Notifications ON
+                    </Text>
                   )}
                 </View>
               </TouchableOpacity>
@@ -618,7 +692,9 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
           {nearbyLocations.length > 0 && (
             <>
               <View style={styles.nearbyHeader}>
-                <Text style={styles.nearbyTitle}>Nearby Safety Locations</Text>
+                <Text style={[styles.nearbyTitle, { color: colors.text, fontSize: getScaledFontSize(20) }]}>
+                  Nearby Safety Locations
+                </Text>
                 <TouchableOpacity 
                   style={styles.refreshButton}
                   onPress={() => {
@@ -627,7 +703,9 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
                     }
                   }}
                 >
-                  <Text style={styles.refreshButtonText}>🔄 Refresh</Text>
+                  <Text style={[styles.refreshButtonText, { fontSize: getScaledFontSize(12) }]}>
+                    🔄 Refresh
+                  </Text>
                 </TouchableOpacity>
               </View>
               
@@ -636,7 +714,12 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
                   key={location.id} 
                   style={[
                     styles.locationItem,
-                    location.emergency && styles.emergencyLocationItem
+                    {
+                      backgroundColor: colors.card || colors.surface,
+                      borderColor: colors.border || '#E8E8E8',
+                      padding: responsiveDimensions.locationItemPadding
+                    },
+                    location.emergency && { borderColor: '#FF6347', backgroundColor: colors.surface }
                   ]}
                   onPress={() => {
                     // You can add functionality to view details or navigate
@@ -663,25 +746,45 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
                 >
                   <View style={[
                     styles.locationIconContainer,
+                    {
+                      width: responsiveDimensions.locationIconSize,
+                      height: responsiveDimensions.locationIconSize,
+                      borderRadius: responsiveDimensions.locationIconSize / 2,
+                    },
                     location.emergency && styles.emergencyIconContainer
                   ]}>
-                    <Text style={styles.locationIcon}>{location.icon}</Text>
+                    <Text style={[
+                      styles.locationIcon,
+                      { fontSize: responsiveDimensions.locationIconFontSize }
+                    ]}>
+                      {location.icon}
+                    </Text>
                     {location.emergency && (
                       <View style={styles.emergencyBadge}>
-                        <Text style={styles.emergencyBadgeText}>!</Text>
+                        <Text style={[styles.emergencyBadgeText, { fontSize: getScaledFontSize(10) }]}>
+                          !
+                        </Text>
                       </View>
                     )}
                   </View>
                   <View style={styles.locationTextContainer}>
-                    <Text style={styles.locationType}>{location.name}</Text>
-                    <Text style={styles.locationSubType}>{location.type}</Text>
-                    <Text style={styles.locationAddress} numberOfLines={2}>
+                    <Text style={[styles.locationType, { color: colors.text, fontSize: getScaledFontSize(17) }]}>
+                      {location.name}
+                    </Text>
+                    <Text style={[styles.locationSubType, { fontSize: getScaledFontSize(12) }]}>
+                      {location.type}
+                    </Text>
+                    <Text style={[styles.locationAddress, { color: colors.textSecondary || colors.text, fontSize: getScaledFontSize(13) }]} numberOfLines={2}>
                       {location.address}
                     </Text>
                     <View style={styles.locationMeta}>
-                      <Text style={styles.distanceText}>{location.distance} away</Text>
+                      <Text style={[styles.distanceText, { fontSize: getScaledFontSize(12) }]}>
+                        {location.distance} away
+                      </Text>
                       {location.phone && (
-                        <Text style={styles.phoneText}>📞 Available</Text>
+                        <Text style={[styles.phoneText, { fontSize: getScaledFontSize(11) }]}>
+                          📞 Available
+                        </Text>
                       )}
                     </View>
                   </View>
@@ -696,7 +799,9 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
             onPress={handleAddPress}
             activeOpacity={0.7}
           >
-            <Text style={styles.addButtonText}>+ add safety zone</Text>
+            <Text style={[styles.addButtonText, { fontSize: getScaledFontSize(17) }]}>
+              + add safety zone
+            </Text>
           </TouchableOpacity>
         </ScrollView>
 
@@ -706,14 +811,18 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
           animationType="slide"
           transparent={false}
         >
-          <View style={styles.modalContainer}>
+          <View style={[styles.modalContainer, { backgroundColor: colors.surface }]}>
             {/* Enhanced Header */}
-            <View style={styles.modalHeader}>
+            <View style={[styles.modalHeader, { backgroundColor: colors.card || colors.surface, borderBottomColor: colors.border || '#2C2C2E' }]}>
               <View style={styles.modalHeaderContent}>
                 <TouchableOpacity onPress={handleModalClose} style={styles.cancelButton}>
-                  <Text style={styles.cancelText}>Cancel</Text>
+                  <Text style={[styles.cancelText, { color: colors.primary || '#FF6347', fontSize: getScaledFontSize(16) }]}>
+                    Cancel
+                  </Text>
                 </TouchableOpacity>
-                <Text style={styles.modalTitle}>Add Safety Zone</Text>
+                <Text style={[styles.modalTitle, { color: colors.text, fontSize: getScaledFontSize(18) }]}>
+                  Add Safety Zone
+                </Text>
                 <View style={styles.headerSpacer} />
               </View>
             </View>
@@ -722,14 +831,14 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
               <View style={styles.modalContent}>
                 {/* Search Input with Suggestions */}
                 <View style={styles.searchSection}>
-                  <View style={styles.searchContainer}>
+                  <View style={[styles.searchContainer, { backgroundColor: colors.card || colors.surface, borderColor: colors.border || '#2C2C2E' }]}>
                     <View style={styles.searchIconContainer}>
-                      <Text style={styles.searchIcon}>🔍</Text>
+                      <Text style={[styles.searchIcon, { color: colors.textSecondary || colors.text }]}>🔍</Text>
                     </View>
                     <TextInput
-                      style={styles.searchInput}
+                      style={[styles.searchInput, { color: colors.text, fontSize: getScaledFontSize(16) }]}
                       placeholder="Search for a place worldwide..."
-                      placeholderTextColor="#888"
+                      placeholderTextColor={colors.textSecondary || '#888'}
                       value={searchText}
                       onChangeText={handleSearchChange}
                     />
@@ -738,25 +847,27 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
                         style={styles.clearButton}
                         onPress={clearSearch}
                       >
-                        <Text style={styles.clearButtonText}>✕</Text>
+                        <Text style={[styles.clearButtonText, { color: colors.textSecondary || '#888' }]}>✕</Text>
                       </TouchableOpacity>
                     )}
                   </View>
 
                   {/* Loading indicator */}
                   {isSearching && (
-                    <View style={styles.loadingContainer}>
-                      <Text style={styles.loadingText}>Searching places...</Text>
+                    <View style={[styles.loadingContainer, { backgroundColor: colors.card || colors.surface }]}>
+                      <Text style={[styles.loadingText, { color: colors.textSecondary || colors.text, fontSize: getScaledFontSize(14) }]}>
+                        Searching places...
+                      </Text>
                     </View>
                   )}
 
                   {/* Search Suggestions */}
                   {searchSuggestions.length > 0 && !isSearching && (
-                    <View style={styles.suggestionsContainer}>
+                    <View style={[styles.suggestionsContainer, { backgroundColor: colors.card || colors.surface, borderColor: colors.border || '#2C2C2E' }]}>
                       {searchSuggestions.map((suggestion) => (
                         <TouchableOpacity
                           key={suggestion.id}
-                          style={styles.suggestionItem}
+                          style={[styles.suggestionItem, { borderBottomColor: colors.border || '#2C2C2E' }]}
                           onPress={() => selectLocation(suggestion)}
                         >
                           <View style={styles.suggestionIcon}>
@@ -771,9 +882,15 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
                             </Text>
                           </View>
                           <View style={styles.suggestionText}>
-                            <Text style={styles.suggestionName}>{suggestion.name}</Text>
-                            <Text style={styles.suggestionAddress} numberOfLines={2}>{suggestion.address}</Text>
-                            <Text style={styles.suggestionType}>{suggestion.type}</Text>
+                            <Text style={[styles.suggestionName, { color: colors.text, fontSize: getScaledFontSize(16) }]}>
+                              {suggestion.name}
+                            </Text>
+                            <Text style={[styles.suggestionAddress, { color: colors.textSecondary || colors.text, fontSize: getScaledFontSize(13) }]} numberOfLines={2}>
+                              {suggestion.address}
+                            </Text>
+                            <Text style={[styles.suggestionType, { fontSize: getScaledFontSize(11) }]}>
+                              {suggestion.type}
+                            </Text>
                           </View>
                         </TouchableOpacity>
                       ))}
@@ -784,21 +901,29 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
                 {/* Location Preview */}
                 <View style={styles.mapPreview}>
                   <View style={styles.mapContainer}>
-                    <View style={styles.fallbackMap}>
-                      <Text style={styles.mapPlaceholderText}>📍 Location Preview</Text>
-                      <Text style={styles.mapSubtext}>Selected location details</Text>
+                    <View style={[styles.fallbackMap, { backgroundColor: colors.border || '#2C2C2E' }]}>
+                      <Text style={[styles.mapPlaceholderText, { color: colors.text, fontSize: getScaledFontSize(16) }]}>
+                        📍 Location Preview
+                      </Text>
+                      <Text style={[styles.mapSubtext, { color: colors.textSecondary || colors.text, fontSize: getScaledFontSize(13) }]}>
+                        Selected location details
+                      </Text>
                       {selectedLocation ? (
-                        <View style={styles.fallbackLocationInfo}>
-                          <Text style={styles.fallbackLocationName}>{selectedLocation.name}</Text>
-                          <Text style={styles.fallbackLocationAddress} numberOfLines={3}>
+                        <View style={[styles.fallbackLocationInfo, { backgroundColor: 'rgba(255, 99, 71, 0.15)', borderColor: 'rgba(255, 99, 71, 0.3)' }]}>
+                          <Text style={[styles.fallbackLocationName, { color: colors.text, fontSize: getScaledFontSize(15) }]}>
+                            {selectedLocation.name}
+                          </Text>
+                          <Text style={[styles.fallbackLocationAddress, { color: colors.textSecondary || colors.text, fontSize: getScaledFontSize(12) }]} numberOfLines={3}>
                             {selectedLocation.address}
                           </Text>
-                          <Text style={styles.coordinatesText}>
+                          <Text style={[styles.coordinatesText, { fontSize: getScaledFontSize(11) }]}>
                             📍 {selectedLocation.latitude?.toFixed(4)}, {selectedLocation.longitude?.toFixed(4)}
                           </Text>
                         </View>
                       ) : (
-                        <Text style={styles.noLocationText}>Search and select a location above</Text>
+                        <Text style={[styles.noLocationText, { color: colors.textSecondary || colors.text, fontSize: getScaledFontSize(14) }]}>
+                          Search and select a location above
+                        </Text>
                       )}
                     </View>
 
@@ -810,7 +935,7 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
                         disabled={!currentLocation}
                       >
                         <Text style={styles.controlButtonIcon}>📍</Text>
-                        <Text style={styles.controlButtonText}>
+                        <Text style={[styles.controlButtonText, { fontSize: getScaledFontSize(14) }]}>
                           {currentLocation ? 'My Location' : 'Getting...'}
                         </Text>
                       </TouchableOpacity>
@@ -820,8 +945,10 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
 
                 {/* Category Selection */}
                 <View style={styles.categorySection}>
-                  <Text style={styles.sectionTitle}>Choose Category</Text>
-                  <View style={styles.categoryContainer}>
+                  <Text style={[styles.sectionTitle, { color: colors.text, fontSize: getScaledFontSize(20) }]}>
+                    Choose Category
+                  </Text>
+                  <View style={[styles.categoryContainer, { backgroundColor: colors.card || colors.surface, borderColor: colors.border || '#2C2C2E' }]}>
                     {categoryOptions.map(renderCategoryOption)}
                   </View>
                 </View>
@@ -829,12 +956,14 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
                 {/* Custom Label Input */}
                 {selectedCategory === 'Custom Label' && (
                   <View style={styles.customLabelSection}>
-                    <Text style={styles.inputLabel}>Zone Name</Text>
-                    <View style={styles.customLabelContainer}>
+                    <Text style={[styles.inputLabel, { color: colors.text, fontSize: getScaledFontSize(16) }]}>
+                      Zone Name
+                    </Text>
+                    <View style={[styles.customLabelContainer, { backgroundColor: colors.card || colors.surface, borderColor: colors.border || '#2C2C2E' }]}>
                       <TextInput
-                        style={styles.customLabelInput}
+                        style={[styles.customLabelInput, { color: colors.text, fontSize: getScaledFontSize(16) }]}
                         placeholder="Enter zone name"
-                        placeholderTextColor="#888"
+                        placeholderTextColor={colors.textSecondary || '#888'}
                         value={zoneName}
                         onChangeText={setZoneName}
                       />
@@ -844,19 +973,21 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
 
                 {/* Notification Toggle */}
                 <View style={styles.notificationSection}>
-                  <View style={styles.notificationContainer}>
+                  <View style={[styles.notificationContainer, { backgroundColor: colors.card || colors.surface, borderColor: colors.border || '#2C2C2E' }]}>
                     <View style={styles.notificationTextContainer}>
-                      <Text style={styles.notificationTitle}>Location Alerts</Text>
-                      <Text style={styles.notificationSubtext}>
+                      <Text style={[styles.notificationTitle, { color: colors.text, fontSize: getScaledFontSize(16) }]}>
+                        Location Alerts
+                      </Text>
+                      <Text style={[styles.notificationSubtext, { color: colors.textSecondary || colors.text, fontSize: getScaledFontSize(14) }]}>
                         Get notified when you're close to this location
                       </Text>
                     </View>
                     <Switch
                       value={notificationEnabled}
                       onValueChange={setNotificationEnabled}
-                      trackColor={{ false: '#3A3A3C', true: '#FF6347' }}
+                      trackColor={{ false: colors.textSecondary || '#3A3A3C', true: '#FF6347' }}
                       thumbColor={notificationEnabled ? '#fff' : '#f4f3f4'}
-                      ios_backgroundColor="#3A3A3C"
+                      ios_backgroundColor={colors.textSecondary || '#3A3A3C'}
                     />
                   </View>
                 </View>
@@ -864,17 +995,19 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
             </ScrollView>
 
             {/* Done Button */}
-            <View style={styles.buttonContainer}>
+            <View style={[styles.buttonContainer, { backgroundColor: colors.surface }]}>
               <TouchableOpacity 
                 style={[
                   styles.doneButton, 
-                  (!selectedLocation || (selectedCategory === 'Custom Label' && !zoneName.trim())) && styles.doneButtonDisabled
+                  (!selectedLocation || (selectedCategory === 'Custom Label' && !zoneName.trim())) && [styles.doneButtonDisabled, { backgroundColor: colors.textSecondary || '#444' }]
                 ]} 
                 onPress={handleDone} 
                 activeOpacity={0.8}
                 disabled={!selectedLocation || (selectedCategory === 'Custom Label' && !zoneName.trim())}
               >
-                <Text style={styles.doneButtonText}>Save Safety Zone</Text>
+                <Text style={[styles.doneButtonText, { fontSize: getScaledFontSize(17) }]}>
+                  Save Safety Zone
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -887,18 +1020,15 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
     paddingTop: Constants.statusBarHeight,
   },
   container: {
     flex: 1,
   },
   header: {
-    backgroundColor: '#FFFFFF',
     paddingHorizontal: 20,
     paddingVertical: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
   },
   backButton: {
     paddingVertical: 5,
@@ -906,24 +1036,17 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   backButtonText: {
-    fontSize: 16,
-    color: '#FF6347',
     fontWeight: '600',
   },
   title: {
-    fontSize: 28,
     fontWeight: 'bold',
-    color: '#000000',
     marginBottom: 5,
   },
   subtitle: {
-    fontSize: 14,
-    color: '#666666',
     fontWeight: '500',
   },
   scrollView: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -942,9 +1065,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   iconCircle: {
-    width: 65,
-    height: 65,
-    borderRadius: 32.5,
     backgroundColor: '#FF6347',
     justifyContent: 'center',
     alignItems: 'center',
@@ -959,24 +1079,18 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   icon: {
-    fontSize: 30,
+    // fontSize handled dynamically
   },
   iconLabel: {
-    color: '#000000',
-    fontSize: 13,
     textAlign: 'center',
-    maxWidth: 75,
     fontWeight: '500',
   },
   locationItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
     borderRadius: 15,
-    padding: 18,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#E8E8E8',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -987,9 +1101,6 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   locationIconContainer: {
-    width: 45,
-    height: 45,
-    borderRadius: 22.5,
     backgroundColor: '#FF6347',
     justifyContent: 'center',
     alignItems: 'center',
@@ -1004,31 +1115,25 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   locationIcon: {
-    fontSize: 22,
+    // fontSize handled dynamically
   },
   locationTextContainer: {
     flex: 1,
   },
   locationType: {
-    color: '#000000',
-    fontSize: 17,
     fontWeight: 'bold',
     marginBottom: 2,
   },
   locationAddress: {
-    color: '#666666',
-    fontSize: 13,
     lineHeight: 18,
   },
   notificationIndicator: {
     color: '#FF6347',
-    fontSize: 12,
     fontWeight: '500',
     marginTop: 4,
   },
   distanceText: {
     color: '#FF6347',
-    fontSize: 12,
     fontWeight: '500',
     marginTop: 4,
   },
@@ -1040,9 +1145,7 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   nearbyTitle: {
-    fontSize: 20,
     fontWeight: 'bold',
-    color: '#000000',
   },
   refreshButton: {
     backgroundColor: '#FF6347',
@@ -1052,13 +1155,11 @@ const styles = StyleSheet.create({
   },
   refreshButtonText: {
     color: '#FFFFFF',
-    fontSize: 12,
     fontWeight: '600',
   },
   emergencyLocationItem: {
     borderColor: '#FF6347',
     borderWidth: 2,
-    backgroundColor: '#FFF5F5',
   },
   emergencyIconContainer: {
     backgroundColor: '#DC2626',
@@ -1079,12 +1180,10 @@ const styles = StyleSheet.create({
   },
   emergencyBadgeText: {
     color: '#000000',
-    fontSize: 10,
     fontWeight: 'bold',
   },
   locationSubType: {
     color: '#FF6347',
-    fontSize: 12,
     fontWeight: '600',
     marginBottom: 3,
   },
@@ -1096,7 +1195,6 @@ const styles = StyleSheet.create({
   },
   phoneText: {
     color: '#10B981',
-    fontSize: 11,
     fontWeight: '500',
     marginLeft: 10,
   },
@@ -1111,15 +1209,11 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   emptyStateTitle: {
-    fontSize: 20,
     fontWeight: 'bold',
-    color: '#000000',
     marginBottom: 12,
     textAlign: 'center',
   },
   emptyStateText: {
-    fontSize: 16,
-    color: '#666666',
     textAlign: 'center',
     lineHeight: 24,
     maxWidth: 280,
@@ -1144,21 +1238,17 @@ const styles = StyleSheet.create({
   },
   addButtonText: {
     color: '#FFFFFF',
-    fontSize: 17,
     fontWeight: 'bold',
     textAlign: 'center',
   },
   // Modal Styles
   modalContainer: {
     flex: 1,
-    backgroundColor: '#000000',
   },
   modalHeader: {
     paddingTop: 60,
     paddingBottom: 20,
-    backgroundColor: '#1C1C1E',
     borderBottomWidth: 1,
-    borderBottomColor: '#2C2C2E',
   },
   modalHeaderContent: {
     flexDirection: 'row',
@@ -1172,13 +1262,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   cancelText: {
-    color: '#FF6347',
-    fontSize: 16,
     fontWeight: '600',
   },
   modalTitle: {
-    color: '#FFFFFF',
-    fontSize: 18,
     fontWeight: 'bold',
   },
   headerSpacer: {
@@ -1198,10 +1284,8 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1C1C1E',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#2C2C2E',
   },
   searchIconContainer: {
     paddingLeft: 16,
@@ -1213,8 +1297,6 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    color: '#FFFFFF',
-    fontSize: 16,
     paddingVertical: 16,
     paddingRight: 8,
   },
@@ -1223,27 +1305,22 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   clearButtonText: {
-    color: '#888',
     fontSize: 16,
     fontWeight: 'bold',
   },
   loadingContainer: {
-    backgroundColor: '#1C1C1E',
     borderRadius: 12,
     padding: 16,
     marginTop: 8,
     alignItems: 'center',
   },
   loadingText: {
-    color: '#8E8E93',
-    fontSize: 14,
+    // color handled dynamically
   },
   suggestionsContainer: {
-    backgroundColor: '#1C1C1E',
     borderRadius: 12,
     marginTop: 8,
     borderWidth: 1,
-    borderColor: '#2C2C2E',
     maxHeight: 280,
     overflow: 'hidden',
   },
@@ -1253,7 +1330,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#2C2C2E',
   },
   suggestionIcon: {
     width: 40,
@@ -1271,24 +1347,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   suggestionName: {
-    color: '#FFFFFF',
-    fontSize: 16,
     fontWeight: '600',
     marginBottom: 3,
   },
   suggestionAddress: {
-    color: '#8E8E93',
-    fontSize: 13,
     lineHeight: 16,
     marginBottom: 3,
   },
   suggestionType: {
     color: '#FF6347',
-    fontSize: 11,
     fontWeight: '500',
   },
   mapPreview: {
-    backgroundColor: '#1C1C1E',
     height: 200,
     borderRadius: 16,
     marginBottom: 32,
@@ -1302,56 +1372,42 @@ const styles = StyleSheet.create({
   },
   fallbackMap: {
     flex: 1,
-    backgroundColor: '#2C2C2E',
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
   },
   mapPlaceholderText: {
-    color: '#FFFFFF',
-    fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 6,
     textAlign: 'center',
   },
   mapSubtext: {
-    color: '#8E8E93',
-    fontSize: 13,
     textAlign: 'center',
     marginBottom: 15,
   },
   fallbackLocationInfo: {
-    backgroundColor: 'rgba(255, 99, 71, 0.15)',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
     width: '100%',
     borderWidth: 1,
-    borderColor: 'rgba(255, 99, 71, 0.3)',
   },
   fallbackLocationName: {
-    color: '#FFFFFF',
-    fontSize: 15,
     fontWeight: 'bold',
     marginBottom: 6,
     textAlign: 'center',
   },
   fallbackLocationAddress: {
-    color: '#8E8E93',
-    fontSize: 12,
     textAlign: 'center',
     marginBottom: 8,
     lineHeight: 16,
   },
   coordinatesText: {
     color: '#FF6347',
-    fontSize: 11,
     fontWeight: '600',
     textAlign: 'center',
   },
   noLocationText: {
-    color: '#8E8E93',
-    fontSize: 14,
     textAlign: 'center',
     fontStyle: 'italic',
   },
@@ -1384,24 +1440,19 @@ const styles = StyleSheet.create({
   },
   controlButtonText: {
     color: '#FFFFFF',
-    fontSize: 14,
     fontWeight: '600',
   },
   categorySection: {
     marginBottom: 24,
   },
   sectionTitle: {
-    color: '#FFFFFF',
-    fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 16,
   },
   categoryContainer: {
-    backgroundColor: '#1C1C1E',
     borderRadius: 12,
     padding: 4,
     borderWidth: 1,
-    borderColor: '#2C2C2E',
   },
   categoryOption: {
     marginBottom: 2,
@@ -1416,8 +1467,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   categoryOptionText: {
-    color: '#FFFFFF',
-    fontSize: 16,
     fontWeight: '500',
   },
   radioButton: {
@@ -1425,7 +1474,6 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     borderWidth: 2,
-    borderColor: '#666',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1439,20 +1487,14 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   inputLabel: {
-    color: '#FFFFFF',
-    fontSize: 16,
     fontWeight: '600',
     marginBottom: 8,
   },
   customLabelContainer: {
-    backgroundColor: '#1C1C1E',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#2C2C2E',
   },
   customLabelInput: {
-    color: '#FFFFFF',
-    fontSize: 16,
     paddingHorizontal: 16,
     paddingVertical: 16,
   },
@@ -1463,33 +1505,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#1C1C1E',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderWidth: 1,
-    borderColor: '#2C2C2E',
   },
   notificationTextContainer: {
     flex: 1,
     marginRight: 16,
   },
   notificationTitle: {
-    color: '#FFFFFF',
-    fontSize: 16,
     fontWeight: '600',
     marginBottom: 2,
   },
   notificationSubtext: {
-    color: '#8E8E93',
-    fontSize: 14,
     lineHeight: 18,
   },
   buttonContainer: {
     paddingHorizontal: 20,
     paddingBottom: 40,
     paddingTop: 16,
-    backgroundColor: '#000000',
   },
   doneButton: {
     backgroundColor: '#FF6347',
@@ -1503,13 +1538,11 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   doneButtonDisabled: {
-    backgroundColor: '#444',
     shadowOpacity: 0,
     elevation: 0,
   },
   doneButtonText: {
     color: '#FFFFFF',
-    fontSize: 17,
     fontWeight: 'bold',
   },
 });

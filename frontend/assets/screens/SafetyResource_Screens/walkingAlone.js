@@ -7,182 +7,387 @@ import {
   Image,
   TouchableOpacity,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/Feather'; // Using Feather for the arrow-left icon
+import { Feather } from '@expo/vector-icons';
 import Constants from 'expo-constants';
-import { useFontSize } from '../../contexts/FontSizeContext'; // Import font size context
+import { useFontSize } from '../../contexts/FontSizeContext';
+import { useTheme } from '../../contexts/ColorContext';
 
 const tipsData = [
   {
+    id: 'route',
+    icon: 'map',
     title: 'Plan Your Route',
+    color: '#3B82F6',
+    bgColor: '#DBEAFE',
     points: [
-      '1. Stick to well-lit, familiar streets.',
-      '2. Avoid shortcuts through alleys or isolated areas.',
-      '3. Share your route and estimated arrival time with someone you trust.',
+      'Stick to well-lit, familiar streets',
+      'Avoid shortcuts through alleys or isolated areas',
+      'Share your route and estimated arrival time with someone you trust',
     ],
-    image: require('../../images/Alone.png'), // Replace with your actual image path
+    image: require('../../images/Alone.png'),
   },
   {
+    id: 'awareness',
+    icon: 'eye',
     title: 'Stay Aware of Your Surroundings',
+    color: '#F59E0B',
+    bgColor: '#FEF3C7',
     points: [
-      '1. Keep music volume low or use only one earbud.',
-      '2. Avoid being distracted by your phone.',
+      'Keep music volume low or use only one earbud',
+      'Avoid being distracted by your phone',
+      'Stay alert to people and vehicles around you',
     ],
   },
   {
+    id: 'confidence',
+    icon: 'user-check',
     title: 'Project Confidence',
+    color: '#8B5CF6',
+    bgColor: '#EDE9FE',
     points: [
-      '1. Walk purposefully and stand tall.',
-      '2. Make brief eye contact with people around you.',
+      'Walk purposefully and stand tall',
+      'Make brief eye contact with people around you',
+      'Trust your instincts if something feels wrong',
     ],
   },
   {
+    id: 'apps',
+    icon: 'smartphone',
     title: 'Use Safety Apps',
+    color: '#10B981',
+    bgColor: '#D1FAE5',
     points: [
-      '1. Enable location sharing with trusted contacts.',
-      '2. Use features like "Plan a Walk" or "Check In" in the AlertNet app.',
+      'Enable location sharing with trusted contacts',
+      'Use features like "Plan a Walk" or "Check In" in the AlertNet app',
+      'Keep emergency contacts readily accessible',
     ],
   },
   {
+    id: 'zones',
+    icon: 'shield',
     title: 'Know Safe Zones',
+    color: '#EC4899',
+    bgColor: '#FCE7F3',
     points: [
-      '1. Identify nearby shops, police stations, or 24/7 businesses you can enter if needed.',
+      'Identify nearby shops, police stations, or 24/7 businesses you can enter if needed',
+      'Memorize locations of well-lit public areas',
     ],
   },
 ];
 
-// 1. ACCEPT NAVIGATION PROPS
 const WalkingAloneTips = ({ setIsWalkingAloneTips, setIsSafetyResources }) => {
-  const { getScaledFontSize } = useFontSize(); // Use font size hook
+  const { getScaledFontSize } = useFontSize();
+  const { colors } = useTheme();
 
   return (
-    <View style={styles.safeArea}>
-      {/* Header section is now outside the ScrollView for consistent positioning */}
-      <View style={styles.headerContainer}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Header */}
+      <View style={[styles.header, { backgroundColor: colors.card }]}>
         <TouchableOpacity 
-          style={styles.backButton}
           onPress={() => {
             setIsWalkingAloneTips(false);
             setIsSafetyResources(true);
           }}
+          style={styles.backButton}
         >
-          <Icon name="arrow-left" size={28} color="#000" />
+          <Feather name="arrow-left" size={24} color={colors.text} />
         </TouchableOpacity>
-
-        <View style={styles.header}>
-          <Text style={[styles.title, { fontSize: getScaledFontSize(26) }]}>
-            Tips for Walking Alone
-          </Text>
-          <Text style={[styles.subtitle, { fontSize: getScaledFontSize(18) }]}>
-            Stay Alert. Stay Safe.
-          </Text>
+        <View style={styles.headerContent}>
+          <View style={[styles.headerIcon, { backgroundColor: '#DBEAFE' }]}>
+            <Feather name="navigation" size={24} color="#3B82F6" />
+          </View>
+          <View style={styles.headerTextContainer}>
+            <Text style={[styles.headerTitle, { fontSize: getScaledFontSize(20), color: colors.text }]}>
+              Walking Alone Safely
+            </Text>
+            <Text style={[styles.headerSubtitle, { fontSize: getScaledFontSize(13), color: colors.textSecondary || colors.text }]}>
+              Essential tips for your safety
+            </Text>
+          </View>
         </View>
       </View>
 
       <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.contentContainer}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {tipsData.map((section, index) => (
-          <View key={index} style={styles.section}>
-            <Text style={[styles.sectionTitle, { fontSize: getScaledFontSize(16) }]}>
-              {section.title}
-            </Text>
-            <View style={[styles.cardContainer, section.image && styles.cardContainerWithImage]}>
-              {section.image && (
-                <Image source={section.image} style={styles.inlineImage} />
-              )}
-              <View style={styles.card}>
-                {section.points.map((point, pIndex) => (
-                  <Text key={pIndex} style={[styles.pointText, { fontSize: getScaledFontSize(15) }]}>
-                    {point}
+        {/* Hero Banner */}
+        <View style={[styles.heroBanner, { backgroundColor: '#3B82F6' }]}>
+          <View style={styles.heroBannerContent}>
+            <Feather name="alert-circle" size={32} color="white" />
+            <View style={styles.heroBannerText}>
+              <Text style={[styles.heroBannerTitle, { fontSize: getScaledFontSize(18) }]}>
+                Stay Alert. Stay Safe.
+              </Text>
+              <Text style={[styles.heroBannerSubtitle, { fontSize: getScaledFontSize(13) }]}>
+                Follow these guidelines to walk confidently
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Tips Cards */}
+        {tipsData.map((tip, index) => (
+          <View key={tip.id} style={[styles.tipCard, { backgroundColor: colors.card }]}>
+            {/* Card Header */}
+            <View style={styles.tipHeader}>
+              <View style={[styles.tipIconContainer, { backgroundColor: tip.bgColor }]}>
+                <Feather name={tip.icon} size={24} color={tip.color} />
+              </View>
+              <View style={styles.tipHeaderText}>
+                <View style={styles.tipNumberBadge}>
+                  <Text style={[styles.tipNumber, { fontSize: getScaledFontSize(11) }]}>
+                    TIP {index + 1}
                   </Text>
+                </View>
+                <Text style={[styles.tipTitle, { fontSize: getScaledFontSize(16), color: colors.text }]}>
+                  {tip.title}
+                </Text>
+              </View>
+            </View>
+
+            {/* Card Content */}
+            <View style={styles.tipContent}>
+              {tip.image && (
+                <View style={styles.imageContainer}>
+                  <Image source={tip.image} style={styles.tipImage} />
+                </View>
+              )}
+              <View style={styles.pointsContainer}>
+                {tip.points.map((point, pIndex) => (
+                  <View key={pIndex} style={styles.pointRow}>
+                    <View style={[styles.pointDot, { backgroundColor: tip.color }]} />
+                    <Text style={[styles.pointText, { fontSize: getScaledFontSize(14), color: colors.text }]}>
+                      {point}
+                    </Text>
+                  </View>
                 ))}
               </View>
             </View>
           </View>
         ))}
-        
-        <Image
-          source={require('../../images/signMan.png')} // Replace with your actual image path
-          style={styles.footerImage}
-        />
+
+        {/* Bottom CTA Card */}
+        <View style={[styles.ctaCard, { backgroundColor: colors.card }]}>
+          <Image
+            source={require('../../images/signMan.png')}
+            style={styles.ctaImage}
+          />
+          <Text style={[styles.ctaTitle, { fontSize: getScaledFontSize(16), color: colors.text }]}>
+            Remember: Trust Your Instincts
+          </Text>
+          <Text style={[styles.ctaDescription, { fontSize: getScaledFontSize(13), color: colors.textSecondary || colors.text }]}>
+            If something doesn't feel right, it probably isn't. Find a safe place or contact someone immediately.
+          </Text>
+          <TouchableOpacity
+            style={[styles.ctaButton, { backgroundColor: '#3B82F6' }]}
+            onPress={() => {
+              setIsWalkingAloneTips(false);
+              setIsSafetyResources(true);
+            }}
+          >
+            <Text style={[styles.ctaButtonText, { fontSize: getScaledFontSize(15) }]}>
+              Back to Safety Resources
+            </Text>
+            <Feather name="arrow-right" size={20} color="white" />
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#f4f4f4',
-    paddingTop: Constants.statusBarHeight,
-  },
   container: {
     flex: 1,
   },
-  headerContainer: {
+  header: {
+    paddingTop: Constants.statusBarHeight + 16,
+    paddingBottom: 16,
     paddingHorizontal: 20,
-    paddingTop: 10,
-  },
-  contentContainer: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
   },
   backButton: {
-    marginBottom: 10,
+    marginBottom: 12,
+    padding: 4,
     alignSelf: 'flex-start',
   },
-  header: {
-    marginBottom: 30,
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  title: {
-    fontWeight: 'bold',
-    color: '#000',
+  headerIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
-  subtitle: {
-    color: '#333',
-    marginTop: 4,
+  headerTextContainer: {
+    flex: 1,
   },
-  section: {
-    marginBottom: 25,
+  headerTitle: {
+    fontWeight: '700',
+    marginBottom: 2,
   },
-  sectionTitle: {
-    fontWeight: 'bold',
-    color: '#D35400', // A reddish-orange color
-    marginBottom: 10,
+  headerSubtitle: {
+    opacity: 0.7,
   },
-  cardContainer: {
-    // This container helps manage layout, especially with images
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 40,
   },
-  cardContainerWithImage: {
+  heroBanner: {
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  heroBannerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  heroBannerText: {
+    marginLeft: 16,
+    flex: 1,
+  },
+  heroBannerTitle: {
+    color: 'white',
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  heroBannerSubtitle: {
+    color: 'white',
+    opacity: 0.9,
+  },
+  tipCard: {
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+  },
+  tipHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  tipIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  tipHeaderText: {
+    flex: 1,
+  },
+  tipNumberBadge: {
+    backgroundColor: '#F3F4F6',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginBottom: 6,
+  },
+  tipNumber: {
+    color: '#6B7280',
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+  tipTitle: {
+    fontWeight: '700',
+  },
+  tipContent: {
+    flexDirection: 'row',
+  },
+  imageContainer: {
+    marginRight: 16,
+    justifyContent: 'center',
+  },
+  tipImage: {
+    width: 70,
+    height: 140,
+    resizeMode: 'contain',
+  },
+  pointsContainer: {
+    flex: 1,
+    gap: 12,
+  },
+  pointRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 15,
-    padding: 20,
-    flex: 1, // Allows card to take remaining space if there's an image
+  pointDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginTop: 6,
+    marginRight: 12,
   },
   pointText: {
-    color: '#333',
-    lineHeight: 24,
-    marginBottom: 8,
+    flex: 1,
+    lineHeight: 22,
   },
-  inlineImage: {
-    width: 60,
+  ctaCard: {
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    marginTop: 8,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+  },
+  ctaImage: {
+    width: 100,
     height: 120,
     resizeMode: 'contain',
-    marginRight: 10,
-    marginTop: 10,
+    marginBottom: 16,
   },
-  footerImage: {
-    width: 100,
-    height: 150,
-    resizeMode: 'contain',
-    alignSelf: 'center',
-    marginTop: 20,
+  ctaTitle: {
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  ctaDescription: {
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 20,
+    opacity: 0.7,
+  },
+  ctaButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    gap: 8,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+  },
+  ctaButtonText: {
+    color: 'white',
+    fontWeight: '700',
   },
 });
 

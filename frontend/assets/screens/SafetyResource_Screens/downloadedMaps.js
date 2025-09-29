@@ -19,11 +19,15 @@ import { OfflineMapFirebaseService } from '../../../backend/Firebase/OfflineMapF
 import OfflineMapService from '../../services/OfflineMapService';
 import { auth } from '../../../backend/Firebase/FirebaseConfig';
 import OfflineMapViewer from './OfflineMapViewer';
+import { useFontSize } from '../../contexts/FontSizeContext';
+import { useTheme } from '../../contexts/ColorContext'; // ✅ Theme import
 
 const { width, height } = Dimensions.get('window');
 
-
 const DownloadedMaps = ({ navigation, setIsOfflineMap, setIsDownloadedMaps, downloadedMaps, setDownloadedMaps }) => {
+  const { getScaledFontSize } = useFontSize();
+  const { colors } = useTheme(); // ✅ Use theme
+  
   const [firebaseMaps, setFirebaseMaps] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedMap, setSelectedMap] = useState(null);
@@ -55,14 +59,10 @@ const DownloadedMaps = ({ navigation, setIsOfflineMap, setIsDownloadedMaps, down
           text: 'Update', 
           onPress: async () => {
             try {
-              // Record the update in Firebase
               if (auth.currentUser) {
                 await OfflineMapFirebaseService.addMapUpdateHistory(id, 'updated', 'Map update initiated by user');
               }
-              
               Alert.alert('Update Started', 'Map update has been initiated. You can monitor progress in the download section.');
-              
-              // Navigate to offline map screen for re-download
               setIsDownloadedMaps(false);
               setIsOfflineMap(true);
             } catch (error) {
@@ -76,11 +76,9 @@ const DownloadedMaps = ({ navigation, setIsOfflineMap, setIsDownloadedMaps, down
   };
 
   const handleMapAccess = async (mapId) => {
-    // Record map access for usage statistics
     if (auth.currentUser) {
       await OfflineMapFirebaseService.recordMapAccess(mapId);
     }
-    // Then show the map
     const allMaps = [...downloadedMaps, ...firebaseMaps];
     const mapToView = allMaps.find(m => m.id === mapId);
     if (mapToView) {
@@ -98,19 +96,12 @@ const DownloadedMaps = ({ navigation, setIsOfflineMap, setIsDownloadedMaps, down
           text: 'Delete', 
           style: 'destructive',
           onPress: async () => {
-            // Delete from local storage
             const updatedMaps = downloadedMaps.filter(map => map.id !== id);
             setDownloadedMaps(updatedMaps);
-            
             try {
               await AsyncStorage.setItem('downloadedMaps', JSON.stringify(updatedMaps));
-              
-              // Delete from device storage and Firebase
               await OfflineMapService.deleteOfflineMap(id);
-              
-              // Refresh Firebase maps
               await loadFirebaseMaps();
-              
             } catch (error) {
               console.error('Failed to delete map', error);
               Alert.alert('Error', 'Failed to delete map. Please try again.');
@@ -131,7 +122,6 @@ const DownloadedMaps = ({ navigation, setIsOfflineMap, setIsDownloadedMaps, down
   };
 
   const handleViewMap = (map) => {
-    // Record map access for usage statistics
     if (auth.currentUser) {
       OfflineMapFirebaseService.recordMapAccess(map.id);
     }
@@ -156,23 +146,22 @@ const DownloadedMaps = ({ navigation, setIsOfflineMap, setIsDownloadedMaps, down
     
     return (
       <TouchableOpacity 
-        style={styles.mapCard}
+        style={[styles.mapCard, { backgroundColor: colors.card || colors.surface }]}
         onPress={() => handleViewMap(map)}
         activeOpacity={0.7}
       >
         <View style={styles.mapCardHeader}>
           <View style={styles.mapInfo}>
-            <View style={styles.mapThumbnail}>
-              <Ionicons name="map" size={24} color="#3B82F6" />
+            <View style={[styles.mapThumbnail, { backgroundColor: colors.surface }]}>
+              <Ionicons name="map" size={24} color={colors.primary || "#3B82F6"} />
             </View>
             <View style={styles.mapDetails}>
-              <Text style={styles.mapName}>{map.name}</Text>
-              <Text style={styles.mapSize}>{displaySize}</Text>
-
+              <Text style={[styles.mapName, { color: colors.text, fontSize: getScaledFontSize(16) }]}>{map.name}</Text>
+              <Text style={[styles.mapSize, { color: colors.textSecondary || colors.text, fontSize: getScaledFontSize(14) }]}>{displaySize}</Text>
             </View>
           </View>
           <View style={styles.mapStatus}>
-            <Ionicons name="location" size={20} color="#9CA3AF" />
+            <Ionicons name="location" size={20} color={colors.textSecondary || "#9CA3AF"} />
             {isFirebaseMap && (
               <View style={styles.syncIndicator}>
                 <Ionicons name="cloud-done" size={16} color="#10B981" />
@@ -182,15 +171,23 @@ const DownloadedMaps = ({ navigation, setIsOfflineMap, setIsDownloadedMaps, down
         </View>
         
         <View style={styles.mapCardFooter}>
-          <Text style={styles.expiryText}>Expires on {displayExpiryDate}</Text>
+          <Text style={[styles.expiryText, { color: colors.textSecondary || colors.text, fontSize: getScaledFontSize(12) }]}>Expires on {displayExpiryDate}</Text>
           <View style={styles.buttonContainer}>
-            <TouchableOpacity style={styles.actionButton} onPress={(e) => { e.stopPropagation(); handleUpdate(map.id); }} activeOpacity={0.8}>
-              <Ionicons name="refresh-outline" size={14} color="#FFFFFF" />
-              <Text style={styles.buttonText}>Update</Text>
+            <TouchableOpacity 
+              style={[styles.actionButton, { backgroundColor: colors.primary ? `${colors.primary}33` : 'rgba(255, 255, 255, 0.2)' }]} 
+              onPress={(e) => { e.stopPropagation(); handleUpdate(map.id); }} 
+              activeOpacity={0.8}
+            >
+              <Ionicons name="refresh-outline" size={14} color={colors.text} />
+              <Text style={[styles.buttonText, { color: colors.text, fontSize: getScaledFontSize(12) }]}>Update</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButton} onPress={(e) => { e.stopPropagation(); handleDelete(map.id); }} activeOpacity={0.8}>
+            <TouchableOpacity 
+              style={[styles.actionButton, { backgroundColor: colors.primary ? `${colors.primary}33` : 'rgba(255, 255, 255, 0.2)' }]} 
+              onPress={(e) => { e.stopPropagation(); handleDelete(map.id); }} 
+              activeOpacity={0.8}
+            >
               <Ionicons name="trash-outline" size={14} color="#FCA5A5" />
-              <Text style={[styles.buttonText, styles.deleteButtonText]}>Delete</Text>
+              <Text style={[styles.buttonText, styles.deleteButtonText, { fontSize: getScaledFontSize(12) }]}>Delete</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -198,63 +195,54 @@ const DownloadedMaps = ({ navigation, setIsOfflineMap, setIsDownloadedMaps, down
     );
   };
 
-
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F3F4F6" />
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.surface }]}>
+      <StatusBar barStyle={colors.text === '#FFFFFF' ? "light-content" : "dark-content"} backgroundColor={colors.surface} />
       
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.card || colors.surface, shadowColor: colors.shadow || '#000' }]}>
         <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={24} color="#374151" />
+          <Ionicons name="chevron-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Offline Map</Text>
+        <Text style={[styles.headerTitle, { color: colors.text, fontSize: getScaledFontSize(18) }]}>Offline Map</Text>
       </View>
 
       {/* Subtitle */}
-      <View style={styles.subtitleContainer}>
-        <Text style={styles.subtitleText}>
+      <View style={[styles.subtitleContainer, { backgroundColor: colors.card || colors.surface, borderBottomColor: colors.border || '#E5E7EB' }]}>
+        <Text style={[styles.subtitleText, { color: colors.textSecondary || colors.text, fontSize: getScaledFontSize(14) }]}>
           Please make sure you update the offline map before they expire
           or view them
         </Text>
       </View>
 
       {/* Map Cards */}
-      <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+      <ScrollView style={[styles.scrollContainer, { backgroundColor: colors.surface }]} showsVerticalScrollIndicator={false}>
         <View style={styles.mapList}>
-          {/* Show Firebase maps if user is authenticated */}
           {auth.currentUser && firebaseMaps.length > 0 && (
             <>
-              <Text style={styles.sectionTitle}>Synced Maps</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text, fontSize: getScaledFontSize(16) }]}>Synced Maps</Text>
               {firebaseMaps.map((map) => (
                 <MapCard key={`firebase_${map.id}`} map={map} isFirebaseMap={true} />
-
               ))}
-
-
             </>
           )}
           
-          {/* Show local maps */}
           {downloadedMaps.length > 0 && (
             <>
               {auth.currentUser && firebaseMaps.length > 0 && (
-                <Text style={styles.sectionTitle}>Local Maps</Text>
-
+                <Text style={[styles.sectionTitle, { color: colors.text, fontSize: getScaledFontSize(16) }]}>Local Maps</Text>
               )}
-
               {downloadedMaps.map((map) => (
                 <MapCard key={`local_${map.id}`} map={map} />
               ))}
             </>
           )}
           
-          {/* Empty state */}
           {downloadedMaps.length === 0 && firebaseMaps.length === 0 && (
             <View style={styles.emptyState}>
-              <Ionicons name="map-outline" size={64} color="#9CA3AF" />
-              <Text style={styles.emptyText}>No offline maps downloaded</Text>
-              <Text style={styles.emptySubtext}>
+              <Ionicons name="map-outline" size={64} color={colors.textSecondary || "#9CA3AF"} />
+              <Text style={[styles.emptyText, { color: colors.text, fontSize: getScaledFontSize(18) }]}>No offline maps downloaded</Text>
+              <Text style={[styles.emptySubtext, { color: colors.textSecondary || colors.text, fontSize: getScaledFontSize(14) }]}>
                 {auth.currentUser 
                   ? 'Tap ADD to download your first map and sync it to your account'
                   : 'Tap ADD to download your first map'
@@ -266,10 +254,10 @@ const DownloadedMaps = ({ navigation, setIsOfflineMap, setIsDownloadedMaps, down
       </ScrollView>
 
       {/* Add Button */}
-      <View style={styles.addButtonContainer}>
-        <TouchableOpacity style={styles.addButton} onPress={handleAddMap}>
+      <View style={[styles.addButtonContainer, { backgroundColor: colors.surface }]}>
+        <TouchableOpacity style={[styles.addButton, { backgroundColor: colors.primary || '#4B5563' }]} onPress={handleAddMap}>
           <Ionicons name="add" size={20} color="#FFFFFF" />
-          <Text style={styles.addButtonText}>ADD</Text>
+          <Text style={[styles.addButtonText, {color: colors.mode === 'light' ? '#FFFFFF' : '#000000', fontSize: getScaledFontSize(16) }]}>ADD</Text>
         </TouchableOpacity>
       </View>
 
@@ -288,64 +276,53 @@ const DownloadedMaps = ({ navigation, setIsOfflineMap, setIsDownloadedMaps, down
         />
       </Modal>
     </SafeAreaView>
-
-
-
-
-
-
-
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F3F4F6',
+  container: { 
+    flex: 1 
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
     paddingVertical: 16,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
   },
-  backButton: {
-    marginRight: 16,
+  backButton: { 
+    marginRight: 16 
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
+  headerTitle: { 
+    fontWeight: '600' 
   },
   subtitleContainer: {
-    backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
   },
-  subtitleText: {
-    fontSize: 14,
-    color: '#6B7280',
+  subtitleText: { 
+    // color handled dynamically
   },
-  scrollContainer: {
-    flex: 1,
+  scrollContainer: { 
+    flex: 1 
   },
-  mapList: {
-    padding: 16,
-    gap: 16,
+  mapList: { 
+    padding: 16, 
+    gap: 16 
   },
   mapCard: {
-    backgroundColor: '#374151',
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   mapCardHeader: {
     flexDirection: 'row',
@@ -353,69 +330,60 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 12,
   },
-  mapInfo: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    flex: 1,
+  mapInfo: { 
+    flexDirection: 'row', 
+    alignItems: 'flex-start', 
+    flex: 1 
   },
   mapThumbnail: {
     width: 48,
     height: 48,
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
-  mapDetails: {
-    flex: 1,
+  mapDetails: { 
+    flex: 1 
   },
-  mapName: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#FFFFFF',
-    marginBottom: 4,
+  mapName: { 
+    fontWeight: '500', 
+    marginBottom: 4 
   },
-  mapSize: {
-    fontSize: 14,
-    color: '#D1D5DB',
+  mapSize: { 
+    // color handled dynamically
   },
-  mapCardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  mapCardFooter: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between' 
   },
-  expiryText: {
-    fontSize: 12,
-    color: '#9CA3AF',
+  expiryText: { 
+    // color handled dynamically
   },
-  buttonContainer: {
-    flexDirection: 'row',
-    gap: 8,
+  buttonContainer: { 
+    flexDirection: 'row', 
+    gap: 8 
   },
   actionButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
-  viewButton: {
-    backgroundColor: 'rgba(59, 130, 246, 0.8)',
+  deleteButtonText: { 
+    color: '#FCA5A5' 
   },
-  deleteButtonText: {
-    color: '#FCA5A5',
+  buttonText: { 
+    fontWeight: '500' 
   },
-  buttonText: {
-    fontSize: 12,
-    color: '#FFFFFF',
-    fontWeight: '500',
-  },
-  addButtonContainer: {
-    padding: 16,
-    paddingBottom: 24,
+  addButtonContainer: { 
+    padding: 16, 
+    paddingBottom: 24 
   },
   addButton: {
-    backgroundColor: '#4B5563',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -423,48 +391,39 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     gap: 8,
   },
-  addButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
+  addButtonText: { 
+    fontWeight: '600'
+    //color: '#000000'
   },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
+  emptyState: { 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    paddingVertical: 60 
   },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: '500',
-    color: '#374151',
-    marginTop: 16,
+  emptyText: { 
+    fontWeight: '500', 
+    marginTop: 16 
   },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    marginTop: 8,
-    textAlign: 'center',
-    paddingHorizontal: 20,
+  emptySubtext: { 
+    marginTop: 8, 
+    textAlign: 'center', 
+    paddingHorizontal: 20 
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 12,
-    marginTop: 8,
+  sectionTitle: { 
+    fontWeight: '600', 
+    marginBottom: 12, 
+    marginTop: 8 
   },
-
-  mapImage: {
-      width: 300,
-      height: 200,
+  mapImage: { 
+    width: 300, 
+    height: 200 
   },
-  mapStatus: {
-    alignItems: 'center',
+  mapStatus: { 
+    alignItems: 'center' 
   },
-  syncIndicator: {
-    marginTop: 4,
+  syncIndicator: { 
+    marginTop: 4 
   },
 });
-
 
 export default DownloadedMaps;
