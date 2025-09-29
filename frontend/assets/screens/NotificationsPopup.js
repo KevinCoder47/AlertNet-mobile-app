@@ -21,6 +21,8 @@ import {
 import { useNotifications } from '../contexts/NotificationContext';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { FirebaseService } from '../../backend/Firebase/FirebaseService';
+import { useFontSize } from '../contexts/FontSizeContext';
+import { useTheme } from '../contexts/ColorContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -47,9 +49,13 @@ const tabCategories = {
   system: ['info', 'beta', 'subscription', 'updates', 'reports', 'welcome']
 };
 
-const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpenChat, markNotificationAsRead, markAllNotificationsAsRead, clearAllNotifications, acceptFriendRequest, declineFriendRequest }) => {
+const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpenChat, markNotificationAsRead, markAllNotificationsAsRead, clearAllNotifications }) => {
+  const { getScaledFontSize } = useFontSize();
+  const themeContext = useTheme();
+  const colors = themeContext.colors;
+  
   const [activeTab, setActiveTab] = React.useState('closeFriends');
-  const [selectedDate, setSelectedDate] = React.useState(new Date()); // Use a full date object
+  const [selectedDate, setSelectedDate] = React.useState(new Date());
   const [showMenu, setShowMenu] = React.useState(false);
   const [allowNotifications, setAllowNotifications] = React.useState(true);
   
@@ -58,8 +64,8 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
   const [isRefreshing, setIsRefreshing] = React.useState(false);
   const [selectedNotifications, setSelectedNotifications] = React.useState([]);
   const [isSelectionMode, setIsSelectionMode] = React.useState(false);
-  const [sortBy, setSortBy] = React.useState('time'); // 'time', 'priority', 'unread'
-  const [filterType, setFilterType] = React.useState('all'); // 'all', 'safety', 'emergency', 'general'
+  const [sortBy, setSortBy] = React.useState('time');
+  const [filterType, setFilterType] = React.useState('all');
   const [doNotDisturb, setDoNotDisturb] = React.useState(false);
   const [dndStartTime, setDndStartTime] = React.useState('22:00');
   const [dndEndTime, setDndEndTime] = React.useState('07:00');
@@ -69,7 +75,7 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
     general: { enabled: true, sound: 'normal' }
   });
   const [showFilters, setShowFilters] = React.useState(false);
-  const [fontSize, setFontSize] = React.useState('medium'); // 'small', 'medium', 'large'
+  const [fontSize, setFontSize] = React.useState('medium');
   const [showCalendar, setShowCalendar] = React.useState(false);
   
   const [expandedNotificationId, setExpandedNotificationId] = React.useState(null);
@@ -79,6 +85,9 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
   const [feedNotifications, setFeedNotifications] = React.useState([]);
   const [systemNotifications, setSystemNotifications] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
+
+  // Get styles with font scaling and theme
+  const styles = getStyles(getScaledFontSize, colors);
 
   // Listen for notifications from Firebase
   React.useEffect(() => {
@@ -124,7 +133,7 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
           feed.push(n);
         } else if (tabCategories.system.includes(n.type)) {
           system.push(n);
-        } else { // Default to friends
+        } else {
           friends.push(n);
         }
       });
@@ -202,7 +211,7 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
           return b.timestamp - a.timestamp;
         });
         break;
-      default: // time
+      default:
         filtered = filtered.sort((a, b) => b.timestamp - a.timestamp);
     }
     
@@ -212,7 +221,6 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
   // Get notification counts for badges
   const getNotificationCounts = () => {
     const closeFriendsUnread = closeFriendsNotifications.filter(n => n.status === 'new').length;
-    
     const feedUnread = feedNotifications.filter(n => n.status === 'new').length;
     
     return { closeFriends: closeFriendsUnread, feed: feedUnread, system: 0 };
@@ -223,7 +231,6 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
     setIsRefreshing(true);
     Vibration.vibrate(50);
     
-    // Simulate refresh
     setTimeout(() => {
       setIsRefreshing(false);
     }, 2000);
@@ -308,7 +315,6 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
           text: 'Delete', 
           style: 'destructive',
           onPress: () => {
-            // In real implementation, update the notifications array
             Vibration.vibrate(100);
           }
         }
@@ -316,21 +322,20 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
     );
   };
 
-  // Quick actions for notifications - FIXED VERSION
+  // Quick actions for notifications
   const handleQuickAction = (notification, action) => {
     Vibration.vibrate(50);
     
     switch (action) {
       case 'call':
         if (notification.phone) {
-          // Use Linking for a more robust call action
           const phoneNumber = `tel:${notification.phone}`;
           Linking.canOpenURL(phoneNumber)
             .then(supported => {
               if (supported) {
                 Linking.openURL(phoneNumber);
               } else {
-                Alert.alert('Call Failed', 'Unable to make calls on this device.');
+                Alert.alert('Call Failed', 'Unable to make phone calls on this device.');
               }
             });
         }
@@ -341,8 +346,9 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
             id: notification.senderId,
             senderId: notification.senderId,
             name: notification.name,
-            phone: notification.phone, // ✅ Fixed: Use notification.phone instead of notification.senderPhone
+            phone: notification.phone,
             profilePicture: notification.profilePicture,
+            data: notification.data,
           };
           onOpenChat(personData);
           setIsNotification(false);
@@ -353,7 +359,7 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
       case 'location':
         if (notification.location && onViewLocation) {
           onViewLocation(notification);
-          setIsNotification(false); // Close the notifications popup
+          setIsNotification(false);
         } else {
           Alert.alert('Location Unavailable', `Could not retrieve location for ${notification.name}.`);
         }
@@ -382,7 +388,6 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
         }
         break;
       case 'delete':
-        // Delete selected notifications
         break;
     }
     setSelectedNotifications([]);
@@ -392,18 +397,17 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
 
   const getFontSize = () => {
     switch (fontSize) {
-      case 'small': return { name: 12, message: 11, time: 10 };
-      case 'large': return { name: 16, message: 15, time: 14 };
-      default: return { name: 14, message: 13, time: 12 };
+      case 'small': return { name: getScaledFontSize(12), message: getScaledFontSize(11), time: getScaledFontSize(10) };
+      case 'large': return { name: getScaledFontSize(16), message: getScaledFontSize(15), time: getScaledFontSize(14) };
+      default: return { name: getScaledFontSize(14), message: getScaledFontSize(13), time: getScaledFontSize(12) };
     }
   };
 
   const getCalendarDays = () => {
     const days = [];
     const today = new Date(selectedDate);
-    const dayOfWeek = today.getDay(); // Sunday - 0, Monday - 1
+    const dayOfWeek = today.getDay();
 
-    // Find the start of the week (Monday)
     const startOfWeek = new Date(today);
     startOfWeek.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
 
@@ -447,7 +451,7 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
   const navigateMonth = (direction) => {
     setSelectedDate(currentDate => {
       const newDate = new Date(currentDate);
-      newDate.setDate(1); // Avoid issues with different month lengths
+      newDate.setDate(1);
       newDate.setMonth(newDate.getMonth() + (direction === 'prev' ? -1 : 1));
       return newDate;
     });
@@ -492,14 +496,14 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
   };
 
   const getStatusColor = (notification) => {
-    if (notification.isUrgent) return '#FF4444';
-    if (notification.status === 'read') return '#888888';
+    if (notification.isUrgent) return colors.danger;
+    if (notification.status === 'read') return colors.textTertiary;
     return '#FF6B35';
   };
 
   const getIconBackgroundColor = (notification) => {
-    if (notification.isUrgent) return '#FFE5E5';
-    return '#2A2A2A';
+    if (notification.isUrgent) return colors.danger + '20';
+    return colors.iconBackground;
   };
 
   const getHeaderTitle = () => {
@@ -563,7 +567,7 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
               <Icon 
                 name={isSelected ? 'checkbox-marked' : 'checkbox-blank-outline'} 
                 size={20} 
-                color={isSelected ? '#FF6B35' : '#888888'} 
+                color={isSelected ? '#FF6B35' : colors.textSecondary} 
               />
             </View>
           )}
@@ -677,13 +681,13 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
                     style={styles.headerButton}
                     onPress={() => handleBulkAction('markRead')}
                   >
-                    <Icon name="check-all" size={24} color="#FFFFFF" />
+                    <Icon name="check-all" size={24} color={colors.text} />
                   </TouchableOpacity>
                   <TouchableOpacity 
                     style={styles.headerButton}
                     onPress={() => handleBulkAction('delete')}
                   >
-                    <Icon name="delete" size={24} color="#FF4444" />
+                    <Icon name="delete" size={24} color={colors.danger} />
                   </TouchableOpacity>
                   <TouchableOpacity 
                     style={styles.headerButton}
@@ -692,7 +696,7 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
                       setSelectedNotifications([]);
                     }}
                   >
-                    <Icon name="close" size={24} color="#FFFFFF" />
+                    <Icon name="close" size={24} color={colors.text} />
                   </TouchableOpacity>
                 </>
               ) : (
@@ -702,16 +706,16 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
                     style={styles.calendarIconButton}
                     onPress={() => setShowCalendar(true)}
                   >
-                    <Icon name="calendar" size={24} color="#FFFFFF" />
+                    <Icon name="calendar" size={24} color={colors.text} />
                   </TouchableOpacity>
                   <TouchableOpacity 
                     style={styles.menuButton}
                     onPress={() => setShowMenu(!showMenu)}
                   >
-                    <Icon name="dots-vertical" size={24} color="#FFFFFF" />
+                    <Icon name="dots-vertical" size={24} color={colors.text} />
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => setIsNotification(false)}>
-                    <Icon name="close" size={24} color="#FFFFFF" />
+                    <Icon name="close" size={24} color={colors.text} />
                   </TouchableOpacity>
                 </>
               )}
@@ -722,27 +726,27 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
           {showMenu && (
             <View style={styles.menuDropdown}>
               <TouchableOpacity style={styles.menuItem} onPress={handleMarkAllAsRead}>
-                <Icon name="check-all" size={20} color="#FFFFFF" />
+                <Icon name="check-all" size={20} color={colors.text} />
                 <Text style={styles.menuItemText}>Mark all as read</Text>
               </TouchableOpacity>
               
               <TouchableOpacity style={styles.menuItem} onPress={handleClearAll}>
-                <Icon name="delete-sweep" size={20} color="#FF4444" />
-                <Text style={[styles.menuItemText, { color: '#FF4444' }]}>Clear all</Text>
+                <Icon name="delete-sweep" size={20} color={colors.danger} />
+                <Text style={[styles.menuItemText, { color: colors.danger }]}>Clear all</Text>
               </TouchableOpacity>
               
               <TouchableOpacity style={styles.menuItem} onPress={() => setShowFilters(!showFilters)}>
-                <Icon name="filter" size={20} color="#FFFFFF" />
+                <Icon name="filter" size={20} color={colors.text} />
                 <Text style={styles.menuItemText}>Filters & Sort</Text>
               </TouchableOpacity>
               
               <TouchableOpacity style={styles.menuItem}>
-                <Icon name="cog" size={20} color="#FFFFFF" />
+                <Icon name="cog" size={20} color={colors.text} />
                 <Text style={styles.menuItemText}>Settings</Text>
               </TouchableOpacity>
               
               <TouchableOpacity style={styles.menuItem}>
-                <Icon name="help-circle" size={20} color="#FFFFFF" />
+                <Icon name="help-circle" size={20} color={colors.text} />
                 <Text style={styles.menuItemText}>Help</Text>
               </TouchableOpacity>
               
@@ -750,11 +754,11 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
               
               <View style={styles.notificationToggleItem}>
                 <View style={styles.notificationToggleLeft}>
-                  <Icon name="bell-sleep" size={20} color="#FFFFFF" />
+                  <Icon name="bell-sleep" size={20} color={colors.text} />
                   <Text style={styles.menuItemText}>Do Not Disturb</Text>
                 </View>
                 <TouchableOpacity 
-                  style={[styles.toggleSwitch, { backgroundColor: doNotDisturb ? '#4CD964' : '#3A3A3A' }]}
+                  style={[styles.toggleSwitch, { backgroundColor: doNotDisturb ? colors.success : colors.iconBackground }]}
                   onPress={() => {
                     setDoNotDisturb(!doNotDisturb);
                     Vibration.vibrate(50);
@@ -764,7 +768,7 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
                     styles.toggleThumb,
                     { 
                       transform: [{ translateX: doNotDisturb ? 16 : 2 }],
-                      backgroundColor: doNotDisturb ? '#FFFFFF' : '#888888'
+                      backgroundColor: doNotDisturb ? '#FFFFFF' : colors.textTertiary
                     }
                   ]} />
                 </TouchableOpacity>
@@ -772,11 +776,11 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
               
               <View style={styles.notificationToggleItem}>
                 <View style={styles.notificationToggleLeft}>
-                  <Icon name="bell" size={20} color="#FFFFFF" />
+                  <Icon name="bell" size={20} color={colors.text} />
                   <Text style={styles.menuItemText}>Allow notifications</Text>
                 </View>
                 <TouchableOpacity 
-                  style={[styles.toggleSwitch, { backgroundColor: allowNotifications ? '#4CD964' : '#3A3A3A' }]}
+                  style={[styles.toggleSwitch, { backgroundColor: allowNotifications ? colors.success : colors.iconBackground }]}
                   onPress={() => {
                     setAllowNotifications(!allowNotifications);
                     Vibration.vibrate(50);
@@ -786,7 +790,7 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
                     styles.toggleThumb,
                     { 
                       transform: [{ translateX: allowNotifications ? 16 : 2 }],
-                      backgroundColor: allowNotifications ? '#FFFFFF' : '#888888'
+                      backgroundColor: allowNotifications ? '#FFFFFF' : colors.textTertiary
                     }
                   ]} />
                 </TouchableOpacity>
@@ -817,7 +821,7 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
               <View style={styles.filtersHeader}>
                 <Text style={styles.filtersTitle}>Filters & Sort</Text>
                 <TouchableOpacity onPress={() => setShowFilters(false)}>
-                  <Icon name="close" size={20} color="#FFFFFF" />
+                  <Icon name="close" size={20} color={colors.text} />
                 </TouchableOpacity>
               </View>
               
@@ -834,7 +838,7 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
                       style={[styles.filterButton, sortBy === sort.key && styles.activeFilterButton]}
                       onPress={() => setSortBy(sort.key)}
                     >
-                      <Icon name={sort.icon} size={14} color={sortBy === sort.key ? '#FFFFFF' : '#888888'} />
+                      <Icon name={sort.icon} size={14} color={sortBy === sort.key ? '#FFFFFF' : colors.textSecondary} />
                       <Text style={[styles.filterButtonText, sortBy === sort.key && styles.activeFilterText]}>
                         {sort.label}
                       </Text>
@@ -857,7 +861,7 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
                       style={[styles.filterButton, filterType === filter.key && styles.activeFilterButton]}
                       onPress={() => setFilterType(filter.key)}
                     >
-                      <Icon name={filter.icon} size={14} color={filterType === filter.key ? '#FFFFFF' : '#888888'} />
+                      <Icon name={filter.icon} size={14} color={filterType === filter.key ? '#FFFFFF' : colors.textSecondary} />
                       <Text style={[styles.filterButtonText, filterType === filter.key && styles.activeFilterText]}>
                         {filter.label}
                       </Text>
@@ -870,17 +874,17 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
 
           {/* Search Bar */}
           <View style={styles.searchContainer}>
-            <Icon name="magnify" size={20} color="#888888" style={styles.searchIcon} />
+            <Icon name="magnify" size={20} color={colors.textSecondary} style={styles.searchIcon} />
             <TextInput
               style={styles.searchInput}
               placeholder="Search notifications..."
-              placeholderTextColor="#888888"
+              placeholderTextColor={colors.textSecondary}
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
             {searchQuery !== '' && (
               <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearButton}>
-                <Icon name="close" size={16} color="#888888" />
+                <Icon name="close" size={16} color={colors.textSecondary} />
               </TouchableOpacity>
             )}
           </View>
@@ -904,7 +908,7 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
                 >
                   <Text style={[
                     styles.dayText, 
-                    { color: item.isWeekend ? '#FF6B35' : '#888888' }
+                    { color: item.isWeekend ? '#FF6B35' : colors.textSecondary }
                   ]}>
                     {item.day}
                   </Text>
@@ -914,7 +918,7 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
                   ]}>
                     <Text style={[
                       styles.dateText,
-                      { color: isSameDay(item.fullDate, selectedDate) ? '#FFFFFF' : '#FFFFFF' }
+                      { color: isSameDay(item.fullDate, selectedDate) ? '#FFFFFF' : colors.text }
                     ]}>
                       {item.date}
                     </Text>
@@ -935,7 +939,7 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
                 <Icon 
                   name="account-group" 
                   size={16} 
-                  color={activeTab === 'closeFriends' ? '#FFFFFF' : '#888888'} 
+                  color={activeTab === 'closeFriends' ? '#FFFFFF' : colors.textSecondary} 
                 />
                 {activeTab === 'closeFriends' && (
                   <Text style={styles.activeTabText}>Close Friends</Text>
@@ -957,7 +961,7 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
                 <Icon 
                   name="view-grid" 
                   size={16} 
-                  color={activeTab === 'feed' ? '#FFFFFF' : '#888888'} 
+                  color={activeTab === 'feed' ? '#FFFFFF' : colors.textSecondary} 
                 />
                 {activeTab === 'feed' && (
                   <Text style={styles.activeTabText}>Feed</Text>
@@ -979,7 +983,7 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
                 <Icon 
                   name="cog" 
                   size={16} 
-                  color={activeTab === 'system' ? '#FFFFFF' : '#888888'} 
+                  color={activeTab === 'system' ? '#FFFFFF' : colors.textSecondary} 
                 />
                 {activeTab === 'system' && (
                   <Text style={styles.activeTabText}>System</Text>
@@ -1001,7 +1005,7 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
                 <>
                   {currentNotifications.length === 0 ? (
                     <View style={styles.emptyState}>
-                      <Icon name="bell-outline" size={48} color="#888888" />
+                      <Icon name="bell-outline" size={48} color={colors.textSecondary} />
                       <Text style={styles.emptyStateTitle}>No notifications</Text>
                       <Text style={styles.emptyStateText}>
                         {searchQuery ? 'No notifications match your search' : 'You\'re all caught up!'}
@@ -1030,7 +1034,7 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
                       {/* Urgent Section */}
                       {currentNotifications.filter(n => n.isUrgent).length > 0 && (
                         <>
-                          <Text style={[styles.sectionTitle, { marginTop: 20, color: '#FF4444' }]}>Urgent</Text>
+                          <Text style={[styles.sectionTitle, { marginTop: 20, color: colors.danger }]}>Urgent</Text>
                           {currentNotifications
                             .filter(n => n.isUrgent)
                             .map(renderNotificationItem)}
@@ -1059,7 +1063,7 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
               <>
                 {/* Empty State for System Tab */}
                 <View style={styles.emptyState}>
-                  <Icon name="cog-outline" size={48} color="#888888" />
+                  <Icon name="cog-outline" size={48} color={colors.textSecondary} />
                   <Text style={styles.emptyStateTitle}>System Notifications</Text>
                   <Text style={styles.emptyStateText}>
                     Updates, alerts, and other system messages will appear here.
@@ -1089,17 +1093,17 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
               <View style={styles.calendarHeader}>
                 <Text style={styles.calendarTitle}>Select Date</Text>
                 <TouchableOpacity onPress={() => setShowCalendar(false)}>
-                  <Icon name="close" size={20} color="#FFFFFF" />
+                  <Icon name="close" size={20} color={colors.text} />
                 </TouchableOpacity>
               </View>
               
               <View style={styles.yearNavigation}>
                 <TouchableOpacity onPress={() => navigateYear('prev')} style={styles.navButton}>
-                  <Icon name="chevron-left" size={20} color="#FFFFFF" />
+                  <Icon name="chevron-left" size={20} color={colors.text} />
                 </TouchableOpacity>
                 <Text style={styles.yearText}>{getCalendarMonth().year}</Text>
                 <TouchableOpacity onPress={() => navigateYear('next')} style={styles.navButton}>
-                  <Icon name="chevron-right" size={20} color="#FFFFFF" />
+                  <Icon name="chevron-right" size={20} color={colors.text} />
                 </TouchableOpacity>
               </View>
 
@@ -1126,8 +1130,8 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
                       key={index}
                       style={[
                         styles.dateCell,
-                        isSelectedDate(day) && styles.selectedDateCell, // Highlight selected day
-                        isToday(day) && !isSelectedDate(day) && styles.todayDateCell // Highlight today if not selected
+                        isSelectedDate(day) && styles.selectedDateCell,
+                        isToday(day) && !isSelectedDate(day) && styles.todayDateCell
                       ]}
                       onPress={() => {
                         if (day) {
@@ -1141,8 +1145,8 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
                       {day && (
                         <Text style={[
                           styles.dateCellText,
-                          isSelectedDate(day) && styles.selectedDateText, // Style for selected day
-                          isToday(day) && !isSelectedDate(day) && styles.todayDateText // Style for today
+                          isSelectedDate(day) && styles.selectedDateText,
+                          isToday(day) && !isSelectedDate(day) && styles.todayDateText
                         ]}>
                           {day}
                         </Text>
@@ -1159,8 +1163,8 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
   );
 };
 
-const styles = StyleSheet.create({
-  modalOverlay: {
+const getStyles = (getScaledFontSize, colors) => StyleSheet.create({
+ modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
@@ -1170,7 +1174,7 @@ const styles = StyleSheet.create({
   },
   popupContainer: {
     height: height * 0.8,
-    backgroundColor: '#1A1A1A',
+    backgroundColor: colors.background,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingHorizontal: 20,
@@ -1183,9 +1187,9 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: getScaledFontSize(24),
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text,
   },
   headerRight: {
     flexDirection: 'row',
@@ -1207,7 +1211,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 70,
     right: 20,
-    backgroundColor: '#2A2A2A',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 8,
     minWidth: 250,
@@ -1226,18 +1230,18 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   menuItemText: {
-    color: '#FFFFFF',
-    fontSize: 16,
+    color: colors.text,
+    fontSize: getScaledFontSize(16),
     fontWeight: '500',
   },
   menuDivider: {
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: colors.separator,
     marginVertical: 4,
   },
   menuSectionTitle: {
     color: '#FF6B35',
-    fontSize: 14,
+    fontSize: getScaledFontSize(14),
     fontWeight: '600',
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -1279,15 +1283,15 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 6,
-    backgroundColor: '#1A1A1A',
+    backgroundColor: colors.inputBackground,
     alignItems: 'center',
   },
   activeFontSize: {
     backgroundColor: '#FF6B35',
   },
   fontSizeText: {
-    color: '#888888',
-    fontSize: 12,
+    color: colors.textSecondary,
+    fontSize: getScaledFontSize(12),
     fontWeight: '500',
   },
   activeFontSizeText: {
@@ -1298,7 +1302,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2A2A2A',
+    backgroundColor: colors.inputBackground,
     borderRadius: 10,
     paddingHorizontal: 12,
     marginBottom: 15,
@@ -1309,8 +1313,8 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    color: '#FFFFFF',
-    fontSize: 16,
+    color: colors.text,
+    fontSize: getScaledFontSize(16),
     paddingVertical: 12,
   },
   clearButton: {
@@ -1319,7 +1323,7 @@ const styles = StyleSheet.create({
   
   // Filters Panel
   filtersPanel: {
-    backgroundColor: '#2A2A2A',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 16,
     marginBottom: 15,
@@ -1331,16 +1335,16 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   filtersTitle: {
-    color: '#FFFFFF',
-    fontSize: 18,
+    color: colors.text,
+    fontSize: getScaledFontSize(18),
     fontWeight: '600',
   },
   filterRow: {
     marginBottom: 15,
   },
   filterLabel: {
-    color: '#888888',
-    fontSize: 14,
+    color: colors.textSecondary,
+    fontSize: getScaledFontSize(14),
     fontWeight: '500',
     marginBottom: 8,
   },
@@ -1354,15 +1358,15 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 20,
-    backgroundColor: '#1A1A1A',
+    backgroundColor: colors.inputBackground,
     gap: 4,
   },
   activeFilterButton: {
     backgroundColor: '#FF6B35',
   },
   filterButtonText: {
-    color: '#888888',
-    fontSize: 12,
+    color: colors.textSecondary,
+    fontSize: getScaledFontSize(12),
     fontWeight: '500',
   },
   activeFilterText: {
@@ -1377,15 +1381,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     gap: 8,
   },
-  refreshControl: {
-    // For iOS, you can style the tint color
-    tintColor: '#FF6B35',
-    // For Android, you can style the background color and the spinner color
-    colors: ['#FF6B35'],
-  },
   refreshingText: {
     color: '#FF6B35',
-    fontSize: 14,
+    fontSize: getScaledFontSize(14),
     fontWeight: '500',
   },
   
@@ -1403,7 +1401,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   dayText: {
-    fontSize: 12,
+    fontSize: getScaledFontSize(12),
     marginBottom: 5,
   },
   dateContainer: {
@@ -1417,7 +1415,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FF6B35',
   },
   dateText: {
-    fontSize: 14,
+    fontSize: getScaledFontSize(14),
     fontWeight: '600',
   },
   
@@ -1449,7 +1447,7 @@ const styles = StyleSheet.create({
   },
   activeTabText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: getScaledFontSize(12),
     fontWeight: '600',
     marginLeft: 5,
   },
@@ -1457,7 +1455,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -2,
     right: -2,
-    backgroundColor: '#FF4444',
+    backgroundColor: colors.danger,
     borderRadius: 10,
     minWidth: 20,
     height: 20,
@@ -1466,7 +1464,7 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     color: '#FFFFFF',
-    fontSize: 10,
+    fontSize: getScaledFontSize(10),
     fontWeight: 'bold',
   },
   
@@ -1481,20 +1479,20 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: getScaledFontSize(16),
     fontWeight: '600',
     marginBottom: 10,
-    color: '#FFFFFF',
+    color: colors.text,
   },
   markAllButton: {
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
-    backgroundColor: '#2A2A2A',
+    backgroundColor: colors.surface,
   },
   markAllText: {
     color: '#FF6B35',
-    fontSize: 12,
+    fontSize: getScaledFontSize(12),
     fontWeight: '500',
   },
   
@@ -1506,7 +1504,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 4,
     borderBottomWidth: 0.5,
-    borderBottomColor: 'rgba(128, 128, 128, 0.2)',
+    borderBottomColor: colors.separator,
     borderRadius: 8,
   },
   readNotification: {
@@ -1556,20 +1554,20 @@ const styles = StyleSheet.create({
   },
   notificationName: {
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.text,
   },
   notificationMessage: {
     fontWeight: '400',
-    color: '#888888',
+    color: colors.textSecondary,
   },
   statusText: {
-    fontSize: 12,
+    fontSize: getScaledFontSize(12),
     fontWeight: '500',
     marginTop: 2,
-    color: '#FF4444',
+    color: colors.danger,
   },
   notificationTime: {
-    color: '#888888',
+    color: colors.textSecondary,
   },
   newIndicator: {
     width: 8,
@@ -1623,44 +1621,17 @@ const styles = StyleSheet.create({
     paddingVertical: 60,
   },
   emptyStateTitle: {
-    color: '#FFFFFF',
-    fontSize: 18,
+    color: colors.text,
+    fontSize: getScaledFontSize(18),
     fontWeight: '600',
     marginTop: 16,
     marginBottom: 8,
   },
   emptyStateText: {
-    color: '#888888',
-    fontSize: 14,
+    color: colors.textSecondary,
+    fontSize: getScaledFontSize(14),
     textAlign: 'center',
     paddingHorizontal: 40,
-  },
-  
-  // System Content
-  systemContentContainer: {
-    paddingTop: 10,
-  },
-  systemContentItem: {
-    backgroundColor: '#2A2A2A',
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 15,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  systemItemContent: {
-    flex: 1,
-  },
-  systemContentTitle: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  systemContentSubtitle: {
-    color: '#888888',
-    fontSize: 14,
-    marginTop: 5,
   },
   
   // Calendar Popup
@@ -1671,7 +1642,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   calendarPopup: {
-    backgroundColor: '#2A2A2A',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 20,
     width: width * 0.85,
@@ -1684,9 +1655,9 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   calendarTitle: {
-    fontSize: 18,
+    fontSize: getScaledFontSize(18),
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.text,
   },
   yearNavigation: {
     flexDirection: 'row',
@@ -1696,9 +1667,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   yearText: {
-    fontSize: 20,
+    fontSize: getScaledFontSize(20),
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text,
     minWidth: 60,
     textAlign: 'center',
   },
@@ -1710,7 +1681,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   monthText: {
-    fontSize: 16,
+    fontSize: getScaledFontSize(16),
     fontWeight: '600',
     color: '#FF6B35',
     minWidth: 50,
@@ -1719,7 +1690,7 @@ const styles = StyleSheet.create({
   navButton: {
     padding: 5,
     borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: colors.iconBackground,
     minWidth: 32,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1733,9 +1704,9 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   weekDayText: {
-    fontSize: 12,
+    fontSize: getScaledFontSize(12),
     fontWeight: '500',
-    color: '#888888',
+    color: colors.textSecondary,
     textAlign: 'center',
     width: 30,
   },
@@ -1759,8 +1730,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FF6B35',
   },
   dateCellText: {
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: getScaledFontSize(14),
+    color: colors.text,
     fontWeight: '500',
   },
   selectedDateText: {

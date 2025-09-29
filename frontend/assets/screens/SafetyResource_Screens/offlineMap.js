@@ -21,10 +21,13 @@ import { OfflineMapFirebaseService } from '../../../backend/Firebase/OfflineMapF
 import { auth } from '../../../backend/Firebase/FirebaseConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { OfflineMapDiagnostics } from '../../services/OfflineMapDiagnostics';
+import { useFontSize } from '../../contexts/FontSizeContext'; // Import font size context
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 const OfflineMap = ({ setIsOfflineMap, setIsSafetyResources, setIsDownloadedMaps, downloadedMaps, setDownloadedMaps }) => {
+  const { getScaledFontSize } = useFontSize(); // Use font size hook
+  
   const [mapRegion, setMapRegion] = useState({
     latitude: -26.183,
     longitude: 27.999,
@@ -247,7 +250,9 @@ const OfflineMap = ({ setIsOfflineMap, setIsSafetyResources, setIsDownloadedMaps
           <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
             <Icon name="arrow-left" size={24} color="#333" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Download Offline Map</Text>
+          <Text style={[styles.headerTitle, { fontSize: getScaledFontSize(16) }]}>
+            Download Offline Map
+          </Text>
           <View style={{ width: 24 }} />{/* Spacer */}
         </View>
 
@@ -274,14 +279,18 @@ const OfflineMap = ({ setIsOfflineMap, setIsSafetyResources, setIsDownloadedMaps
             
             {/* Drag indicator */}
             <View style={styles.dragIndicator}>
-              <Text style={styles.dragText}>Drag to move selection area</Text>
+              <Text style={[styles.dragText, { fontSize: getScaledFontSize(10) }]}>
+                Drag to move selection area
+              </Text>
             </View>
           </View>
         </View>
         
         {/* --- Size Info Label --- */}
         <View style={styles.sizeLabel}>
-            <Text style={styles.sizeText}>The size of the selected map: {downloadSize} MB</Text>
+            <Text style={[styles.sizeText, { fontSize: getScaledFontSize(14) }]}>
+              The size of the selected map: {downloadSize} MB
+            </Text>
         </View>
 
 
@@ -291,7 +300,9 @@ const OfflineMap = ({ setIsOfflineMap, setIsSafetyResources, setIsDownloadedMaps
             style={styles.button}
             onPress={handleGoBack}
           >
-            <Text style={styles.buttonText}>Cancel</Text>
+            <Text style={[styles.buttonText, { fontSize: getScaledFontSize(16) }]}>
+              Cancel
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
@@ -300,7 +311,9 @@ const OfflineMap = ({ setIsOfflineMap, setIsSafetyResources, setIsDownloadedMaps
             disabled={isDownloading}
           >
             <Icon name="download" size={18} color="#fff" />
-            <Text style={styles.buttonText}>{isDownloading ? 'Downloading...' : 'Download'}</Text>
+            <Text style={[styles.buttonText, { fontSize: getScaledFontSize(16) }]}>
+              {isDownloading ? 'Downloading...' : 'Download'}
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -308,12 +321,18 @@ const OfflineMap = ({ setIsOfflineMap, setIsSafetyResources, setIsDownloadedMaps
         <Modal visible={showProgress} transparent animationType="fade">
           <View style={styles.progressOverlay}>
             <View style={styles.progressContainer}>
-              <Text style={styles.progressTitle}>Downloading Map</Text>
+              <Text style={[styles.progressTitle, { fontSize: getScaledFontSize(18) }]}>
+                Downloading Map
+              </Text>
               <View style={styles.progressBar}>
                 <View style={[styles.progressFill, { width: `${downloadProgress}%` }]} />
               </View>
-              <Text style={styles.progressText}>{downloadProgress}% Complete</Text>
-              <Text style={styles.progressSubText}>Downloading map tiles...</Text>
+              <Text style={[styles.progressText, { fontSize: getScaledFontSize(16) }]}>
+                {downloadProgress}% Complete
+              </Text>
+              <Text style={[styles.progressSubText, { fontSize: getScaledFontSize(12) }]}>
+                Downloading map tiles...
+              </Text>
             </View>
           </View>
         </Modal>
@@ -323,7 +342,7 @@ const OfflineMap = ({ setIsOfflineMap, setIsSafetyResources, setIsDownloadedMaps
 };
 
 // --- Styles ---
-// Meticulously crafted to match the provided design screenshot.
+// Updated styles with font sizes removed and added inline
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -357,7 +376,6 @@ const styles = StyleSheet.create({
   },
   backButton: {},
   headerTitle: {
-    fontSize: 16,
     fontWeight: '600',
   },
 
@@ -398,7 +416,6 @@ const styles = StyleSheet.create({
   },
   dragText: {
     color: '#fff',
-    fontSize: 10,
     textAlign: 'center',
   },
   topLeft: {
@@ -436,7 +453,6 @@ const styles = StyleSheet.create({
   },
   sizeText: {
     color: '#fff',
-    fontSize: 14,
     fontWeight: '500'
   },
   bottomActions: {
@@ -466,7 +482,6 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#000',
-    fontSize: 16,
     fontWeight: 'bold',
     marginLeft: 5,
   },
@@ -487,7 +502,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   progressTitle: {
-    fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 20,
     color: '#333',
@@ -505,11 +519,9 @@ const styles = StyleSheet.create({
     borderRadius: 5,
   },
   progressText: {
-    fontSize: 16,
     color: '#666',
   },
   progressSubText: {
-    fontSize: 12,
     color: '#999',
     marginTop: 5,
   },
