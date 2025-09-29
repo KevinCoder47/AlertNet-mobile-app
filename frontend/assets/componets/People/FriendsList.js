@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   FlatList,
+  useColorScheme,
   Linking,
   Alert,
 } from 'react-native';
@@ -14,7 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../contexts/ColorContext';
 
 const getBatteryIconName = (batteryPercentStr) => {
-  const percent = parseInt(batteryPercentStr);
+  const percent = parseInt(batteryPercentStr, 10);
   if (isNaN(percent)) return 'battery-dead';
   if (percent >= 80) return 'battery-full';
   if (percent >= 50) return 'battery-half';
@@ -22,10 +23,9 @@ const getBatteryIconName = (batteryPercentStr) => {
   return 'battery-dead';
 };
 
-const FriendList = ({ friendsData = [] }) => {
+const FriendList = ({ friendsData = [], onOpenChat }) => {
   // Use your theme context instead of useColorScheme
-  const { colors, isDark } = useTheme();
-  const styles = getStyles(isDark, colors); // Pass colors to styles
+  const { isDark } = useTheme();
   const navigation = useNavigation();
 
   const handleCall = async (friend) => {
@@ -52,19 +52,21 @@ const FriendList = ({ friendsData = [] }) => {
   };
 
   const handleMessage = (friend) => {
-    navigation.navigate('ChatScreen', {
-      person: {
-        ...friend,
-        id: friend.friendId || friend.id,
-        name: friend.name,
-        phone: friend.phone,
-        email: friend.email,
-        avatar: friend.avatar,
-      }
-    });
+    // Ensure we have a valid friend object before navigating
+    if (!friend || !friend.id) {
+      Alert.alert('Error', 'Cannot open chat. Invalid friend data.');
+      return;
+    }
+
+    // Navigate to the ChatScreen with the complete friend object
+    // The ChatScreen component will handle the rest
+    navigation.navigate('Chat', { person: friend });
   };
 
   const renderFriendItem = ({ item: friend, index }) => {
+    // Get styles dynamically inside the render function to ensure it uses the theme
+    const styles = getStyles(isDark);
+
     const batteryIcon = getBatteryIconName(friend.battery);
     const batteryLevel = parseInt(friend.battery);
     const batteryColor = batteryLevel < 20 ? '#ff6b6b' : '#51e651';
@@ -125,7 +127,7 @@ const FriendList = ({ friendsData = [] }) => {
             onPress={() => handleMessage(friend)}
             activeOpacity={0.7}
           >
-            <Ionicons name="chatbubble" size={18} color="#007AFF" />
+            <Ionicons name="chatbubble" size={18} color={isDark ? '#007AFF' : '#007AFF'} />
           </TouchableOpacity>
           
           <TouchableOpacity 
@@ -133,7 +135,7 @@ const FriendList = ({ friendsData = [] }) => {
             onPress={() => handleCall(friend)}
             activeOpacity={0.7}
           >
-            <Ionicons name="call" size={18} color="#34C759" />
+            <Ionicons name="call" size={18} color={isDark ? '#34C759' : '#34C759'} />
           </TouchableOpacity>
         </View>
       </TouchableOpacity>
@@ -141,13 +143,17 @@ const FriendList = ({ friendsData = [] }) => {
   };
 
   const renderEmptyState = () => (
+    // Get styles dynamically for the empty state as well
+    (() => {
+      const styles = getStyles(isDark);
     <View style={styles.emptyState}>
-      <Ionicons name="people-outline" size={64} color={colors.textSecondary || colors.secondary} />
+      <Ionicons name="people-outline" size={64} color={isDark ? '#666' : '#ccc'} />
       <Text style={styles.emptyStateText}>No friends connected</Text>
       <Text style={styles.emptyStateSubtext}>
         Your accepted friends will appear here with their live status
       </Text>
     </View>
+    })()
   );
 
   if (friendsData.length === 0) {
@@ -160,14 +166,12 @@ const FriendList = ({ friendsData = [] }) => {
       renderItem={renderFriendItem}
       keyExtractor={(item) => item.id || item.friendId}
       showsVerticalScrollIndicator={false}
-      style={styles.container}
-      contentContainerStyle={styles.listContent}
+      style={getStyles(isDark).container}
     />
   );
 };
 
-// Updated styles to use theme colors
-const getStyles = (isDark, colors) => StyleSheet.create({
+const getStyles = (isDark) => StyleSheet.create({
   container: {
     flex: 1,
   },
@@ -180,7 +184,7 @@ const getStyles = (isDark, colors) => StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 5,
     borderBottomWidth: 0.5,
-    borderBottomColor: colors.separator || colors.border,
+    borderBottomColor: isDark ? '#444' : '#e0e0e0',
   },
   avatarSection: {
     position: 'relative',
@@ -192,22 +196,22 @@ const getStyles = (isDark, colors) => StyleSheet.create({
     height: 50,
     borderRadius: 25,
     borderWidth: 2,
-    borderColor: colors.border,
+    borderColor: isDark ? '#555' : '#e0e0e0',
   },
   defaultAvatar: {
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: colors.inputBackground || (isDark ? '#555' : '#e0e0e0'),
+    backgroundColor: isDark ? '#555' : '#e0e0e0',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: colors.border,
+    borderColor: isDark ? '#666' : '#d0d0d0',
   },
   avatarInitial: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: colors.text,
+    color: isDark ? '#fff' : '#333',
   },
   statusDot: {
     position: 'absolute',
@@ -217,7 +221,7 @@ const getStyles = (isDark, colors) => StyleSheet.create({
     height: 12,
     borderRadius: 6,
     borderWidth: 2,
-    borderColor: colors.card || colors.background,
+    borderColor: isDark ? '#000' : '#fff',
   },
   batteryInfo: {
     flexDirection: 'row',
@@ -241,12 +245,12 @@ const getStyles = (isDark, colors) => StyleSheet.create({
   friendName: {
     fontWeight: '700',
     fontSize: 16,
-    color: colors.text,
+    color: isDark ? 'white' : '#111',
     marginBottom: 3,
   },
   friendLocation: {
     fontSize: 13,
-    color: colors.textSecondary || colors.secondary,
+    color: isDark ? '#b0b0b0' : '#666',
     marginBottom: 2,
   },
   statusRow: { 
@@ -259,13 +263,13 @@ const getStyles = (isDark, colors) => StyleSheet.create({
     fontWeight: '600',
   },
   divider: { 
-    color: colors.textSecondary || colors.secondary, 
+    color: isDark ? '#777' : '#999', 
     marginHorizontal: 6,
     fontSize: 12,
   },
   friendDistance: { 
     fontSize: 12, 
-    color: colors.textSecondary || colors.secondary,
+    color: isDark ? '#a0a0a0' : '#777',
     flex: 1,
     fontWeight: '500',
   },
@@ -300,13 +304,13 @@ const getStyles = (isDark, colors) => StyleSheet.create({
   emptyStateText: {
     fontSize: 18,
     fontWeight: '600',
-    color: colors.textSecondary || colors.secondary,
+    color: isDark ? '#ccc' : '#666',
     marginTop: 16,
     textAlign: 'center',
   },
   emptyStateSubtext: {
     fontSize: 14,
-    color: colors.textTertiary || colors.secondary,
+    color: isDark ? '#999' : '#888',
     marginTop: 8,
     textAlign: 'center',
     lineHeight: 20,

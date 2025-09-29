@@ -1,24 +1,12 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated, Easing, Dimensions, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Easing, Dimensions, Image, Alert } from 'react-native';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
 
-const InAppNotificationPopup = ({ notification, onDismiss, onNavigate, onViewLocation, onOpenChat }) => {
+const InAppNotificationPopup = ({ notification, onDismiss, onNavigate, onViewLocation, onOpenChat, onAcceptFriendRequest, onDeclineFriendRequest }) => {
   const slideAnim = useRef(new Animated.Value(-150)).current;
-
-  // DEBUG: Log the notification data when component mounts
-  useEffect(() => {
-    console.log('InAppNotificationPopup received notification:', {
-      id: notification?.id,
-      type: notification?.type,
-      title: notification?.title,
-      message: notification?.message,
-      senderName: notification?.data?.senderName || notification?.senderName,
-      profilePicture: notification?.data?.profilePicture || notification?.profilePicture,
-      data: notification?.data
-    });
-  }, [notification]);
+  const isFriendRequest = notification?.type === 'friend_request';
 
   useEffect(() => {
     // Animate in
@@ -59,8 +47,17 @@ const InAppNotificationPopup = ({ notification, onDismiss, onNavigate, onViewLoc
   const handleOpenChatPress = (e) => {
     e.stopPropagation(); // Prevent the main press from firing
     if (onOpenChat && notification) {
-      // The `onOpenChat` function in Home.js will handle the navigation
-      onOpenChat(notification);
+      // The `onOpenChat` function in Home.js expects an object with specific properties.
+      // We need to construct this object from the notification data.
+      const chatPersonData = {
+        senderId: notification.data?.senderId || notification.senderId,
+        id: notification.data?.senderId || notification.senderId, // Ensure 'id' is present
+        name: notification.data?.senderName || notification.senderName,
+        phone: notification.data?.senderPhone,
+        profilePicture: notification.data?.profilePicture || notification.profilePicture,
+        data: notification.data, // Pass along the rest of the data
+      };
+      onOpenChat(chatPersonData);
     }
     handleDismiss();
   };
@@ -83,6 +80,27 @@ const InAppNotificationPopup = ({ notification, onDismiss, onNavigate, onViewLoc
     handleDismiss();
   };
 
+  const handleAccept = async (e) => {
+    e.stopPropagation(); // Prevent the main press from firing
+    if (notification?.requestId && onAcceptFriendRequest) {
+      const result = await onAcceptFriendRequest(notification.requestId);
+      if (result.success) {
+        Alert.alert('Friend Added!', `${notification.senderName} is now your friend.`);
+      } else {
+        Alert.alert('Error', result.error || 'Could not accept friend request.');
+      }
+      handleDismiss();
+    }
+  };
+
+  const handleDecline = async (e) => {
+    e.stopPropagation(); // Prevent the main press from firing
+    if (notification?.requestId && onDeclineFriendRequest) {
+      await onDeclineFriendRequest(notification.requestId);
+      // No need for an alert on decline
+      handleDismiss();
+    }
+  };
   const getIconInfo = (type) => {
     switch (type) {
       case 'sos':
@@ -145,11 +163,21 @@ const InAppNotificationPopup = ({ notification, onDismiss, onNavigate, onViewLoc
               <Text style={styles.locationButtonText}>View Location</Text>
             </TouchableOpacity>
           )}
-          {isChatMessage && (
+          {isChatMessage && onOpenChat && (
             <TouchableOpacity style={styles.chatButton} onPress={handleOpenChatPress}>
               <Icon name="message-reply-text-outline" size={14} color="#FF6B35" />
               <Text style={styles.chatButtonText}>Open Chat</Text>
             </TouchableOpacity>
+          )}
+          {isFriendRequest && (
+            <View style={styles.actionsContainer}>
+              <TouchableOpacity style={[styles.actionButton, styles.declineButton]} onPress={handleDecline}>
+                <Text style={styles.actionButtonText}>Decline</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.actionButton, styles.acceptButton]} onPress={handleAccept}>
+                <Text style={styles.actionButtonText}>Accept</Text>
+              </TouchableOpacity>
+            </View>
           )}
         </View>
         <TouchableOpacity style={styles.closeButton} onPress={handleDismiss}>
@@ -198,6 +226,31 @@ const styles = StyleSheet.create({
     },
     chatButtonText: {
         color: '#FF6B35', fontSize: 12, fontWeight: '600', marginLeft: 4
+    },
+    // Styles for Accept/Decline buttons
+    actionsContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 12,
+        gap: 10,
+    },
+    actionButton: {
+        flex: 1,
+        paddingVertical: 8,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    acceptButton: {
+        backgroundColor: '#007AFF',
+    },
+    declineButton: {
+        backgroundColor: '#444',
+    },
+    actionButtonText: {
+        color: '#fff',
+        fontWeight: '600',
+        fontSize: 13,
     },
 });
 

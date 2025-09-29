@@ -65,7 +65,7 @@ const generateUniqueKey = (friend, index) => {
   return `fallback_${index}_${Date.now()}`;
 };
 
-const PeopleBar = () => {
+const PeopleBar = ({ onOpenChat }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(new Date());
@@ -422,7 +422,7 @@ const PeopleBar = () => {
     const Component = TabComponents[activeTab] || FriendList;
     
     if (activeTab === 'friends') {
-      return <Component friendsData={friendsData} />;
+      return <Component friendsData={friendsData} onOpenChat={onOpenChat} />;
     }
     
     return <Component />;

@@ -91,6 +91,7 @@ export default function ChatScreen() {
   // Long-press modal
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState(null);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
 
   const handleLongPress = (message) => {
     setSelectedMessage(message);
@@ -104,23 +105,40 @@ export default function ChatScreen() {
 
   const handleOptionPress = (option) => {
     if (!selectedMessage) return;
+    closeModal(); // Close the main options modal
+
     switch (option) {
       case 'Reply':
         setReplyingTo(selectedMessage);
         break;
       case 'Copy':
         if (selectedMessage?.text) {
-          Clipboard.setStringAsync(selectedMessage.text);
-          Alert.alert('Copied', 'Message copied to clipboard.');
+          Clipboard.setStringAsync(selectedMessage.text).then(() => {
+            Alert.alert('Copied', 'Message copied to clipboard.');
+          });
         }
         break;
       case 'Delete':
-        setMessages(prev => prev.filter(msg => msg.id !== selectedMessage.id));
+        // Open the new delete confirmation modal instead of deleting directly
+        setTimeout(() => setDeleteModalVisible(true), 250); // Timeout for smoother transition
         break;
       case 'Report':
         Alert.alert('Reported', 'Message has been reported.');
         break;
     }
+  };
+
+  const handleDeleteForMe = () => {
+    if (!selectedMessage) return;
+    setMessages(prev => prev.filter(msg => msg.id !== selectedMessage.id));
+    setDeleteModalVisible(false);
+    setSelectedMessage(null);
+  };
+
+  const handleDeleteForEveryone = () => {
+    // In a real app, you would call an API here to delete the message on the server.
+    // For this example, we'll just delete it locally.
+    handleDeleteForMe();
   };
   
 
@@ -315,13 +333,10 @@ export default function ChatScreen() {
           <TouchableOpacity
             key={opt}
             style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10 }}
-            onPress={() => {
-              handleOptionPress(opt);
-              closeModal();
-            }}
+            onPress={() => handleOptionPress(opt)}
           >
             <Ionicons
-              name={
+              name={ // prettier-ignore
                 opt === 'Reply'
                   ? 'chatbubble-ellipses-outline'
                   : opt === 'Copy'
@@ -341,6 +356,53 @@ export default function ChatScreen() {
           <Text style={{ fontWeight: '700', color: 'red' }}>Cancel</Text>
         </TouchableOpacity>
       </Animated.View>
+    </BlurView>
+  </TouchableWithoutFeedback>
+</Modal>
+
+{/* DELETE CONFIRMATION MODAL */}
+<Modal transparent visible={deleteModalVisible} animationType="fade">
+  <TouchableWithoutFeedback onPress={() => setDeleteModalVisible(false)}>
+    <BlurView intensity={80} style={styles.deleteModalContainer}>
+      <TouchableWithoutFeedback>
+        <View style={[styles.deleteModalContent, { backgroundColor: themeColors.card }]}>
+          <Text style={[styles.deleteModalTitle, { color: themeColors.text }]}>
+            Delete message?
+          </Text>
+
+          {selectedMessage?.sender === 'me' && (
+            <TouchableOpacity
+              style={styles.deleteOptionButton}
+              onPress={handleDeleteForEveryone}
+            >
+              <Ionicons name="people-outline" size={22} color="#ff4d4f" />
+              <View style={styles.deleteOptionTextContainer}>
+                <Text style={styles.deleteOptionText}>Delete for everyone</Text>
+                <Text style={styles.deleteOptionSubtext}>
+                  This message will be removed for all chat members.
+                </Text>
+              </View>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            style={styles.deleteOptionButton}
+            onPress={handleDeleteForMe}
+          >
+            <Ionicons name="person-outline" size={22} color="#007AFF" />
+            <View style={styles.deleteOptionTextContainer}>
+              <Text style={styles.deleteOptionText}>Delete for me</Text>
+              <Text style={styles.deleteOptionSubtext}>
+                This message will only be removed from your device.
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => setDeleteModalVisible(false)} style={styles.deleteCancelButton}>
+            <Text style={styles.deleteCancelText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      </TouchableWithoutFeedback>
     </BlurView>
   </TouchableWithoutFeedback>
 </Modal>
@@ -446,5 +508,59 @@ const styles = StyleSheet.create({
   safetyText: { fontSize: 13, fontWeight: '600' },
   sendBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
   replyBanner: { backgroundColor: 'rgba(0,0,0,0.1)', padding: 4, borderLeftWidth: 3, borderLeftColor: '#35d07f', marginBottom: 4, borderRadius: 4, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  replyBannerText: { fontSize: 12, flex: 1, marginRight: 4 },
+  replyBannerText: { fontSize: 12, flex: 1, marginRight: 4, color: '#666' },
+  // Delete Modal Styles
+  deleteModalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  deleteModalContent: {
+    width: '100%',
+    maxWidth: 350,
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
+  },
+  deleteModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  deleteOptionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#ccc',
+  },
+  deleteOptionTextContainer: {
+    marginLeft: 15,
+    flex: 1,
+  },
+  deleteOptionText: {
+    fontSize: 16,
+    color: '#007AFF',
+    fontWeight: '500',
+  },
+  deleteOptionSubtext: {
+    fontSize: 12,
+    color: '#888',
+    marginTop: 2,
+  },
+  deleteCancelButton: {
+    marginTop: 15,
+    alignItems: 'center',
+  },
+  deleteCancelText: {
+    fontSize: 16,
+    color: '#007AFF',
+    fontWeight: '600',
+  },
 });
