@@ -52,15 +52,14 @@ const FriendList = ({ friendsData = [], onOpenChat }) => {
   };
 
   const handleMessage = (friend) => {
-    // Ensure we have a valid friend object before navigating
-    if (!friend || !friend.id) {
+    // Ensure we have a valid friend object and the onOpenChat function before proceeding
+    if (!friend || !friend.id || !onOpenChat) {
       Alert.alert('Error', 'Cannot open chat. Invalid friend data.');
       return;
     }
-
-    // Navigate to the ChatScreen with the complete friend object
-    // The ChatScreen component will handle the rest
-    navigation.navigate('Chat', { person: friend });
+    
+    // Use the onOpenChat prop passed down from Home.js to handle navigation
+    onOpenChat(friend);
   };
 
   const renderFriendItem = ({ item: friend, index }) => {

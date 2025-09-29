@@ -21,6 +21,7 @@ import {
   Pressable
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { auth, storage } from '../../backend/Firebase/FirebaseConfig';
 import { FirebaseService } from '../../backend/Firebase/FirebaseService';
 import * as Location from 'expo-location';
@@ -40,7 +41,7 @@ const ChatScreen = ({ person, onClose, userData, navigation, onViewProfile }) =>
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const [friendPresence, setFriendPresence] = useState(null);
-  const currentUserId = auth.currentUser?.uid;
+  const currentUserId = userData?.userId;
   const [recording, setRecording] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
   const [playingAudioId, setPlayingAudioId] = useState(null);
@@ -56,6 +57,7 @@ const ChatScreen = ({ person, onClose, userData, navigation, onViewProfile }) =>
   const chatRoomId = currentUserId && person?.id
     ? FirebaseService.getChatRoomId(currentUserId, person.id)
     : null;
+  console.log('ChatRoomID:', chatRoomId);
 
   const [isAttachmentMenuVisible, setIsAttachmentMenuVisible] = useState(false);
   const [isOptionsMenuVisible, setIsOptionsMenuVisible] = useState(false);
@@ -215,6 +217,7 @@ const ChatScreen = ({ person, onClose, userData, navigation, onViewProfile }) =>
   };
 
   const uploadAudio = async (uri) => {
+    console.log('uploadAudio called with uri:', uri);
     const blob = await new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.onload = () => resolve(xhr.response);
@@ -228,13 +231,17 @@ const ChatScreen = ({ person, onClose, userData, navigation, onViewProfile }) =>
     });
 
     const storageRef = ref(storage, `voice-notes/${chatRoomId}/${Date.now()}`);
+    console.log('Uploading to:', storageRef);
     await uploadBytes(storageRef, blob);
     blob.close();
 
-    return await getDownloadURL(storageRef);
+    const downloadURL = await getDownloadURL(storageRef);
+    console.log('Download URL:', downloadURL);
+    return downloadURL;
   };
 
   const startRecording = async () => {
+    console.log('startRecording called');
     // Safeguard to prevent multiple recording objects.
     if (recording) {
       console.warn("An existing recording was found. Unloading it before starting a new one.");
@@ -243,7 +250,8 @@ const ChatScreen = ({ person, onClose, userData, navigation, onViewProfile }) =>
     }
 
     try {
-      await Audio.requestPermissionsAsync();
+      const permission = await Audio.requestPermissionsAsync();
+      console.log('Audio permission:', permission);
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
@@ -270,6 +278,7 @@ const ChatScreen = ({ person, onClose, userData, navigation, onViewProfile }) =>
     
     const status = await recording.getStatusAsync();
     const durationMillis = status.durationMillis;
+    console.log('Recording duration:', durationMillis);
 
     // Optimistic UI update for voice note
     const optimisticMessage = {

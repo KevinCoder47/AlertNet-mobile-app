@@ -103,7 +103,7 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
         }
         
         const transformedNotifications = notifications.map(n => {
-        const isUrgent = n.priority === 'high';
+        const isUrgent = n.priority === 'high' || n.isUrgent === true;
         const timestamp = n.createdAt?.toDate ? n.createdAt.toDate().getTime() : Date.now();
         
         return {
@@ -545,14 +545,14 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
             isSelected && styles.selectedNotification
           ]}
           onPress={() => {
-            if (isSelectionMode) {
+            if (isSelectionMode) { // If in selection mode, toggle selection
               toggleSelection(notification.id);
-            } else {
-              if (isFriendRequest && !isRead) {
-                // Toggle expansion for friend requests
-                setExpandedNotificationId(prevId => prevId === notification.id ? null : notification.id);
-              } else {
-                // Default action for other notifications
+            } else if (isFriendRequest && !isRead) { // If it's an unread friend request, expand it
+              // Toggle expansion for friend requests
+              setExpandedNotificationId(prevId => prevId === notification.id ? null : notification.id);
+            } else { // For any other case (read notifications, non-friend-requests)
+              // Mark as read if it's not already
+              if (!isRead) {
                 handleMarkAsRead(notification.id);
               }
             }
@@ -628,7 +628,7 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
                 style={styles.quickActionButton}
                 onPress={() => handleQuickAction(notification, 'call')}
               >
-                <Icon name="phone" size={16} color="#FFFFFF" />
+                <Icon name="phone" size={16} color={colors.background} />
               </TouchableOpacity>
             )}
             {notification.location && (
@@ -636,14 +636,14 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
                 style={styles.quickActionButton}
                 onPress={() => handleQuickAction(notification, 'location')}
               >
-                <Icon name="map-marker" size={16} color="#FFFFFF" />
+                <Icon name="map-marker" size={16} color={colors.background} />
               </TouchableOpacity>
             )}
             <TouchableOpacity 
               style={styles.quickActionButton}
               onPress={() => handleQuickAction(notification, 'respond')}
             >
-              <Icon name="message-reply" size={16} color="#FFFFFF" />
+              <Icon name="message-reply" size={16} color={colors.background} />
             </TouchableOpacity>
           </View>
         )}
@@ -1582,7 +1582,7 @@ const getStyles = (getScaledFontSize, colors) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     marginTop: 8,
-    gap: 25,
+    gap: 15,
     paddingHorizontal: 10,
   },
   quickActionButton: {
@@ -1609,9 +1609,6 @@ const getStyles = (getScaledFontSize, colors) => StyleSheet.create({
     fontWeight: '600',
     fontSize: 13,
     textAlign: 'center',
-  },
-  quickActionButton: {
-    justifyContent: 'center',
   },
   
   // Empty State

@@ -128,10 +128,11 @@ const Home = ({handleLogout}) => {
   };
 
   const handleOpenChat = async (personData) => {
-    console.log('Opening chat with data:', personData);
+    console.log('DEBUG: Opening chat with raw personData:', JSON.stringify(personData, null, 2));
     
     // The person's ID could come from `senderId` (from notifications) or `id` (from friends list)
-    const personId = personData?.senderId || personData?.id;
+    const personId = personData?.senderId || personData?.friendId || personData?.id;
+    console.log('DEBUG: Resolved personId:', personId);
 
     if (personData && personId) {
       let completePersonData = personData.data || personData;
@@ -149,9 +150,9 @@ const Home = ({handleLogout}) => {
       }
 
       // Consolidate data from either a notification object or a direct friend object
-      const name = completePersonData.name || 'Unknown User';
-      const phone = completePersonData.phone || completePersonData.Phone;
-      const profilePicture = completePersonData.profilePicture || completePersonData.imageUrl || null;
+      const name = completePersonData.name || completePersonData.Name || 'Unknown User';
+      const phone = completePersonData.phone || completePersonData.Phone || null;
+      const profilePicture = completePersonData.profilePicture || completePersonData.imageUrl || completePersonData.ImageURL || completePersonData.avatar || null;
       
       console.log('Profile picture for chat:', profilePicture);
       
@@ -159,7 +160,9 @@ const Home = ({handleLogout}) => {
         id: personId,
         name: name,
         phone: phone,
-        avatar: profilePicture ? { uri: profilePicture } : null,
+        // Use a consistent property for the avatar URI
+        avatar: profilePicture,
+        profilePicture: profilePicture, // Keep for backward compatibility if needed
         // Spread the complete data object to ensure all fields (like createdAt) are included
         ...completePersonData
       });
