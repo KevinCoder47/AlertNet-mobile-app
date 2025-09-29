@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View, Dimensions, TouchableOpacity, ScrollView, Modal, TextInput, Alert, Linking, Animated, PanResponder, Platform, StatusBar } from 'react-native'
 import { useTheme } from '../contexts/ColorContext';
+import { useFontSize } from '../contexts/FontSizeContext';
 import React, { useState, useEffect, useRef } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Clipboard from 'expo-clipboard';
@@ -18,6 +19,7 @@ const getStatusBarHeight = () => {
 
 const Helpline = ({ onClose = () => console.log('Close button pressed - please implement onClose prop') }) => {
   const { colors, isDark } = useTheme() // Use your theme context instead of useColorScheme
+  const { getScaledFontSize } = useFontSize(); // Add font scaling support
   const [showAddContact, setShowAddContact] = useState(false)
   const [customContacts, setCustomContacts] = useState([])
   const [favorites, setFavorites] = useState([])
@@ -44,7 +46,7 @@ const Helpline = ({ onClose = () => console.log('Close button pressed - please i
     maxHeight,
   }).current;
 
-  const styles = getStyles(isDark, colors); // Pass colors to styles
+  const styles = getStyles(isDark, colors, getScaledFontSize); // Pass getScaledFontSize to styles
 
   useEffect(() => {
     AsyncStorage.getItem('customContacts').then(data => {
@@ -435,8 +437,8 @@ const Helpline = ({ onClose = () => console.log('Close button pressed - please i
   )
 }
 
-// Updated styles to use theme colors consistently
-const getStyles = (isDark, colors) => StyleSheet.create({
+// Updated styles to use theme colors consistently and add font scaling
+const getStyles = (isDark, colors, getScaledFontSize) => StyleSheet.create({
   container: {
     position: 'absolute',
     bottom: 60,
@@ -480,7 +482,7 @@ const getStyles = (isDark, colors) => StyleSheet.create({
     borderRadius: 2,
   },
   swipeHint: {
-    fontSize: 10,
+    fontSize: getScaledFontSize(10),
     color: colors.textSecondary || colors.secondary,
     marginTop: 4,
     textAlign: 'center',
@@ -493,7 +495,7 @@ const getStyles = (isDark, colors) => StyleSheet.create({
     marginBottom: 5,
   },
   headerText: {
-    fontSize: 18,
+    fontSize: getScaledFontSize(18),
     fontWeight: 'bold',
     color: colors.text,
   },
@@ -503,7 +505,7 @@ const getStyles = (isDark, colors) => StyleSheet.create({
     gap: 10,
   },
   lastUpdatedText: {
-    fontSize: 10,
+    fontSize: getScaledFontSize(10),
     color: colors.textSecondary || colors.secondary,
   },
   collapseButton: {
@@ -514,7 +516,7 @@ const getStyles = (isDark, colors) => StyleSheet.create({
     marginBottom: 10,
   },
   subtitle: {
-    fontSize: 12,
+    fontSize: getScaledFontSize(12),
     color: colors.textSecondary || colors.secondary,
   },
   contentContainer: {
@@ -575,7 +577,7 @@ const getStyles = (isDark, colors) => StyleSheet.create({
   },
   cardTitle: {
     fontWeight: '600',
-    fontSize: 15,
+    fontSize: getScaledFontSize(15),
     color: colors.text,
     flex: 1,
   },
@@ -583,12 +585,12 @@ const getStyles = (isDark, colors) => StyleSheet.create({
     marginLeft: 8,
   },
   cardDesc: {
-    fontSize: 12,
+    fontSize: getScaledFontSize(12),
     color: colors.textSecondary || colors.secondary,
     marginBottom: 2,
   },
   cardNumber: {
-    fontSize: 12,
+    fontSize: getScaledFontSize(12),
     color: colors.textSecondary || colors.secondary,
     fontWeight: '500',
   },
@@ -604,7 +606,7 @@ const getStyles = (isDark, colors) => StyleSheet.create({
   },
   priorityText: {
     color: '#fff',
-    fontSize: 9,
+    fontSize: getScaledFontSize(9),
     fontWeight: 'bold',
   },
   modalContainer: {
@@ -623,7 +625,7 @@ const getStyles = (isDark, colors) => StyleSheet.create({
   },
   modalTitle: {
     color: colors.text,
-    fontSize: 18,
+    fontSize: getScaledFontSize(18),
     fontWeight: 'bold',
     marginBottom: 16,
     textAlign: 'center',
@@ -636,6 +638,7 @@ const getStyles = (isDark, colors) => StyleSheet.create({
     color: colors.text,
     borderWidth: 1,
     borderColor: colors.inputBorder || colors.border,
+    fontSize: getScaledFontSize(16),
   },
   modalButtons: {
     flexDirection: 'row',
@@ -658,7 +661,7 @@ const getStyles = (isDark, colors) => StyleSheet.create({
   modalButtonText: {
     color: '#fff',
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: getScaledFontSize(16),
   }
 });
 
