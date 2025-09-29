@@ -16,7 +16,9 @@ import {
   RefreshControl,
   Image,
   TouchableWithoutFeedback,
+  Linking,
 } from 'react-native';
+import { useNotifications } from '../contexts/NotificationContext';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { FirebaseService } from '../../backend/Firebase/FirebaseService';
 import { useFontSize } from '../contexts/FontSizeContext';
@@ -76,6 +78,7 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
   const [fontSize, setFontSize] = React.useState('medium');
   const [showCalendar, setShowCalendar] = React.useState(false);
   
+  const [expandedNotificationId, setExpandedNotificationId] = React.useState(null);
   // State for real notifications
   const [allNotifications, setAllNotifications] = React.useState([]);
   const [closeFriendsNotifications, setCloseFriendsNotifications] = React.useState([]);
@@ -100,15 +103,15 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
         }
         
         const transformedNotifications = notifications.map(n => {
-        const isUrgent = n.priority === 'high';
+        const isUrgent = n.priority === 'high' || n.isUrgent === true;
         const timestamp = n.createdAt?.toDate ? n.createdAt.toDate().getTime() : Date.now();
         
-          return {
+        return {
             id: n.id,
             type: n.type,
             category: n.data?.category || 'general',
             name: n.data?.senderName || n.title,
-            message: n.message,
+            message: n.message, // This is the main message content
             time: formatTimeAgo(timestamp),
             timestamp: timestamp,
             status: n.read ? 'read' : 'new',
@@ -117,6 +120,7 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
             phone: n.data?.senderPhone || null,
             senderId: n.data?.senderId || null,
             profilePicture: n.data?.profilePicture || null,
+            data: n.data, // Pass the whole data object for actions
         };
       });
 
@@ -237,6 +241,32 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
     if (markNotificationAsRead) {
       markNotificationAsRead(notificationId);
       Vibration.vibrate(30);
+      // Collapse any expanded notification when it's marked as read
+      if (expandedNotificationId === notificationId) {
+        setExpandedNotificationId(null);
+      }
+    }
+  };
+
+  const handleAccept = async (notification) => {
+    if (notification?.data?.requestId && acceptFriendRequest) { // Use the context function
+      const result = await acceptFriendRequest(notification.data.requestId);
+      if (result.success) {
+        Alert.alert('Friend Added!', `${notification.name} is now your friend.`);
+        // Mark as read after accepting
+        handleMarkAsRead(notification.id);
+      } else {
+        Alert.alert('Error', result.error || 'Could not accept friend request.');
+      }
+    }
+  };
+
+  const handleDecline = async (notification) => {
+    if (notification?.data?.requestId && declineFriendRequest) { // Use the context function
+      await declineFriendRequest(notification.data.requestId);
+      // Mark as read after declining
+      handleMarkAsRead(notification.id);
+      // No need for an alert on decline
     }
   };
 
@@ -299,12 +329,28 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
     switch (action) {
       case 'call':
         if (notification.phone) {
-          Alert.alert('Call', `Calling ${notification.name}...`);
+          const phoneNumber = `tel:${notification.phone}`;
+          Linking.canOpenURL(phoneNumber)
+            .then(supported => {
+              if (supported) {
+                Linking.openURL(phoneNumber);
+              } else {
+                Alert.alert('Call Failed', 'Unable to make phone calls on this device.');
+              }
+            });
         }
         break;
       case 'respond':
         if (onOpenChat) {
-          onOpenChat(notification);
+          const personData = {
+            id: notification.senderId,
+            senderId: notification.senderId,
+            name: notification.name,
+            phone: notification.phone,
+            profilePicture: notification.profilePicture,
+            data: notification.data,
+          };
+          onOpenChat(personData);
           setIsNotification(false);
         } else {
           Alert.alert('Quick Response', 'Response sent!');
@@ -486,8 +532,10 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
   const renderNotificationItem = (notification) => {
     const isRead = notification.status === 'read';
     const isSelected = selectedNotifications.includes(notification.id);
+    const isFriendRequest = notification.type === 'friend_request';
     const fonts = getFontSize();
 
+    const isExpanded = expandedNotificationId === notification.id;
     return (
       <View key={notification.id} style={styles.notificationContainer}>
         <TouchableOpacity 
@@ -497,10 +545,16 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
             isSelected && styles.selectedNotification
           ]}
           onPress={() => {
-            if (isSelectionMode) {
+            if (isSelectionMode) { // If in selection mode, toggle selection
               toggleSelection(notification.id);
-            } else {
-              handleMarkAsRead(notification.id);
+            } else if (isFriendRequest && !isRead) { // If it's an unread friend request, expand it
+              // Toggle expansion for friend requests
+              setExpandedNotificationId(prevId => prevId === notification.id ? null : notification.id);
+            } else { // For any other case (read notifications, non-friend-requests)
+              // Mark as read if it's not already
+              if (!isRead) {
+                handleMarkAsRead(notification.id);
+              }
             }
           }}
           onLongPress={() => {
@@ -552,6 +606,20 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
           </View>
         </TouchableOpacity>
         
+        {/* Friend Request Actions */}
+        {isExpanded && !isSelectionMode && isFriendRequest && !isRead && ( // Render when expanded
+          <View style={styles.quickActions}>
+            <TouchableOpacity
+              style={[styles.quickActionButton, styles.declineAction]}
+              onPress={() => handleDecline(notification)}
+            >
+              <Text style={styles.actionButtonText}>Decline</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.quickActionButton, styles.acceptAction]} onPress={() => handleAccept(notification)}>
+              <Text style={[styles.actionButtonText, { color: '#fff' }]}>Accept</Text>
+            </TouchableOpacity>
+          </View>
+        )}
         {/* Quick Actions */}
         {!isSelectionMode && notification.isUrgent && (
           <View style={styles.quickActions}>
@@ -560,7 +628,7 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
                 style={styles.quickActionButton}
                 onPress={() => handleQuickAction(notification, 'call')}
               >
-                <Icon name="phone" size={16} color="#FFFFFF" />
+                <Icon name="phone" size={16} color={colors.background} />
               </TouchableOpacity>
             )}
             {notification.location && (
@@ -568,14 +636,14 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
                 style={styles.quickActionButton}
                 onPress={() => handleQuickAction(notification, 'location')}
               >
-                <Icon name="map-marker" size={16} color="#FFFFFF" />
+                <Icon name="map-marker" size={16} color={colors.background} />
               </TouchableOpacity>
             )}
             <TouchableOpacity 
               style={styles.quickActionButton}
               onPress={() => handleQuickAction(notification, 'respond')}
             >
-              <Icon name="message-reply" size={16} color="#FFFFFF" />
+              <Icon name="message-reply" size={16} color={colors.background} />
             </TouchableOpacity>
           </View>
         )}
@@ -1514,15 +1582,33 @@ const getStyles = (getScaledFontSize, colors) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     marginTop: 8,
-    gap: 8,
+    gap: 15,
+    paddingHorizontal: 10,
   },
   quickActionButton: {
-    backgroundColor: '#FF6B35',
     borderRadius: 16,
     paddingVertical: 6,
     paddingHorizontal: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#FF6B35',
+  },
+  acceptAction: {
+    backgroundColor: '#FF6B35',
+    paddingVertical: 8,
+    flex: 1,
+    borderRadius: 6,
+  },
+  declineAction: {
+    backgroundColor: '#2A2A2A',
+    flex: 1,
+    borderRadius: 6,
+  },
+  actionButtonText: {
+    color: '#E0E0E0',
+    fontWeight: '600',
+    fontSize: 13,
+    textAlign: 'center',
   },
   
   // Empty State

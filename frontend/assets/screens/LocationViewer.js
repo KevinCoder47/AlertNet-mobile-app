@@ -407,7 +407,9 @@ const LocationViewer = ({
               style={[styles.actionBtn, styles.messageBtn]}
               onPress={() => {
                 if (onSendMessage) {
-                  onSendMessage();
+                  // Close the location viewer and open the chat
+                  onClose();
+                  setTimeout(() => onSendMessage(), 100); // Delay to allow modal to close
                 } else if (senderPhone) {
                   Linking.openURL(`sms:${senderPhone}`);
                 }

@@ -749,7 +749,7 @@ export const FirebaseService = {
       // Create notification with proper profile data mapping
       const notificationResult = await FirebaseService.createNotification({
         userId: userCheck.userData.id,
-        recipientPhone: formattedRecipientPhone,
+        recipientPhone: formattedRecipientPhone, // This is the recipient's phone number
         type: 'friend_request',
         title: 'New Friend Request',
         message: `${senderName} ${senderSurname} wants to connect with you on AlertNet`,
@@ -861,8 +861,8 @@ export const FirebaseService = {
 
       // --- FIX: Update the `friends` array in both user documents ---
       // This ensures other parts of the app (like FriendsContext) see the new friend.
-      const user1FriendData = { uid: user2Id, name: user2Name, email: user2Email, phone: user2Phone };
-      const user2FriendData = { uid: user1Id, name: user1Name, email: user1Email, phone: user1Phone };
+      const user1FriendData = { id: user2Id, uid: user2Id, name: user2Name, email: user2Email, phone: user2Phone };
+      const user2FriendData = { id: user1Id, uid: user1Id, name: user1Name, email: user1Email, phone: user1Phone };
 
       batch.update(user1DocRef, {
         friends: arrayUnion(user1FriendData)
@@ -917,6 +917,13 @@ export const FirebaseService = {
         return { success: false, error: 'Unauthorized action' };
       }
       
+      // FIX: Check if the request has already been accepted or declined.
+      if (requestData.status === 'accepted') {
+        return { success: false, error: 'Friend already added' };
+      } else if (requestData.status === 'declined') {
+        return { success: false, error: 'This friend request was already declined.' };
+      }
+      
       console.log('Request validation passed');
       
       const currentUserResult = await FirebaseService.getUserByPhone(formattedCurrentPhone);
@@ -961,7 +968,7 @@ export const FirebaseService = {
       
       await FirebaseService.createNotification({
         userId: requestData.senderId,
-        recipientPhone: requestData.senderPhone,
+        recipientPhone: requestData.senderPhone, // Corrected: Send to the original sender
         type: 'friend_accepted',
         title: 'Friend Request Accepted',
         message: `${requestData.recipientFirstName} ${requestData.recipientLastName} accepted your friend request!`,
@@ -1007,12 +1014,19 @@ export const FirebaseService = {
       }
       
       const requestData = requestDoc.data();
+      // FIX: Format the current user's phone number before comparison
+      // to ensure it matches the format stored in the request.
       const formattedCurrentPhone = FirebaseService.formatPhoneNumber(currentUserPhone);
       
       if (requestData.recipientPhone !== formattedCurrentPhone) {
         return { success: false, error: 'Unauthorized action' };
       }
       
+      // If the request was already accepted, inform the user.
+      if (requestData.status === 'accepted') {
+        return { success: false, error: 'Friend already added' };
+      }
+
       await updateDoc(requestRef, {
         status: 'declined',
         declinedAt: serverTimestamp()
@@ -1295,12 +1309,12 @@ export const FirebaseService = {
       // Send a notification to the recipient
       if (recipientPhone && senderName) {
         await FirebaseService.createNotification({
-          userId: recipientId,
+          userId: recipientId, // The user who will receive the notification
           recipientPhone: recipientPhone,
           type: 'chat_message',
           title: `New message from ${senderName}`,
           message: text.length > 50 ? `${text.substring(0, 50)}...` : text,
-          priority: 'normal',
+          priority: 'high', // Make it high priority to ensure it's noticed
           data: {
             senderId: senderId,
             senderName: senderName,
