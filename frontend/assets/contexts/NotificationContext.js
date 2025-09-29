@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Vibration, Platform, AppState, Alert } from 'react-native';
-import messaging from '@react-native-firebase/messaging';
+// import messaging from '@react-native-firebase/messaging';
 import { FirebaseService } from '../../backend/Firebase/FirebaseService';
 
 const NotificationContext = createContext();
@@ -66,23 +66,23 @@ export const NotificationProvider = ({ children }) => {
     };
   }, []);
   // FCM listeners for walk requests
-  useEffect(() => {
-    const unsubscribe = messaging().onMessage(async remoteMessage => {
-      console.log('FCM Message received:', remoteMessage);
-      if (remoteMessage.data && remoteMessage.data.type === 'walk_request') {
-        handleIncomingWalkRequest(JSON.parse(remoteMessage.data.walkData));
-      }
-    });
-
-    messaging().setBackgroundMessageHandler(async remoteMessage => {
-      console.log('Background FCM Message:', remoteMessage);
-      if (remoteMessage.data && remoteMessage.data.type === 'walk_request') {
-        handleIncomingWalkRequest(JSON.parse(remoteMessage.data.walkData));
-      }
-    });
-
-    return unsubscribe;
-  }, []);
+  // useEffect(() => {
+  //   const unsubscribe = messaging().onMessage(async remoteMessage => {
+  //     console.log('FCM Message received:', remoteMessage);
+  //     if (remoteMessage.data && remoteMessage.data.type === 'walk_request') {
+  //       handleIncomingWalkRequest(JSON.parse(remoteMessage.data.walkData));
+  //     }
+  //   });
+  //
+  //   messaging().setBackgroundMessageHandler(async remoteMessage => {
+  //     console.log('Background FCM Message:', remoteMessage);
+  //     if (remoteMessage.data && remoteMessage.data.type === 'walk_request') {
+  //       handleIncomingWalkRequest(JSON.parse(remoteMessage.data.walkData));
+  //     }
+  //   });
+  //
+  //   return unsubscribe;
+  // }, []);
 
   const sendWalkRequest = async (walkData) => {
     try {
