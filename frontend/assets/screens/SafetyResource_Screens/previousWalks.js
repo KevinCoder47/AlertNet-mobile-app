@@ -3,11 +3,13 @@ import { StyleSheet, Text, View, Image, TouchableOpacity, ScrollView } from 'rea
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Polyline } from 'react-native-maps';
 import Icon from 'react-native-vector-icons/FontAwesome';
-import { useFontSize } from '../../contexts/FontSizeContext'; // Import font size context
+import { useFontSize } from '../../contexts/FontSizeContext';
+import { useTheme } from '../../contexts/ColorContext'; // ✅ theme
 
 const PreviousWalks = ({ setIsPreviousWalks, setIsSafetyResources }) => {
-  const { getScaledFontSize } = useFontSize(); // Use font size hook
-  
+  const { getScaledFontSize } = useFontSize();
+  const { colors } = useTheme(); // ✅ theme
+
   const walks = [
     {
       id: 1,
@@ -61,226 +63,135 @@ const PreviousWalks = ({ setIsPreviousWalks, setIsSafetyResources }) => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-      <View style={styles.header}>
-        {/* Back button with navigation */}
-        <TouchableOpacity
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.surface }]}>
+      <View style={[styles.container, { backgroundColor: colors.surface }]}>
+        {/* Header */}
+        <View style={[styles.header, { backgroundColor: colors.card }]}>
+          <TouchableOpacity
             onPress={() => {
-                setIsPreviousWalks(false);
-                setIsSafetyResources(true);
+              setIsPreviousWalks(false);
+              setIsSafetyResources(true);
             }}
-        >
-          <Icon name="arrow-left" size={20} color="#000" />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { fontSize: getScaledFontSize(20) }]}>
-          Previous walks
-        </Text>
-        <TouchableOpacity>
-          <Icon name="calendar" size={20} color="#000" />
-        </TouchableOpacity>
-      </View>
+          >
+            <Icon name="arrow-left" size={20} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { fontSize: getScaledFontSize(20), color: colors.text }]}>
+            Previous walks
+          </Text>
+          <TouchableOpacity>
+            <Icon name="calendar" size={20} color={colors.text} />
+          </TouchableOpacity>
+        </View>
 
-      <View style={styles.dateSelector}>
-        <Text style={[styles.date, { fontSize: getScaledFontSize(16) }]}>Mon 18</Text>
-        <Text style={[styles.date, { fontSize: getScaledFontSize(16) }]}>Tue 19</Text>
-        <Text style={[styles.date, { fontSize: getScaledFontSize(16) }]}>Wed 20</Text>
-        <Text style={[styles.date, styles.activeDate, { fontSize: getScaledFontSize(16) }]}>
-          Thu 21
-        </Text>
-        <Text style={[styles.date, { fontSize: getScaledFontSize(16) }]}>Fri 22</Text>
-        <Text style={[styles.date, { fontSize: getScaledFontSize(16) }]}>Sat 23</Text>
-        <Text style={[styles.date, { fontSize: getScaledFontSize(16) }]}>Sun 24</Text>
-      </View>
+        {/* Date Selector */}
+        <View style={[styles.dateSelector, { backgroundColor: colors.card }]}>
+          {['Mon 18','Tue 19','Wed 20','Thu 21','Fri 22','Sat 23','Sun 24'].map((day) => (
+            <Text
+              key={day}
+              style={[
+                styles.date,
+                { fontSize: getScaledFontSize(16), color: colors.text },
+                day === 'Thu 21' && { color: '#FFA500', fontWeight: 'bold' },
+              ]}
+            >
+              {day}
+            </Text>
+          ))}
+        </View>
 
-      <View style={styles.tripsHeader}>
-        <Text style={[styles.tripsCount, { fontSize: getScaledFontSize(16) }]}>
-          2 trips
-        </Text>
-        <TouchableOpacity>
-          <Icon name="filter" size={20} color="#000" />
-        </TouchableOpacity>
-      </View>
+        {/* Trips Header */}
+        <View style={styles.tripsHeader}>
+          <Text style={[styles.tripsCount, { fontSize: getScaledFontSize(16), color: colors.text }]}>
+            {walks.length} trips
+          </Text>
+          <TouchableOpacity>
+            <Icon name="filter" size={20} color={colors.text} />
+          </TouchableOpacity>
+        </View>
 
-      <ScrollView>
-        {walks.map((walk) => (
-          <View key={walk.id} style={styles.walkCard}>
-            <View style={styles.userInfo}>
-              <Image source={walk.avatar} style={styles.avatar} />
-              <View>
-                <Text style={[styles.name, { fontSize: getScaledFontSize(18) }]}>
-                  {walk.name}
-                </Text>
-                <View style={styles.ratingContainer}>
-                  {walk.status ? (
-                    <Text style={[styles.requestSent, { fontSize: getScaledFontSize(12) }]}>
-                      {walk.status}
-                    </Text>
-                  ) : (
-                    <>
-                      <TouchableOpacity style={styles.rateButton}>
-                        <Text style={{ fontSize: getScaledFontSize(12) }}>Rate</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={styles.reportButton}>
-                        <Text style={{ fontSize: getScaledFontSize(12) }}>Report</Text>
-                      </TouchableOpacity>
-                    </>
-                  )}
-                </View>
-                 {walk.rating > 0 &&
-                  <View style={styles.stars}>
-                      {renderStars(walk.rating)}
+        {/* Walk Cards */}
+        <ScrollView>
+          {walks.map((walk) => (
+            <View key={walk.id} style={[styles.walkCard, { backgroundColor: colors.card }]}>
+              <View style={styles.userInfo}>
+                <Image source={walk.avatar} style={styles.avatar} />
+                <View>
+                  <Text style={[styles.name, { fontSize: getScaledFontSize(18), color: colors.text }]}>{walk.name}</Text>
+                  <View style={styles.ratingContainer}>
+                    {walk.status ? (
+                      <Text style={[styles.requestSent, { fontSize: getScaledFontSize(12) }]}>
+                        {walk.status}
+                      </Text>
+                    ) : (
+                      <>
+                        <TouchableOpacity style={[styles.rateButton, { borderColor: colors.border }]}>
+                          <Text style={{ fontSize: getScaledFontSize(12), color: colors.text }}>Rate</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[styles.reportButton, { borderColor: colors.border }]}>
+                          <Text style={{ fontSize: getScaledFontSize(12), color: colors.text }}>Report</Text>
+                        </TouchableOpacity>
+                      </>
+                    )}
                   </View>
-                }
+                  {walk.rating > 0 && <View style={styles.stars}>{renderStars(walk.rating)}</View>}
+                </View>
+              </View>
+              <View style={styles.mapContainer}>
+                <MapView
+                  style={styles.map}
+                  initialRegion={{
+                    latitude: walk.coords[0].latitude,
+                    longitude: walk.coords[0].longitude,
+                    latitudeDelta: 0.02,
+                    longitudeDelta: 0.02,
+                  }}
+                >
+                  <Polyline
+                    coordinates={walk.coords}
+                    strokeColor="#FFA500"
+                    strokeWidth={3}
+                  />
+                </MapView>
+                <View style={[styles.walkDetails, { backgroundColor: colors.surface }]}>
+                  <Text style={{ fontSize: getScaledFontSize(14), color: colors.text }}>{walk.start}</Text>
+                  <Icon name="arrow-right" size={16} color={colors.text} />
+                  <Text style={{ fontSize: getScaledFontSize(14), color: colors.text }}>{walk.end}</Text>
+                </View>
+                <View style={[styles.walkStats, { backgroundColor: colors.surface }]}>
+                  <Text style={{ fontSize: getScaledFontSize(14), color: colors.text }}>{walk.duration}</Text>
+                  <Text style={{ fontSize: getScaledFontSize(14), color: colors.text }}>{walk.distance}</Text>
+                </View>
               </View>
             </View>
-            <View style={styles.mapContainer}>
-              <MapView
-                style={styles.map}
-                initialRegion={{
-                  latitude: walk.coords[0].latitude,
-                  longitude: walk.coords[0].longitude,
-                  latitudeDelta: 0.02,
-                  longitudeDelta: 0.02,
-                }}
-              >
-                <Polyline
-                  coordinates={walk.coords}
-                  strokeColor="#FFA500"
-                  strokeWidth={3}
-                />
-              </MapView>
-              <View style={styles.walkDetails}>
-                <Text style={{ fontSize: getScaledFontSize(14) }}>{walk.start}</Text>
-                <Icon name="arrow-right" size={16} color="#000" />
-                <Text style={{ fontSize: getScaledFontSize(14) }}>{walk.end}</Text>
-              </View>
-              <View style={styles.walkStats}>
-                <Text style={{ fontSize: getScaledFontSize(14) }}>{walk.duration}</Text>
-                <Text style={{ fontSize: getScaledFontSize(14) }}>{walk.distance}</Text>
-              </View>
-            </View>
-          </View>
-        ))}
-      </ScrollView>
+          ))}
+        </ScrollView>
       </View>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-    safeArea: {
-        flex: 1,
-        backgroundColor: '#f5f5f5',
-    },
-    container: {
-        flex: 1,
-        backgroundColor: '#f5f5f5',
-    },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: 16,
-        backgroundColor: '#fff',
-    },
-    headerTitle: {
-        fontWeight: 'bold',
-    },
-    dateSelector: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        paddingVertical: 10,
-        backgroundColor: '#fff',
-    },
-    date: {
-        // fontSize removed - now handled inline
-    },
-    activeDate: {
-        color: '#FFA500',
-        fontWeight: 'bold',
-    },
-    tripsHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: 16,
-    },
-    tripsCount: {
-        fontWeight: 'bold',
-    },
-    walkCard: {
-        backgroundColor: '#fff',
-        borderRadius: 10,
-        margin: 16,
-        padding: 16,
-    },
-    userInfo: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    avatar: {
-        width: 50,
-        height: 50,
-        borderRadius: 25,
-        marginRight: 16,
-    },
-    name: {
-        fontWeight: 'bold',
-    },
-    ratingContainer: {
-        flexDirection: 'row',
-        marginTop: 4,
-    },
-    requestSent: {
-        backgroundColor: '#FFA500',
-        color: '#fff',
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 15,
-    },
-    rateButton: {
-        borderColor: '#ccc',
-        borderWidth: 1,
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 15,
-        marginRight: 10,
-    },
-    reportButton: {
-        borderColor: '#ccc',
-        borderWidth: 1,
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 15,
-    },
-    stars: {
-        flexDirection: 'row',
-        marginTop: 4,
-    },
-    mapContainer: {
-        marginTop: 16,
-        borderRadius: 10,
-        overflow: 'hidden',
-    },
-    map: {
-        height: 150,
-    },
-    walkDetails: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: 10,
-        backgroundColor: '#f0f0f0',
-    },
-    walkStats: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        padding: 10,
-        backgroundColor: '#f0f0f0',
-        borderBottomLeftRadius: 10,
-        borderBottomRightRadius: 10,
-    },
+  safeArea: { flex: 1 },
+  container: { flex: 1 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderRadius: 8 },
+  headerTitle: { fontWeight: 'bold' },
+  dateSelector: { flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 10, borderRadius: 8 },
+  date: {},
+  tripsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16 },
+  tripsCount: { fontWeight: 'bold' },
+  walkCard: { borderRadius: 10, margin: 16, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 8 },
+  userInfo: { flexDirection: 'row', alignItems: 'center' },
+  avatar: { width: 50, height: 50, borderRadius: 25, marginRight: 16 },
+  name: { fontWeight: 'bold' },
+  ratingContainer: { flexDirection: 'row', marginTop: 4 },
+  requestSent: { backgroundColor: '#FFA500', color: '#fff', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 15 },
+  rateButton: { borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 15, marginRight: 10 },
+  reportButton: { borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 15 },
+  stars: { flexDirection: 'row', marginTop: 4 },
+  mapContainer: { marginTop: 16, borderRadius: 10, overflow: 'hidden' },
+  map: { height: 150 },
+  walkDetails: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 10 },
+  walkStats: { flexDirection: 'row', justifyContent: 'space-between', padding: 10, borderBottomLeftRadius: 10, borderBottomRightRadius: 10 },
 });
 
 export default PreviousWalks;

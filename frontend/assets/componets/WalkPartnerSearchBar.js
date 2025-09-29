@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../contexts/ColorContext';
+import { useFontSize } from '../contexts/FontSizeContext';
 import { GOOGLE_MAPS_API_KEY } from '@env';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -28,11 +29,14 @@ const WalkPartnerSearchBar = ({
   onDestinationSelect // Add this prop to receive coordinates
 }) => {
   const { colors, isDark } = useTheme();
+  const { getScaledFontSize } = useFontSize();
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [pickupLocation, setPickupLocation] = useState('');
   const [activeInput, setActiveInput] = useState('pickup');
+
+  const styles = getStyles(colors, isDark, getScaledFontSize);
 
   useEffect(() => {
     if (query.length > 2) {
@@ -274,7 +278,7 @@ const handlePlaceSelect = async (place) => {
           placeholderTextColor={isDark ? "#BDBDBD" : "#757575"}
           value={query}
           onChangeText={setQuery}
-          fontSize={20}
+          fontSize={getScaledFontSize(20)}
           fontFamily="Helvetica Bold"
           editable={false}
           onPress={() => setISTapWhere(true)}
@@ -286,7 +290,7 @@ const handlePlaceSelect = async (place) => {
 
 export default WalkPartnerSearchBar;
 
-const styles = StyleSheet.create({
+const getStyles = (colors, isDark, getScaledFontSize) => StyleSheet.create({
   expandedContainer: {
     width: width * 0.9,
     minHeight: height * 0.3,
@@ -316,8 +320,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.05)',
   },
   closeButtonText: {
-    fontSize: 22,
-    lineHeight: 24,
+    fontSize: getScaledFontSize(22),
+    lineHeight: getScaledFontSize(24),
   },
   locationContainer: {
     marginTop: 8,
@@ -360,13 +364,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   locationLabel: {
-    fontSize: 8,
+    fontSize: getScaledFontSize(8),
     fontWeight: '600',
     letterSpacing: 0.5,
     marginBottom: 4,
   },
   locationInput: {
-    fontSize: 16,
+    fontSize: getScaledFontSize(16),
     paddingVertical: 8,
     borderBottomWidth: 1,
   },
@@ -398,7 +402,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     height: 46,
     flex: 1,
-    fontSize: 20,
+    fontSize: getScaledFontSize(20),
     fontFamily: 'Helvetica Bold',
     marginLeft: 5
   },
@@ -421,6 +425,6 @@ const styles = StyleSheet.create({
   },
   suggestionText: {
     flex: 1,
-    fontSize: 16,
+    fontSize: getScaledFontSize(16),
   },
 });

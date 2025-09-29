@@ -18,12 +18,15 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native'; 
 import { useTheme } from '../contexts/ColorContext';
+import { useFontSize } from '../contexts/FontSizeContext';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const { width, height } = Dimensions.get("window");
 
 const MyProfile = ({setIsUserProfile, userImage,userData}) => {
   const navigation = useNavigation();
+  const { colors, isDark } = useTheme();
+  const { getScaledFontSize } = useFontSize();
   const [isLocationOn, setIsLocationOn] = useState(true);
   const [userFullName, setUserFullName] = useState(`${userData.name} ${userData.surname}`);
   const [userCampus, setUserCampus] = useState(userData.campus || '');
@@ -31,10 +34,9 @@ const MyProfile = ({setIsUserProfile, userImage,userData}) => {
   const [userEmail, setUserEmail] = useState(userData.email);
   const [userAddress, setUserAddress] = useState(userData.address || 'Not set');
   const [showCampusPicker, setShowCampusPicker] = useState(false);
-
-  const { colors, isDark } = useTheme();
   const [isEditing, setIsEditing] = useState(false);
 
+  const styles = getStyles(colors, getScaledFontSize);
   const campuses = ['APK', 'APB', 'DFC', 'SWC'];
 
   return (
@@ -62,7 +64,7 @@ const MyProfile = ({setIsUserProfile, userImage,userData}) => {
         <View style={styles.contentWrapper}>
           {/* Header with Name */}
           <View style={styles.headerContainer}>
-            <Text style={[styles.artistName, {fontSize: 40}]} numberOfLines={2}>
+            <Text style={styles.artistName} numberOfLines={2}>
               {userFullName}
             </Text>
             <Ionicons name="person-outline" size={20} color="white" style={styles.personIcon} />
@@ -78,13 +80,13 @@ const MyProfile = ({setIsUserProfile, userImage,userData}) => {
             <View style={styles.titleAndInfo}>
               <View style={styles.iconContainer}>
                 <Ionicons name="person-outline" size={16} color={colors.secondary} />
-                <Text style={[styles.title, { color: colors.secondary, marginLeft: 8, fontSize: 11 }]}>FULL NAME</Text>
+                <Text style={[styles.title, { color: colors.secondary, marginLeft: 8 }]}>FULL NAME</Text>
               </View>
               <TextInput
                 value={userFullName}
                 onChangeText={setUserFullName}
                 editable={isEditing}
-                style={[styles.textInput, { color: colors.text, fontSize: 13 }]}
+                style={[styles.textInput, { color: colors.text }]}
                 placeholder="Enter your full name"
                 placeholderTextColor={colors.secondary}
               />
@@ -96,14 +98,14 @@ const MyProfile = ({setIsUserProfile, userImage,userData}) => {
             <View style={styles.titleAndInfo}>
               <View style={styles.iconContainer}>
                 <Ionicons name="business-outline" size={16} color={colors.secondary} />
-                <Text style={[styles.title, { color: colors.secondary, marginLeft: 8, fontSize: 11 }]}>CAMPUS</Text>
+                <Text style={[styles.title, { color: colors.secondary, marginLeft: 8 }]}>CAMPUS</Text>
               </View>
               {isEditing ? (
                 <TouchableOpacity onPress={() => setShowCampusPicker(true)}>
-                  <Text style={[styles.textInput, { color: colors.text, fontSize: 13 }]}>{userCampus || 'Select Campus'}</Text>
+                  <Text style={[styles.textInput, { color: colors.text }]}>{userCampus || 'Select Campus'}</Text>
                 </TouchableOpacity>
               ) : (
-                <Text style={[styles.textInput, { color: colors.text, fontSize: 13 }]}>{userCampus || 'Not selected'}</Text>
+                <Text style={[styles.textInput, { color: colors.text }]}>{userCampus || 'Not selected'}</Text>
               )}
             </View>
 
@@ -113,13 +115,13 @@ const MyProfile = ({setIsUserProfile, userImage,userData}) => {
             <View style={styles.titleAndInfo}>
               <View style={styles.iconContainer}>
                 <Ionicons name="call-outline" size={16} color={colors.secondary} />
-                <Text style={[styles.title, { color: colors.secondary, marginLeft: 8, fontSize: 11 }]}>PHONE NUMBER</Text>
+                <Text style={[styles.title, { color: colors.secondary, marginLeft: 8 }]}>PHONE NUMBER</Text>
               </View>
               <TextInput
                 value={userPhoneNumber}
                 onChangeText={setUserPhoneNumber}
                 editable={isEditing}
-                style={[styles.textInput, { color: colors.text, fontSize: 13 }]}
+                style={[styles.textInput, { color: colors.text }]}
                 placeholder="Enter your phone number"
                 placeholderTextColor={colors.secondary}
                 keyboardType="phone-pad"
@@ -132,13 +134,13 @@ const MyProfile = ({setIsUserProfile, userImage,userData}) => {
             <View style={styles.titleAndInfo}>
               <View style={styles.iconContainer}>
                 <Ionicons name="mail-outline" size={16} color={colors.secondary} />
-                <Text style={[styles.title, { color: colors.secondary, marginLeft: 8, fontSize: 11 }]}>EMAIL</Text>
+                <Text style={[styles.title, { color: colors.secondary, marginLeft: 8 }]}>EMAIL</Text>
               </View>
               <TextInput
                 value={userEmail}
                 onChangeText={setUserEmail}
                 editable={isEditing}
-                style={[styles.textInput, { color: colors.text, fontSize: 13 }]}
+                style={[styles.textInput, { color: colors.text }]}
                 placeholder="Enter your email"
                 placeholderTextColor={colors.secondary}
                 keyboardType="email-address"
@@ -151,13 +153,13 @@ const MyProfile = ({setIsUserProfile, userImage,userData}) => {
             <View style={styles.titleAndInfo}>
               <View style={styles.iconContainer}>
                 <Ionicons name="location-outline" size={16} color={colors.secondary} />
-                <Text style={[styles.title, { color: colors.secondary, marginLeft: 8, fontSize: 11 }]}>RES ADDRESS</Text>
+                <Text style={[styles.title, { color: colors.secondary, marginLeft: 8 }]}>RES ADDRESS</Text>
               </View>
               <TextInput
                 value={userAddress}
                 onChangeText={setUserAddress}
                 editable={isEditing}
-                style={[styles.textInput, { color: colors.text, fontSize: 13 }]}
+                style={[styles.textInput, { color: colors.text }]}
                 placeholder="Enter your address"
                 placeholderTextColor={colors.secondary}
                 returnKeyType="done"
@@ -171,10 +173,10 @@ const MyProfile = ({setIsUserProfile, userImage,userData}) => {
             <View style={styles.titleAndInfo}>
               <View style={styles.iconContainer}>
                 <Ionicons name="document-text-outline" size={16} color={colors.secondary} />
-                <Text style={[styles.title, { color: colors.secondary, marginLeft: 8, fontSize: 11 }]}>TERMS & CONDITIONS</Text>
+                <Text style={[styles.title, { color: colors.secondary, marginLeft: 8 }]}>TERMS & CONDITIONS</Text>
               </View>
               <TouchableOpacity>
-                <Text style={[styles.buttonText, { color: colors.text, fontSize: 13 }]}>View</Text>
+                <Text style={[styles.buttonText, { color: colors.text }]}>View</Text>
               </TouchableOpacity>
             </View>
 
@@ -184,10 +186,10 @@ const MyProfile = ({setIsUserProfile, userImage,userData}) => {
             <View style={styles.titleAndInfo}>
               <View style={styles.iconContainer}>
                 <Ionicons name="shield-checkmark-outline" size={16} color={colors.secondary} />
-                <Text style={[styles.title, { color: colors.secondary, marginLeft: 8, fontSize: 11 }]}>PRIVACY POLICY</Text>
+                <Text style={[styles.title, { color: colors.secondary, marginLeft: 8 }]}>PRIVACY POLICY</Text>
               </View>
               <TouchableOpacity>
-                <Text style={[styles.buttonText, { color: colors.text, fontSize: 13 }]}>View</Text>
+                <Text style={[styles.buttonText, { color: colors.text }]}>View</Text>
               </TouchableOpacity>
             </View>
 
@@ -197,10 +199,10 @@ const MyProfile = ({setIsUserProfile, userImage,userData}) => {
             <View style={styles.titleAndInfo}>
               <View style={styles.iconContainer}>
                 <Ionicons name="key-outline" size={16} color={colors.secondary} />
-                <Text style={[styles.title, { color: colors.secondary, marginLeft: 8, fontSize: 11 }]}>PERMISSIONS</Text>
+                <Text style={[styles.title, { color: colors.secondary, marginLeft: 8 }]}>PERMISSIONS</Text>
               </View>
               <TouchableOpacity>
-                <Text style={[styles.buttonText, { color: colors.text, fontSize: 13 }]}>Change</Text>
+                <Text style={[styles.buttonText, { color: colors.text }]}>Change</Text>
               </TouchableOpacity>
             </View>
 
@@ -210,7 +212,7 @@ const MyProfile = ({setIsUserProfile, userImage,userData}) => {
             <View style={styles.titleAndInfo}>
               <View style={styles.iconContainer}>
                 <Ionicons name="location-outline" size={16} color={colors.secondary} />
-                <Text style={[styles.title, { color: colors.secondary, marginLeft: 8, fontSize: 11 }]}>SHARE LIVE LOCATION</Text>
+                <Text style={[styles.title, { color: colors.secondary, marginLeft: 8 }]}>SHARE LIVE LOCATION</Text>
               </View>
               <Switch
                 value={isLocationOn}
@@ -225,7 +227,7 @@ const MyProfile = ({setIsUserProfile, userImage,userData}) => {
               style={[styles.editButton, { backgroundColor: isEditing ? '#FF7E30' : '#333333' }]} 
               onPress={() => setIsEditing(!isEditing)}
             >
-              <Text style={[styles.editButtonText, {fontSize: 13}]}>
+              <Text style={styles.editButtonText}>
                 {isEditing ? 'Save Changes' : 'Edit Profile'}
               </Text>
             </TouchableOpacity>
@@ -270,7 +272,7 @@ const MyProfile = ({setIsUserProfile, userImage,userData}) => {
 
 export default MyProfile;
 
-const styles = StyleSheet.create({
+const getStyles = (colors, getScaledFontSize) => StyleSheet.create({
  container: {
     flex: 1,
     width: width,
@@ -309,7 +311,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: 'white',
     letterSpacing: -1,
-    lineHeight: 40,
+    lineHeight: getScaledFontSize(40),
+    fontSize: getScaledFontSize(40),
   },
   personIcon: {
     position: 'absolute',
@@ -336,6 +339,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontWeight: "400",
+    fontSize: getScaledFontSize(11),
   },
   textInput: {
     padding: 0,
@@ -348,10 +352,12 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 10,
     fontWeight: "600",
+    fontSize: getScaledFontSize(13),
   },
   buttonText: {
     textDecorationLine: 'underline',
     fontWeight: "600",
+    fontSize: getScaledFontSize(13),
   },
   divider: {
     height: 1,
@@ -370,6 +376,7 @@ const styles = StyleSheet.create({
   editButtonText: {
     color: '#FFFFFF',
     fontWeight: '600',
+    fontSize: getScaledFontSize(13),
   },
   modalContainer: {
     flex: 1,
@@ -383,7 +390,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: getScaledFontSize(18),
     fontWeight: 'bold',
     marginBottom: 15,
     textAlign: 'center',
@@ -394,7 +401,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#eee',
   },
   campusText: {
-    fontSize: 16,
+    fontSize: getScaledFontSize(16),
   },
   cancelButton: {
     marginTop: 10,
@@ -402,7 +409,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelText: {
-    fontSize: 16,
+    fontSize: getScaledFontSize(16),
     color: '#FF7E30',
   },
 });
