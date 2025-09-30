@@ -824,18 +824,18 @@ export const FirebaseService = {
       const batch = writeBatch(db);
       const friendsRef = collection(db, 'friends');
       const timestamp = serverTimestamp();
-      
+
       const friendship1 = {
         userId: user1Id,
         userPhone: FirebaseService.formatPhoneNumber(user1Phone),
         userEmail: user1Email,
         userName: user1Name,
         friendId: user2Id,
-        friendPhone: FirebaseService.formatPhoneNumber(user2Phone),
+        friendPhone: user2Phone,
         friendEmail: user2Email,
         friendName: user2Name,
-        status: 'active',
-        createdAt: timestamp,
+        status: 'accepted',
+        createdAt: new Date().toISOString(),
         requestId: requestId,
         lastInteraction: timestamp
       };
@@ -848,11 +848,11 @@ export const FirebaseService = {
         userEmail: user2Email,
         userName: user2Name,
         friendId: user1Id,
-        friendPhone: FirebaseService.formatPhoneNumber(user1Phone),
+        friendPhone: user1Phone,
         friendEmail: user1Email,
         friendName: user1Name,
-        status: 'active',
-        createdAt: timestamp,
+        status: 'accepted',
+        createdAt: new Date().toISOString(),
         requestId: requestId,
         lastInteraction: timestamp
       };
@@ -860,9 +860,9 @@ export const FirebaseService = {
       batch.set(doc(friendsRef), friendship2);
 
       // --- FIX: Update the `friends` array in both user documents ---
-      // This ensures other parts of the app (like FriendsContext) see the new friend.
-      const user1FriendData = { id: user2Id, uid: user2Id, name: user2Name, email: user2Email, phone: user2Phone };
-      const user2FriendData = { id: user1Id, uid: user1Id, name: user1Name, email: user1Email, phone: user1Phone };
+      // This ensures other parts of the app (like Home.js) see the new friend.
+      const user1FriendData = { id: user2Id, uid: user2Id, name: user2Name, email: user2Email, phone: FirebaseService.formatPhoneNumber(user2Phone) };
+      const user2FriendData = { id: user1Id, uid: user1Id, name: user1Name, email: user1Email, phone: FirebaseService.formatPhoneNumber(user1Phone) };
 
       batch.update(user1DocRef, {
         friends: arrayUnion(user1FriendData)
