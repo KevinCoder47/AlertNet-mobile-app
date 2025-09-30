@@ -16,6 +16,7 @@ export default {
     },
     ios: {
       // MODIFIED: Removed LSApplicationQueriesSchemes from here.
+      "useModularHeaders": true,
       config: {
         googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY,
       },
@@ -71,6 +72,7 @@ export default {
             'This app uses your location for the SOS feature and to verify functionality during tests.',
         },
       ],
+      "expo-build-properties",
     ],
     extra: {
       eas: {
