@@ -10,6 +10,7 @@ import { FontSizeProvider } from './assets/contexts/FontSizeContext';
 import { SOSService } from './assets/services/SOSService';
 import './backend/Firebase/FirebaseConfig';
 import NotificationHandler from './assets/componets/NotificationHandler';
+// import WalkRequest from './assets/componets/notifications/WalkRequest';
 
 export default function App() {
   useEffect(() => {
