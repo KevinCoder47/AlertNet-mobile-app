@@ -1,3 +1,10 @@
 --- xcodebuild: WARNING: Using the first of multiple matching destinations:
 { platform:iOS Simulator, arch:arm64, id:45E71AD5-8677-4DEC-9EB0-BBDC77052D77, OS:18.1, name:iPhone 16 Pro }
 { platform:iOS Simulator, arch:x86_64, id:45E71AD5-8677-4DEC-9EB0-BBDC77052D77, OS:18.1, name:iPhone 16 Pro }
+** BUILD FAILED **
+
+
+The following build commands failed:
+	CpResource /Users/mpilonhle/Library/Developer/Xcode/DerivedData/frontend-gmukcbejufrcstagivxeijcvabzv/Build/Products/Debug-iphonesimulator/ExpoFileSystem/ExpoFileSystem_privacy.bundle/PrivacyInfo.xcprivacy /Users/mpilonhle/Documents/REACT-NATIVE/AlertNet/node_modules/expo-file-system/ios/PrivacyInfo.xcprivacy (in target 'ExpoFileSystem-ExpoFileSystem_privacy' from project 'Pods')
+	Building workspace frontend with scheme frontend and configuration Debug
+(2 failures)
