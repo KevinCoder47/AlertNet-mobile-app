@@ -16,6 +16,7 @@ export default {
     },
     ios: {
       // MODIFIED: Removed LSApplicationQueriesSchemes from here.
+      "useFrameworks": "static",
       "useModularHeaders": true,
       config: {
         googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY,

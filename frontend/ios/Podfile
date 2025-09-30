@@ -12,6 +12,32 @@ platform :ios, podfile_properties['ios.deploymentTarget'] || '15.1'
 
 prepare_react_native_project!
 
+static_frameworks = [
+  'FirebaseCore',
+  'FirebaseAuth',
+  'FirebaseAuthInterop',
+  'FirebaseAppCheckInterop',
+  'FirebaseCoreExtension',
+  'FirebaseCoreInternal',
+  'FirebaseMessaging',
+  'FirebaseInstallations',
+  'GTMSessionFetcher',
+  'GoogleDataTransport',
+  'RecaptchaInterop',
+  'PromisesObjC',
+  'GoogleUtilities'
+]
+
+pre_install do |installer|
+  installer.pod_targets.each do |pod|
+    if static_frameworks.include?(pod.name)
+      def pod.build_type;
+        Pod::BuildType.static_library
+      end
+    end
+  end
+end
+
 target 'frontend' do
   use_expo_modules!
 
@@ -44,20 +70,20 @@ target 'frontend' do
     :privacy_file_aggregation_enabled => podfile_properties['apple.privacyManifestAggregationEnabled'] != 'false',
   )
 
-  # Enable modular headers ONLY for Firebase dependencies
-  pod 'GoogleUtilities', :modular_headers => true
-  pod 'FirebaseCore', :modular_headers => true
-  pod 'FirebaseAuth', :modular_headers => true
-  pod 'FirebaseAuthInterop', :modular_headers => true  # Add this
-  pod 'FirebaseAppCheckInterop', :modular_headers => true  # Add this
-  pod 'FirebaseCoreExtension', :modular_headers => true  # Add this
-  pod 'FirebaseCoreInternal', :modular_headers => true  # Add this if not present
-  pod 'FirebaseMessaging', :modular_headers => true
-  pod 'FirebaseInstallations', :modular_headers => true
-  pod 'GTMSessionFetcher', :modular_headers => true
-  pod 'GoogleDataTransport', :modular_headers => true
-  pod 'RecaptchaInterop', :modular_headers => true  # Add this
-  pod 'PromisesObjC', :modular_headers => true
+  # Manual Firebase pods without modular_headers
+  pod 'GoogleUtilities'
+  pod 'FirebaseCore'
+  pod 'FirebaseAuth'
+  pod 'FirebaseAuthInterop'
+  pod 'FirebaseAppCheckInterop'
+  pod 'FirebaseCoreExtension'
+  pod 'FirebaseCoreInternal'
+  pod 'FirebaseMessaging'
+  pod 'FirebaseInstallations'
+  pod 'GTMSessionFetcher'
+  pod 'GoogleDataTransport'
+  pod 'RecaptchaInterop'
+  pod 'PromisesObjC'
 
   post_install do |installer|
     react_native_post_install(
