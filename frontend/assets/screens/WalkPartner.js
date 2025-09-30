@@ -35,7 +35,7 @@ const WalkPartner = ({ setIsWalkPartner, userImage }) => {
   const [editingAddress, setEditingAddress] = useState(null);
   const [dropoffLocation, setDropoffLocation] = useState('');
   const [destinationCoords, setDestinationCoords] = useState(null);
-  const [startPointCoords, setStartPointCoords] = useState(null);
+  const [startPointCoords, setStartPointCoords] = useState({ latitude: -26.1872365, longitude: 28.0124719 });
   
     // Function to handle destination selection with coordinates
 const handleDestinationSelect = (coordinates) => {
