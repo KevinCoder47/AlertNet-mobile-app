@@ -5,6 +5,7 @@
 
 
 The following build commands failed:
-	CpResource /Users/mpilonhle/Library/Developer/Xcode/DerivedData/frontend-gmukcbejufrcstagivxeijcvabzv/Build/Products/Debug-iphonesimulator/ExpoFileSystem/ExpoFileSystem_privacy.bundle/PrivacyInfo.xcprivacy /Users/mpilonhle/Documents/REACT-NATIVE/AlertNet/node_modules/expo-file-system/ios/PrivacyInfo.xcprivacy (in target 'ExpoFileSystem-ExpoFileSystem_privacy' from project 'Pods')
+	SwiftEmitModule normal arm64 Emitting\ module\ for\ ExpoFileSystem (in target 'ExpoFileSystem' from project 'Pods')
+	EmitSwiftModule normal arm64 (in target 'ExpoFileSystem' from project 'Pods')
 	Building workspace frontend with scheme frontend and configuration Debug
-(2 failures)
+(3 failures)
