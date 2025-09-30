@@ -4,5 +4,8 @@
   },
   "ios": {
     "bundleIdentifier": "com.mpilonhleradebe.frontend"
-  }
+  },
+  "plugins": [
+    "expo-font"
+  ]
 }
