@@ -77,7 +77,7 @@ const WalkStartPoint = ({ setIsDestinationDone, setIsSearchPartner, setIsStartPo
   ];
 
   const genderOptions = [
-    'Any',
+    'Other',
     'Male',
     'Female',
     // 'Non-binary'
@@ -342,7 +342,7 @@ const InteractiveStreetView = ({ point }) => {
               }}
             >
               <Text style={styles.buttonText}>
-                {selectedGender === 'Any' ? 'Preferred Gender' : selectedGender}
+                {selectedGender === 'Other' ? 'Preferred Gender' : selectedGender}
               </Text>
             </TouchableOpacity>
 
