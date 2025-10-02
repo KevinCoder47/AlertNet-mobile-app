@@ -128,16 +128,16 @@ export default function SafetyResources({
             setIsTestSOS(true);
           }
         },
-        {
-          icon: <Ionicons name="mic-outline" size={18} color="#fff" />,
-          text: "Activate Voice Recognition (Panic Word)",
-          keywords: ["voice", "recognition", "panic", "word", "activate", "mic", "microphone"],
-          onPress: () => {
-            console.log("Voice Trigger Clicked")
-            setIsSafetyResources(false);
-            setIsVoiceTrigger(true);
-          }
-        },
+        // {
+        //   icon: <Ionicons name="mic-outline" size={18} color="#fff" />,
+        //   text: "Activate Voice Recognition (Panic Word)",
+        //   keywords: ["voice", "recognition", "panic", "word", "activate", "mic", "microphone"],
+        //   onPress: () => {
+        //     console.log("Voice Trigger Clicked")
+        //     setIsSafetyResources(false);
+        //     setIsVoiceTrigger(true);
+        //   }
+        // },
         {
           icon: <Ionicons name="qr-code-outline" size={18} color="#fff" />,
           text: "Scan SOS QR Code",

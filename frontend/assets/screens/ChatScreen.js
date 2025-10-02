@@ -11,6 +11,7 @@ import {
   Platform,
   SafeAreaView,
   Dimensions,
+  Animated,
   StatusBar,
   Modal,
   Alert,
@@ -20,34 +21,43 @@ import {
   Pressable
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { auth, storage } from '../../backend/Firebase/FirebaseConfig';
 import { FirebaseService } from '../../backend/Firebase/FirebaseService';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import MapView, { Marker } from 'react-native-maps';
 import { Audio } from 'expo-av';
+import { BlurView } from 'expo-blur';
+import * as Clipboard from 'expo-clipboard';
 import { useNotifications } from '../contexts/NotificationContext';
 
 const { width } = Dimensions.get('window');
 
-const ChatScreen = ({ person, onClose, userData, navigation }) => {
+const ChatScreen = ({ person, onClose, userData, navigation, onViewProfile }) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const scrollViewRef = useRef(null);
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const [friendPresence, setFriendPresence] = useState(null);
-  const currentUserId = auth.currentUser?.uid;
+  const currentUserId = userData?.userId;
   const [recording, setRecording] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
   const [playingAudioId, setPlayingAudioId] = useState(null);
   const soundRef = useRef(new Audio.Sound());
+
+  // State for long-press menu
+  const [longPressModalVisible, setLongPressModalVisible] = useState(false);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [selectedMessage, setSelectedMessage] = useState(null);
   const { setActiveChat, clearActiveChat } = useNotifications();
 
   // Generate a consistent chat room ID
   const chatRoomId = currentUserId && person?.id
     ? FirebaseService.getChatRoomId(currentUserId, person.id)
     : null;
+  console.log('ChatRoomID:', chatRoomId);
 
   const [isAttachmentMenuVisible, setIsAttachmentMenuVisible] = useState(false);
   const [isOptionsMenuVisible, setIsOptionsMenuVisible] = useState(false);
@@ -96,16 +106,20 @@ const ChatScreen = ({ person, onClose, userData, navigation }) => {
     };
   }, [chatRoomId, currentUserId]);
 
-  // Set and clear active chat room for notification handling
+  // FIXED: Set and clear active chat room for notification handling with debug logs
   useEffect(() => {
     if (chatRoomId) {
+      console.log('🏠 ChatScreen: Setting active chat room:', chatRoomId);
       setActiveChat(chatRoomId);
+    } else {
+      console.log('❌ ChatScreen: No chatRoomId to set as active');
     }
     
     return () => {
+      console.log('🚪 ChatScreen: Clearing active chat room');
       clearActiveChat();
     };
-  }, [chatRoomId]);
+  }, [chatRoomId, setActiveChat, clearActiveChat]);
 
   // Listen for friend's presence updates
   useEffect(() => {
@@ -123,7 +137,7 @@ const ChatScreen = ({ person, onClose, userData, navigation }) => {
     });
 
     return () => unsubscribe();
-  }, [chatRoomId]);
+  }, [person?.id]);
 
   // Scroll to bottom when new messages arrive
   useEffect(() => {
@@ -142,11 +156,20 @@ const ChatScreen = ({ person, onClose, userData, navigation }) => {
     };
   }, [recording]); // Add recording to the dependency array
 
-  // Send a new message to Firebase
+  // FIXED: Send a new message to Firebase with debug logs
   const sendMessage = async () => {
     if (newMessage.trim() && chatRoomId && currentUserId && person?.id) {
       const messageText = newMessage.trim();
       setNewMessage('');
+
+      // ADDED: Debug log for message sending
+      console.log('📤 Sending message with notification data:', {
+        recipientPhone: person.phone,
+        senderName: userData.name,
+        chatRoomId: chatRoomId,
+        recipientId: person.id,
+        currentUserId: currentUserId
+      });
 
       // Optimistic UI update
       const optimisticMessage = {
@@ -177,13 +200,24 @@ const ChatScreen = ({ person, onClose, userData, navigation }) => {
         setMessages(prevMessages => prevMessages.filter(m => m.id !== optimisticMessage.id));
         // And restore the text
         setNewMessage(messageText);
+      } else {
+        console.log('✅ Message sent successfully, notification should be created');
       }
       // If successful, the onSnapshot listener will automatically replace the optimistic message
       // with the real one from Firestore, so no 'else' block is needed.
+    } else {
+      console.log('❌ Cannot send message - missing required data:', {
+        hasMessage: !!newMessage.trim(),
+        hasChatRoomId: !!chatRoomId,
+        hasCurrentUserId: !!currentUserId,
+        hasPersonId: !!person?.id,
+        personPhone: person?.phone
+      });
     }
   };
 
   const uploadAudio = async (uri) => {
+    console.log('uploadAudio called with uri:', uri);
     const blob = await new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.onload = () => resolve(xhr.response);
@@ -197,13 +231,17 @@ const ChatScreen = ({ person, onClose, userData, navigation }) => {
     });
 
     const storageRef = ref(storage, `voice-notes/${chatRoomId}/${Date.now()}`);
+    console.log('Uploading to:', storageRef);
     await uploadBytes(storageRef, blob);
     blob.close();
 
-    return await getDownloadURL(storageRef);
+    const downloadURL = await getDownloadURL(storageRef);
+    console.log('Download URL:', downloadURL);
+    return downloadURL;
   };
 
   const startRecording = async () => {
+    console.log('startRecording called');
     // Safeguard to prevent multiple recording objects.
     if (recording) {
       console.warn("An existing recording was found. Unloading it before starting a new one.");
@@ -212,7 +250,8 @@ const ChatScreen = ({ person, onClose, userData, navigation }) => {
     }
 
     try {
-      await Audio.requestPermissionsAsync();
+      const permission = await Audio.requestPermissionsAsync();
+      console.log('Audio permission:', permission);
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
@@ -239,6 +278,7 @@ const ChatScreen = ({ person, onClose, userData, navigation }) => {
     
     const status = await recording.getStatusAsync();
     const durationMillis = status.durationMillis;
+    console.log('Recording duration:', durationMillis);
 
     // Optimistic UI update for voice note
     const optimisticMessage = {
@@ -330,25 +370,29 @@ const ChatScreen = ({ person, onClose, userData, navigation }) => {
         type: 'image',
         imageUrl: imageUrl,
         senderName: userData.name,
+        senderProfilePicture: userData.imageUrl,
         recipientPhone: person.phone,
         senderPhone: userData.phone,
       });
     }
   };
 
-  const handleBlockUser = () => {
-    setIsOptionsMenuVisible(false);
-    Alert.alert(`Block ${person.name}?`, "Blocked users will no longer be able to send you messages or find your profile.", [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Block', style: 'destructive', onPress: () => console.log(`User ${person.id} blocked.`) }
-    ]);
-  };
-
-  const handleClearChat = () => {
+  const handleClearChat = async () => {
     setIsOptionsMenuVisible(false);
     Alert.alert('Clear Chat?', 'This will permanently delete all messages in this conversation.', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Clear', style: 'destructive', onPress: () => setMessages([]) }
+      { 
+        text: 'Clear', 
+        style: 'destructive', 
+        onPress: async () => {
+          if (chatRoomId) {
+            const result = await FirebaseService.clearChatHistory(chatRoomId);
+            if (!result.success) {
+              Alert.alert("Error", "Could not clear chat history. Please try again.");
+            }
+          }
+        } 
+      }
     ]);
   };
 
@@ -448,6 +492,69 @@ const ChatScreen = ({ person, onClose, userData, navigation }) => {
     return <Text style={styles.headerStatus}>{formatLastSeen(friendPresence.lastSeen)}</Text>;
   };
 
+  // Long-press handlers
+  const handleLongPress = (message) => {
+    setSelectedMessage(message);
+    setLongPressModalVisible(true);
+  };
+
+  const closeLongPressModal = () => {
+    setLongPressModalVisible(false);
+    setSelectedMessage(null);
+  };
+
+  const handleOptionPress = (option) => {
+    if (!selectedMessage) return;
+    closeLongPressModal(); // Close the main options modal
+
+    switch (option) {
+      case 'Copy':
+        if (selectedMessage?.text) {
+          Clipboard.setStringAsync(selectedMessage.text).then(() => {
+            Alert.alert('Copied', 'Message copied to clipboard.');
+          });
+        }
+        break;
+      case 'Delete':
+        // Open the new delete confirmation modal
+        setTimeout(() => setDeleteModalVisible(true), 250); // Smoother transition
+        break;
+      case 'Report':
+        Alert.alert('Reported', 'Message has been reported.');
+        break;
+    }
+  };
+
+  const handleDeleteForMe = async () => {
+    if (!selectedMessage) return;
+    
+    try {
+      // This marks the message as deleted for you in Firebase
+      await FirebaseService.deleteMessageForMe(chatRoomId, selectedMessage.id, currentUserId);
+    } catch (error) {
+      console.error("Error deleting message for me:", error);
+      Alert.alert("Error", "Could not delete the message. Please try again.");
+    }
+    
+    // This removes the message from your screen immediately
+    setDeleteModalVisible(false);
+    setSelectedMessage(null);
+  };
+
+  const handleDeleteForEveryone = async () => {
+    if (!selectedMessage) return;
+    
+    try {
+      // This deletes the message from Firebase for everyone
+      await FirebaseService.deleteMessageForEveryone(chatRoomId, selectedMessage.id);
+    } catch (error) {
+      console.error("Error deleting message for everyone:", error);
+      Alert.alert("Error", "Could not delete the message for everyone. Please try again.");
+    }
+    // This removes the message from your screen immediately
+    setDeleteModalVisible(false);
+    setSelectedMessage(null);
+  };
   const renderTicks = (message) => {
     // Only show ticks for messages sent by the current user
     if (message.senderId !== currentUserId) return null;
@@ -486,7 +593,7 @@ const ChatScreen = ({ person, onClose, userData, navigation }) => {
     }
 
     return (
-      <View key={message.id} style={styles.messageWrapper}>
+      <Pressable key={message.id} onLongPress={() => handleLongPress(message)}>
         {showDateBanner && (
           <View style={styles.timestampContainer}>
             <View style={styles.timestampBadge}>
@@ -566,7 +673,7 @@ const ChatScreen = ({ person, onClose, userData, navigation }) => {
           </Text>
           {renderTicks(message)}
         </View>
-      </View>
+      </Pressable>
     );
   };
 
@@ -609,15 +716,21 @@ const ChatScreen = ({ person, onClose, userData, navigation }) => {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         {/* Messages */}
-        <ScrollView
-          ref={scrollViewRef}
-          style={styles.messagesContainer}
-          showsVerticalScrollIndicator={false}
-          onContentSizeChange={scrollToBottom}
-          contentContainerStyle={{ paddingBottom: 10 }} // Added for better spacing
-        >
-          {messages.map((message, index) => renderMessage(message, index))}
-        </ScrollView>
+        {messages.length > 0 ? (
+          <ScrollView
+            ref={scrollViewRef}
+            style={styles.messagesContainer}
+            showsVerticalScrollIndicator={false}
+            onContentSizeChange={scrollToBottom}
+            contentContainerStyle={{ paddingBottom: 10 }}
+          >
+            {messages.map((message, index) => renderMessage(message, index))}
+          </ScrollView>
+        ) : (
+          <View style={styles.emptyChatContainer}>
+            <Text style={styles.emptyChatMessage}>No messages to Display</Text>
+          </View>
+        )}
 
         {/* Input Area */}
         <View style={styles.inputContainer}>
@@ -701,23 +814,101 @@ const ChatScreen = ({ person, onClose, userData, navigation }) => {
         <TouchableWithoutFeedback onPress={() => setIsOptionsMenuVisible(false)}>
           <View style={[styles.modalOverlay, { justifyContent: 'flex-start', alignItems: 'flex-end' }]}>
             <View style={styles.optionsMenu}>
-              <TouchableOpacity style={styles.optionsMenuItem} onPress={() => { setIsOptionsMenuVisible(false); Alert.alert("View Profile", "Navigate to profile screen."); }}>
+              <TouchableOpacity 
+                style={styles.optionsMenuItem} 
+                onPress={() => {
+                  setIsOptionsMenuVisible(false);
+                  if (onViewProfile) onViewProfile(person);
+                }}
+              >
                 <Ionicons name="person-circle-outline" size={22} color="#333" />
                 <Text style={styles.optionsMenuText}>View Profile</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.optionsMenuItem} onPress={handleClearChat}>
+              <TouchableOpacity style={[styles.optionsMenuItem, { borderBottomWidth: 0 }]} onPress={handleClearChat}>
                 <Ionicons name="trash-outline" size={22} color="#333" />
                 <Text style={styles.optionsMenuText}>Clear Chat</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.optionsMenuItem, { borderBottomWidth: 0 }]} onPress={handleBlockUser}>
-                <MaterialCommunityIcons name="block-helper" size={22} color="#e74c3c" />
-                <Text style={[styles.optionsMenuText, { color: '#e74c3c' }]}>Block User</Text>
               </TouchableOpacity>
             </View>
           </View>
         </TouchableWithoutFeedback>
       </Modal>
 
+      {/* LONG PRESS MODAL */}
+      <Modal transparent visible={longPressModalVisible} animationType="fade">
+        <TouchableWithoutFeedback onPress={closeLongPressModal}>
+          <BlurView intensity={80} style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+            <TouchableWithoutFeedback>
+              <Animated.View
+                style={{
+                  backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF',
+                  borderRadius: 16,
+                  padding: 16,
+                  width: '80%',
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 6,
+                  elevation: 8,
+                }}
+              >
+                {['Copy', 'Delete', 'Report'].map((opt) => (
+                  <TouchableOpacity
+                    key={opt}
+                    style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12 }}
+                    onPress={() => handleOptionPress(opt)}
+                  >
+                    <Ionicons name={ opt === 'Copy' ? 'copy-outline' : opt === 'Delete' ? 'trash-outline' : 'warning-outline' } size={22} style={{ marginRight: 15, color: opt === 'Delete' ? '#ff4d4f' : (isDark ? '#FFF' : '#333') }} />
+                    <Text style={{ fontSize: 16, color: opt === 'Delete' ? '#ff4d4f' : (isDark ? '#FFF' : '#333') }}>{opt}</Text>
+                  </TouchableOpacity>
+                ))}
+              </Animated.View>
+            </TouchableWithoutFeedback>
+          </BlurView>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* DELETE CONFIRMATION MODAL */}
+      <Modal transparent visible={deleteModalVisible} animationType="fade">
+        <TouchableWithoutFeedback onPress={() => setDeleteModalVisible(false)}>
+          <BlurView intensity={80} style={styles.deleteModalContainer}>
+            <TouchableWithoutFeedback>
+              <View style={[styles.deleteModalContent, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}>
+                <Text style={[styles.deleteModalTitle, { color: isDark ? '#FFF' : '#333' }]}>
+                  Delete message?
+                </Text>
+
+                {selectedMessage?.senderId === currentUserId && (
+                  <TouchableOpacity
+                    style={styles.deleteOptionButton}
+                    onPress={handleDeleteForEveryone}
+                  >
+                    <Ionicons name="people-outline" size={22} color="#ff4d4f" />
+                    <View style={styles.deleteOptionTextContainer}>
+                      <Text style={styles.deleteOptionText}>Delete for everyone</Text>
+                      <Text style={styles.deleteOptionSubtext}>
+                        This message will be removed for all chat members.
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
+
+                <TouchableOpacity
+                  style={styles.deleteOptionButton}
+                  onPress={handleDeleteForMe}
+                >
+                  <Ionicons name="person-outline" size={22} color="#007AFF" />
+                  <View style={styles.deleteOptionTextContainer}>
+                    <Text style={styles.deleteOptionText}>Delete for me</Text>
+                    <Text style={styles.deleteOptionSubtext}>
+                      This message will only be removed from your device.
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </BlurView>
+        </TouchableWithoutFeedback>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -968,6 +1159,16 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
+  emptyChatContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingBottom: 50, // Offset to center it better above the input
+  },
+  emptyChatMessage: {
+    fontSize: 16,
+    color: '#999',
+  },
   optionsMenuItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -980,6 +1181,51 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     fontSize: 16,
     color: '#333',
+  },
+  // Delete Modal Styles
+  deleteModalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  deleteModalContent: {
+    width: '100%',
+    maxWidth: 350,
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
+  },
+  deleteModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  deleteOptionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#ccc',
+  },
+  deleteOptionTextContainer: {
+    marginLeft: 15,
+    flex: 1,
+  },
+  deleteOptionText: {
+    fontSize: 16,
+    color: '#007AFF',
+    fontWeight: '500',
+  },
+  deleteOptionSubtext: {
+    fontSize: 12,
+    color: '#888',
+    marginTop: 2,
   },
 });
 

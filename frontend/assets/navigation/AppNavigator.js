@@ -12,7 +12,7 @@ import Home from '../screens/Home';
 import { NotificationProvider } from '../contexts/NotificationContext';
 import OnBoarding from '../screens/OnBoarding';
 import Profile from '../componets/People/Profile';
-import ChatScreen from '../componets/People/ChatScreen';
+import ChatScreen from '../screens/ChatScreen';
 
 
 const Stack = createNativeStackNavigator();
