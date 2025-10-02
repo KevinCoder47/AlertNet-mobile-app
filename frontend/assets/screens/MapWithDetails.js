@@ -275,17 +275,29 @@ const MapWithDetails = ({ isTapWhere, userLocation, setUserLocation, destination
 
   {/* Destination Marker */}
   {destination && (
-    <Marker
-      coordinate={{
-        latitude: destination.latitude,
-        longitude: destination.longitude
-      }}
-      title="Destination"
-      description="Your walking destination"
-      zIndex={999}
-    >
-      <DestinationMarker />
-    </Marker>
+    <>
+      <Marker
+        coordinate={{
+          latitude: destination.latitude,
+          longitude: destination.longitude
+        }}
+        title="Destination"
+        description="Your walking destination"
+        zIndex={999}
+      >
+        <DestinationMarker />
+      </Marker>
+      <Circle
+        center={{
+          latitude: destination.latitude,
+          longitude: destination.longitude
+        }}
+        radius={8}
+        strokeWidth={2}
+        strokeColor={isDark ? '#F44336' : '#EF5350'}
+        fillColor={isDark ? 'rgba(244, 67, 54, 0.3)' : 'rgba(239, 83, 80, 0.3)'}
+      />
+    </>
   )}
 
   {/* Start Point Marker */}

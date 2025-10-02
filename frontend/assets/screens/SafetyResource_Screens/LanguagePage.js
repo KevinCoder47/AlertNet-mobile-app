@@ -9,7 +9,8 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { useFontSize } from '../../contexts/FontSizeContext'; // Import font size context
+import { useFontSize } from '../../contexts/FontSizeContext';
+import { useTheme } from '../../contexts/ColorContext'; // ✅ import theme
 
 // Language Context for app-wide language state
 const LanguageContext = createContext();
@@ -107,30 +108,24 @@ const languages = [
 
 const LanguagePage = ({setIsLanguagePage, setIsSafetyResources}) => {
   const { currentLanguage, setCurrentLanguage } = useLanguage();
-  const { getScaledFontSize } = useFontSize(); // Use font size hook
+  const { getScaledFontSize } = useFontSize();
+  const { colors } = useTheme(); // ✅ grab theme colors
   
-  // State to track the temporarily selected language (before saving)
   const [selectedLanguage, setSelectedLanguage] = useState(currentLanguage);
-  // State for the search input
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Get current translations
   const t = translations[currentLanguage] || translations['English'];
 
-  // Filter languages based on search query
   const filteredLanguages = languages.filter(lang =>
     lang.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     lang.native.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Handle save button press
   const handleSave = () => {
     if (selectedLanguage !== currentLanguage) {
       setCurrentLanguage(selectedLanguage);
-      
-      // Get translation for success message in the newly selected language
       const newLangTranslations = translations[selectedLanguage] || translations['English'];
-      
+
       Alert.alert(
         'Success',
         newLangTranslations.languageChanged,
@@ -138,7 +133,6 @@ const LanguagePage = ({setIsLanguagePage, setIsSafetyResources}) => {
           {
             text: 'OK',
             onPress: () => {
-              // Navigate back to safety resources
               setIsLanguagePage(false);
               setIsSafetyResources(true);
             }
@@ -146,14 +140,13 @@ const LanguagePage = ({setIsLanguagePage, setIsSafetyResources}) => {
         ]
       );
     } else {
-      // If no change, just go back
       setIsLanguagePage(false);
       setIsSafetyResources(true);
     }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* --- Header --- */}
       <View style={styles.header}>
         <TouchableOpacity
@@ -162,20 +155,20 @@ const LanguagePage = ({setIsLanguagePage, setIsSafetyResources}) => {
             setIsSafetyResources(true)
           }}
         >
-          <Text style={[styles.backArrow, { fontSize: getScaledFontSize(28) }]}>←</Text>
+          <Text style={[styles.backArrow, { color: colors.text, fontSize: getScaledFontSize(28) }]}>←</Text>
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { fontSize: getScaledFontSize(20) }]}>
+        <Text style={[styles.headerTitle, { color: colors.text, fontSize: getScaledFontSize(20) }]}>
           {t.language}
         </Text>
       </View>
 
       {/* --- Search Bar --- */}
-      <View style={styles.searchContainer}>
-        <Text style={[styles.searchIcon, { fontSize: getScaledFontSize(18) }]}>🔍</Text>
+      <View style={[styles.searchContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <Text style={[styles.searchIcon, { fontSize: getScaledFontSize(18), color: colors.text }]}>🔍</Text>
         <TextInput
-          style={[styles.searchInput, { fontSize: getScaledFontSize(16) }]}
+          style={[styles.searchInput, { fontSize: getScaledFontSize(16), color: colors.text }]}
           placeholder={t.search}
-          placeholderTextColor="#999"
+          placeholderTextColor={colors.placeholder}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
@@ -188,31 +181,36 @@ const LanguagePage = ({setIsLanguagePage, setIsSafetyResources}) => {
           return (
             <TouchableOpacity
               key={index}
-              style={[styles.languageItem, isSelected && styles.selectedItem]}
+              style={[
+                styles.languageItem,
+                { backgroundColor: colors.card },
+                isSelected && { backgroundColor: colors.surface, borderColor: '#e74c3c', borderWidth: 1.5 },
+              ]}
               onPress={() => setSelectedLanguage(lang.name)}
               activeOpacity={0.7}
             >
               <Text style={[
                 styles.langCode, 
-                isSelected && styles.selectedLangCode,
-                { fontSize: getScaledFontSize(16) }
+                { color: isSelected ? '#e74c3c' : colors.text, fontSize: getScaledFontSize(16) }
               ]}>
                 {lang.code}
               </Text>
               <View style={styles.langTextContainer}>
                 <Text style={[
                   styles.langName, 
-                  isSelected && styles.selectedLangName,
-                  { fontSize: getScaledFontSize(16) }
+                  { color: isSelected ? '#e74c3c' : colors.text, fontSize: getScaledFontSize(16) }
                 ]}>
                   {lang.name}
                 </Text>
-                <Text style={[styles.langNative, { fontSize: getScaledFontSize(14) }]}>
+                <Text style={[styles.langNative, { color: colors.muted, fontSize: getScaledFontSize(14) }]}>
                   {lang.native}
                 </Text>
               </View>
-              <View style={[styles.radioCircle, isSelected && styles.selectedRadioCircle]}>
-                {isSelected && <View style={styles.radioDot} />}
+              <View style={[
+                styles.radioCircle,
+                { borderColor: isSelected ? '#e74c3c' : colors.border, backgroundColor: colors.card }
+              ]}>
+                {isSelected && <View style={[styles.radioDot, { backgroundColor: '#e74c3c' }]} />}
               </View>
             </TouchableOpacity>
           );
@@ -224,15 +222,17 @@ const LanguagePage = ({setIsLanguagePage, setIsSafetyResources}) => {
         <TouchableOpacity 
           style={[
             styles.saveButton,
-            selectedLanguage !== currentLanguage && styles.saveButtonActive
+            { backgroundColor: selectedLanguage !== currentLanguage ? '#e74c3c' : colors.surface }
           ]}
           onPress={handleSave}
           activeOpacity={0.8}
         >
           <Text style={[
             styles.saveButtonText,
-            selectedLanguage !== currentLanguage && styles.saveButtonTextActive,
-            { fontSize: getScaledFontSize(16) }
+            { 
+              color: selectedLanguage !== currentLanguage ? '#fff' : '#e74c3c',
+              fontSize: getScaledFontSize(16) 
+            }
           ]}>
             {t.save}
           </Text>
@@ -243,11 +243,9 @@ const LanguagePage = ({setIsLanguagePage, setIsSafetyResources}) => {
 };
 
 // --- Styles ---
-// Updated styles with font sizes removed and added inline
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
   },
   header: {
     flexDirection: 'row',
@@ -269,12 +267,10 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
     borderRadius: 12,
     marginHorizontal: 20,
     paddingHorizontal: 15,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
     marginBottom: 10,
   },
   searchIcon: {
@@ -283,7 +279,6 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     height: 50,
-    color: '#333',
   },
   listContainer: {
     paddingHorizontal: 20,
@@ -292,55 +287,33 @@ const styles = StyleSheet.create({
   languageItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f0f0f0',
     borderRadius: 12,
     padding: 15,
     marginBottom: 12,
   },
-  selectedItem: {
-    backgroundColor: '#fdebe9',
-    borderColor: '#e74c3c',
-    borderWidth: 1.5,
-  },
   langCode: {
     fontWeight: 'bold',
-    color: '#555',
     width: 40,
-  },
-  selectedLangCode: {
-    color: '#e74c3c',
   },
   langTextContainer: {
     flex: 1,
   },
   langName: {
     fontWeight: 'bold',
-    color: '#333',
   },
-  selectedLangName: {
-    color: '#e74c3c',
-  },
-  langNative: {
-    color: '#888',
-  },
+  langNative: {},
   radioCircle: {
     width: 24,
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#ccc',
-    backgroundColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  selectedRadioCircle: {
-    borderColor: '#e74c3c',
   },
   radioDot: {
     width: 14,
     height: 14,
     borderRadius: 7,
-    backgroundColor: '#e74c3c',
   },
   saveButtonContainer: {
     position: 'absolute',
@@ -350,7 +323,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   saveButton: {
-    backgroundColor: '#fdebe9',
     borderRadius: 25,
     paddingVertical: 12,
     paddingHorizontal: 40,
@@ -360,29 +332,9 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
-  saveButtonActive: {
-    backgroundColor: '#e74c3c',
-  },
   saveButtonText: {
-    color: '#e74c3c',
     fontWeight: 'bold',
-  },
-  saveButtonTextActive: {
-    color: '#fff',
   },
 });
 
 export default LanguagePage;
-
-// Example usage in your main App component:
-/*
-import { LanguageProvider } from './LanguagePage';
-
-export default function App() {
-  return (
-    <LanguageProvider>
-      <YourAppContent />
-    </LanguageProvider>
-  );
-}
-*/

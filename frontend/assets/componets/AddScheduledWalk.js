@@ -18,7 +18,7 @@ import { TextInput } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useScheduledSlots } from '../contexts/ScheduledSlotsContext';
-
+import { useFontSize } from '../contexts/FontSizeContext';
 
 const saveSlot = async (slot) => {
   try {
@@ -37,6 +37,8 @@ const { width, height } = Dimensions.get('window');
 const AddScheduledWalk = ({ setIsAddScheduledWalkVisible }) => {
   const { colors, isDark } = useTheme();
   const { addSlot } = useScheduledSlots();
+  const { getScaledFontSize } = useFontSize();
+
   const [isSelectTime, setIsSelectTime] = React.useState(false);
   const [selectedHour, setSelectedHour] = React.useState('09');
   const [selectedMinute, setSelectedMinute] = React.useState('00');
@@ -45,8 +47,7 @@ const AddScheduledWalk = ({ setIsAddScheduledWalkVisible }) => {
   const [toLocation, setToLocation] = useState('');
   const [scheduleName, setScheduleName] = useState('');
   const [invitedFriendsCount, setInvitedFriendsCount] = useState(0);
-  
-  
+
   const animatedHeight = useRef(new Animated.Value(50)).current;
 
   const toggleDaySelection = (day) => {
@@ -145,7 +146,7 @@ const AddScheduledWalk = ({ setIsAddScheduledWalkVisible }) => {
               alignItems: 'center',
               marginTop: 10
             }}>
-              <Text style={[styles.header, { color: colors.text }]}>
+              <Text style={[styles.header, { color: colors.text, fontSize: getScaledFontSize(20) }]}>
                 Schedule Walk
               </Text>
               
@@ -183,7 +184,7 @@ const AddScheduledWalk = ({ setIsAddScheduledWalkVisible }) => {
                 borderColor: isDark ? "#444" : "#D1D1D1",
                 borderRadius: 10,
                 color: colors.text,
-                fontSize: 16,
+                fontSize: getScaledFontSize(16),
               }}
               value={scheduleName}
               onChangeText={setScheduleName}
@@ -232,8 +233,6 @@ const AddScheduledWalk = ({ setIsAddScheduledWalkVisible }) => {
                     />
                   ))}
                 </View>
-
-                {/* comment */}
                 
                 {/* To Dot */}
                 <View style={{
@@ -261,7 +260,7 @@ const AddScheduledWalk = ({ setIsAddScheduledWalkVisible }) => {
                     height: 40,
                     paddingLeft: 5,
                     color: colors.text,
-                    fontSize: 16,
+                    fontSize: getScaledFontSize(16),
                   }}
                   value={fromLocation}
                   onChangeText={setFromLocation}
@@ -281,7 +280,7 @@ const AddScheduledWalk = ({ setIsAddScheduledWalkVisible }) => {
                     height: 40,
                     paddingLeft: 5,
                     color: colors.text,
-                    fontSize: 16,
+                    fontSize: getScaledFontSize(16),
                   }}
                   value={toLocation}
                   onChangeText={setToLocation}
@@ -311,7 +310,7 @@ const AddScheduledWalk = ({ setIsAddScheduledWalkVisible }) => {
                 }}
                 onPress={() => setIsSelectTime(!isSelectTime)}
               >
-                <Text style={{ color: "#8D8D8D", fontSize: 16 }}>
+                <Text style={{ color: "#8D8D8D", fontSize: getScaledFontSize(16) }}>
                   Select Time
                 </Text>
                 <Ionicons
@@ -342,7 +341,7 @@ const AddScheduledWalk = ({ setIsAddScheduledWalkVisible }) => {
                     })}
                   </Picker>
                   
-                  <Text style={{ color: colors.text, fontSize: 18 }}>:</Text>
+                  <Text style={{ color: colors.text, fontSize: getScaledFontSize(18) }}>:</Text>
                   
                   <Picker
                     selectedValue={selectedMinute}
@@ -380,7 +379,8 @@ const AddScheduledWalk = ({ setIsAddScheduledWalkVisible }) => {
                   >
                     <Text style={[
                       styles.dayText,
-                      selectedDays.includes(day) && { color: 'white' }, {color: colors.text}
+                      { fontSize: getScaledFontSize(10), color: colors.text },
+                      selectedDays.includes(day) && { color: 'white' }
                     ]}>
                       {day}
                     </Text>
@@ -394,14 +394,12 @@ const AddScheduledWalk = ({ setIsAddScheduledWalkVisible }) => {
             <View style={{ marginTop: 20, flexDirection: 'row', paddingBottom: 20 }}>
               {/* invite friends */}
               <View style={{ marginBottom: 20, flexDirection: 'column', marginLeft: 30 }}>
-                <Text style={{ color: colors.text, marginTop: 10, fontSize: 10 }}>Invite friends</Text>
+                <Text style={{ color: colors.text, marginTop: 10, fontSize: getScaledFontSize(10) }}>
+                  Invite friends
+                </Text>
                 <TouchableOpacity
                   onPress={() => {
-                    setInvitedFriendsCount(prev => {
-                      const updatedCount = prev + 1;
-                      // console.log("Invited Friends:", updatedCount);
-                      return updatedCount;
-                    });
+                    setInvitedFriendsCount(prev => prev + 1);
                   }}
                   style={{
                     width: 35,
@@ -472,9 +470,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   header: {
-    fontSize: 20,
-    margin: 30,
-    fontWeight: '500'
+    fontWeight: '500',
   },
   daysContainer: {
     flexDirection: 'row',
@@ -492,7 +488,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   dayText: {
-    fontSize: 10,
     fontWeight: '500',
   },
 });
