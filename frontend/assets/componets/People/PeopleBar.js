@@ -130,32 +130,44 @@ const PeopleBar = () => {
   }, []);
 
   // Set up real-time friends listener
+
   const setupFriendsListener = (user) => {
     const userPhone = user.Phone || user.phone || user.phoneNumber;
+    const userId = user.uid || user.id || user.userId || user.UID;
     
     if (!userPhone) {
-      console.error('PeopleBar: No phone number found for user');
+      console.error('PeopleBar: Missing phone number');
       setLoading(false);
       return;
     }
-
-    console.log('PeopleBar: Setting up friends listener for:', userPhone);
+  
+    if (!userId) {
+      console.error('PeopleBar: Missing user ID');
+      fetchUserIdAndSetupListener(userPhone);
+      return;
+    }
+  
+    // Get current user's location for distance calculations
+    const currentUserLocation = getUserLocation(user);
+  
+    console.log('PeopleBar: Setting up Friends array listener with detailed data');
+    console.log('  Phone:', userPhone);
+    console.log('  User ID:', userId);
+    console.log('  Has location:', !!currentUserLocation);
     
-    // Listen to friends changes in real-time
-    friendsUnsubscribe.current = FirebaseService.listenToFriends(
+    // Use the simplified listener that only watches the Friends array
+    friendsUnsubscribe.current = FirebaseService.listenToAllFriendsWithDetails(
       userPhone,
-      (friends) => {
-        console.log('PeopleBar: Friends updated:', friends.length);
+      userId,
+      currentUserLocation,
+      (friendsWithDetails) => {
+        console.log('PeopleBar: Received detailed friend data:', friendsWithDetails.length);
         
-        // Create a Set to track unique identifiers and prevent duplicates
         const seenIdentifiers = new Set();
         
-        // Transform Firebase friends data to PeopleBar format
-        const transformedFriends = friends.reduce((acc, friend, index) => {
-          // Create a unique identifier for deduplication
-          const identifier = friend.friendId || friend.friendPhone || friend.friendEmail || `index_${index}`;
+        const transformedFriends = friendsWithDetails.reduce((acc, friend, index) => {
+          const identifier = friend.friendId || friend.uid || friend.phone;
           
-          // Skip if we've already seen this friend
           if (seenIdentifiers.has(identifier)) {
             console.warn('PeopleBar: Duplicate friend detected, skipping:', identifier);
             return acc;
@@ -164,34 +176,221 @@ const PeopleBar = () => {
           seenIdentifiers.add(identifier);
           
           const transformedFriend = {
-            id: generateUniqueKey(friend, acc.length), // Use acc.length for unique indexing
-            name: friend.friendName || 'Unknown Friend',
-            location: 'Unknown', // You can enhance this with real location data
-            status: 'Online', // You can enhance this with real status
-            distance: 'Unknown', // You can enhance this with real distance calculation
-            battery: '100%', // You can enhance this with real battery data
-            avatar: friend.avatar || null, // You can enhance this with real avatar
-            phone: friend.friendPhone,
-            email: friend.friendEmail,
-            isCloseFriend: true, // All accepted friends are close friends
-            
-            // Additional friend data
+            id: generateUniqueKey(friend, acc.length),
+            name: friend.name,
+            firstName: friend.firstName,
+            lastName: friend.lastName,
+            phone: friend.phone,
+            email: friend.email,
+            avatar: friend.avatar,
+            status: friend.status,
+            isOnline: friend.isOnline,
+            location: friend.location,
+            distance: friend.distance,
+            battery: friend.battery,
+            batteryLevel: friend.batteryLevel,
             friendId: friend.friendId,
-            createdAt: friend.createdAt,
-            lastInteraction: friend.lastInteraction
+            isCloseFriend: friend.isCloseFriend,
+            rating: friend.rating,
+            lastSeen: friend.lastSeen,
+            lastLogin: friend.lastLogin,
+            rawData: friend.rawData
           };
           
           acc.push(transformedFriend);
           return acc;
         }, []);
         
-        console.log('PeopleBar: Processed friends:', transformedFriends.length);
+        console.log('PeopleBar: Transformed friends with real data:', transformedFriends.length);
+        
+        if (transformedFriends.length > 0) {
+          console.log('Sample friend data:', {
+            name: transformedFriends[0].name,
+            status: transformedFriends[0].status,
+            location: transformedFriends[0].location,
+            distance: transformedFriends[0].distance,
+            battery: transformedFriends[0].battery
+          });
+        }
+        
         setFriendsData(transformedFriends);
         setLoading(false);
         setLastUpdated(new Date());
       }
     );
   };
+  
+  // Helper to get user's location from their data
+  const getUserLocation = (user) => {
+    if (user.ResidenceAddress?.latitude && user.ResidenceAddress?.longitude) {
+      return {
+        latitude: user.ResidenceAddress.latitude,
+        longitude: user.ResidenceAddress.longitude
+      };
+    }
+    return null;
+  };
+  
+  // Helper to fetch user ID if missing
+  const fetchUserIdAndSetupListener = async (userPhone) => {
+    try {
+      console.log('PeopleBar: Fetching user ID by phone:', userPhone);
+      const result = await FirebaseService.getUserByPhone(userPhone);
+      
+      if (result.exists && result.userData) {
+        const userId = result.userData.id;
+        console.log('PeopleBar: Found user ID:', userId);
+        
+        const updatedUserData = { ...userData, uid: userId, id: userId };
+        setUserData(updatedUserData);
+        
+        await AsyncStorage.setItem('userData', JSON.stringify(updatedUserData));
+        
+        const currentUserLocation = getUserLocation(updatedUserData);
+        
+        friendsUnsubscribe.current = FirebaseService.listenToAllFriendsWithDetails(
+          userPhone,
+          userId,
+          currentUserLocation,
+          (friendsWithDetails) => {
+            console.log('PeopleBar: Received detailed friend data:', friendsWithDetails.length);
+            
+            const seenIdentifiers = new Set();
+            
+            const transformedFriends = friendsWithDetails.reduce((acc, friend, index) => {
+              const identifier = friend.friendId || friend.uid || friend.phone;
+              
+              if (seenIdentifiers.has(identifier)) {
+                return acc;
+              }
+              
+              seenIdentifiers.add(identifier);
+              
+              acc.push({
+                id: generateUniqueKey(friend, acc.length),
+                name: friend.name,
+                firstName: friend.firstName,
+                lastName: friend.lastName,
+                phone: friend.phone,
+                email: friend.email,
+                avatar: friend.avatar,
+                status: friend.status,
+                isOnline: friend.isOnline,
+                location: friend.location,
+                distance: friend.distance,
+                battery: friend.battery,
+                batteryLevel: friend.batteryLevel,
+                friendId: friend.friendId,
+                isCloseFriend: friend.isCloseFriend,
+                rating: friend.rating,
+                lastSeen: friend.lastSeen,
+                rawData: friend.rawData
+              });
+              
+              return acc;
+            }, []);
+            
+            setFriendsData(transformedFriends);
+            setLoading(false);
+            setLastUpdated(new Date());
+          }
+        );
+        
+      } else {
+        console.error('PeopleBar: Could not find user by phone');
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error('PeopleBar: Error fetching user ID:', error);
+      setLoading(false);
+    }
+  };
+
+
+  // Helper function to fetch user ID if it's missing
+const fetchUserIdByPhone = async (userPhone) => {
+  try {
+    console.log('PeopleBar: Fetching user ID by phone:', userPhone);
+    const result = await FirebaseService.getUserByPhone(userPhone);
+    
+    if (result.exists && result.userData) {
+      const userId = result.userData.id;
+      console.log('PeopleBar: Found user ID:', userId);
+      
+      // Update userData with the ID
+      const updatedUserData = { ...userData, uid: userId, id: userId };
+      setUserData(updatedUserData);
+      
+      // Save to AsyncStorage for future use
+      await AsyncStorage.setItem('userData', JSON.stringify(updatedUserData));
+      
+      // Now set up the listener with the correct ID
+      setupFriendsListenerWithId(userPhone, userId);
+    } else {
+      console.error('PeopleBar: Could not find user by phone');
+      setLoading(false);
+    }
+  } catch (error) {
+    console.error('PeopleBar: Error fetching user ID:', error);
+    setLoading(false);
+  }
+};
+
+// Separate function to set up listener when we have the ID
+const setupFriendsListenerWithId = (userPhone, userId) => {
+  console.log('PeopleBar: Setting up listener with fetched ID');
+  
+  friendsUnsubscribe.current = FirebaseService.listenToAllFriends(
+    userPhone,
+    userId,
+    (friends) => {
+      console.log('PeopleBar: Friends updated from all sources:', friends.length);
+      
+      const fromCollection = friends.filter(f => f.source === 'friends_collection').length;
+      const fromArray = friends.filter(f => f.source === 'user_friends_array').length;
+      console.log(`  From friends collection: ${fromCollection}`);
+      console.log(`  From Friends array: ${fromArray}`);
+      
+      const seenIdentifiers = new Set();
+      
+      const transformedFriends = friends.reduce((acc, friend, index) => {
+        const identifier = friend.friendId || friend.uid || friend.friendPhone || friend.friendEmail || `index_${index}`;
+        
+        if (seenIdentifiers.has(identifier)) {
+          console.warn('PeopleBar: Duplicate friend detected, skipping:', identifier);
+          return acc;
+        }
+        
+        seenIdentifiers.add(identifier);
+        
+        const transformedFriend = {
+          id: generateUniqueKey(friend, acc.length),
+          name: friend.friendName || friend.name || 'Unknown Friend',
+          location: 'Unknown',
+          status: 'Online',
+          distance: 'Unknown',
+          battery: '100%',
+          avatar: friend.avatar || null,
+          phone: friend.friendPhone || friend.phoneNumber || '',
+          email: friend.friendEmail || friend.email || '',
+          isCloseFriend: true,
+          friendId: friend.friendId || friend.uid,
+          createdAt: friend.createdAt,
+          lastInteraction: friend.lastInteraction,
+          source: friend.source
+        };
+        
+        acc.push(transformedFriend);
+        return acc;
+      }, []);
+      
+      console.log('PeopleBar: Processed friends:', transformedFriends.length);
+      setFriendsData(transformedFriends);
+      setLoading(false);
+      setLastUpdated(new Date());
+    }
+  );
+};
 
   // Enhanced refresh function
   const onRefresh = async () => {
@@ -202,51 +401,86 @@ const PeopleBar = () => {
         setRefreshing(false);
         return;
       }
-
+  
       const userPhone = userData.Phone || userData.phone || userData.phoneNumber;
+      const userId = userData.uid || userData.id || userData.userId;
       
-      // Fetch fresh friends data
-      const result = await FirebaseService.getFriendsForUser(userPhone);
+      if (!userId) {
+        console.error('PeopleBar: Cannot refresh, missing user ID');
+        setRefreshing(false);
+        return;
+      }
+  
+      console.log('PeopleBar: Refreshing friends data from Friends array...');
       
-      if (result.success) {
-        // Create a Set to track unique identifiers and prevent duplicates
+      const currentUserLocation = getUserLocation(userData);
+      
+      // Only fetch from Friends array (simplified!)
+      const arrayResult = await FirebaseService.getFriendsFromArray(userId);
+      
+      if (!arrayResult.success) {
+        console.error('Error fetching friends:', arrayResult.error);
+        setRefreshing(false);
+        return;
+      }
+      
+      const friendIds = arrayResult.friends
+        .filter(friend => friend && friend.friendId)
+        .map(friend => friend.friendId);
+      
+      console.log(`PeopleBar: Found ${friendIds.length} friends to refresh`);
+      
+      if (friendIds.length === 0) {
+        setFriendsData([]);
+        setLastUpdated(new Date());
+        setRefreshing(false);
+        return;
+      }
+      
+      // Fetch detailed data for all friends
+      const detailsResult = await FirebaseService.getFriendsDetails(friendIds, currentUserLocation);
+      
+      if (detailsResult.success) {
         const seenIdentifiers = new Set();
         
-        // Transform the fresh data with deduplication
-        const transformedFriends = result.friends.reduce((acc, friend, index) => {
-          const identifier = friend.friendId || friend.friendPhone || friend.friendEmail || `index_${index}`;
+        const transformedFriends = detailsResult.friendsDetails.reduce((acc, friend, index) => {
+          const identifier = friend.friendId || friend.uid || friend.phone;
           
           if (seenIdentifiers.has(identifier)) {
-            console.warn('PeopleBar: Duplicate friend detected during refresh, skipping:', identifier);
             return acc;
           }
           
           seenIdentifiers.add(identifier);
           
-          const transformedFriend = {
+          acc.push({
             id: generateUniqueKey(friend, acc.length),
-            name: friend.friendName || 'Unknown Friend',
-            location: 'Unknown',
-            status: 'Online',
-            distance: 'Unknown',
-            battery: '100%',
-            avatar: friend.avatar || null,
-            phone: friend.friendPhone,
-            email: friend.friendEmail,
-            isCloseFriend: true,
+            name: friend.name,
+            firstName: friend.firstName,
+            lastName: friend.lastName,
+            phone: friend.phone,
+            email: friend.email,
+            avatar: friend.avatar,
+            status: friend.status,
+            isOnline: friend.isOnline,
+            location: friend.location,
+            distance: friend.distance,
+            battery: friend.battery,
+            batteryLevel: friend.batteryLevel,
             friendId: friend.friendId,
-            createdAt: friend.createdAt,
-            lastInteraction: friend.lastInteraction
-          };
+            isCloseFriend: friend.isCloseFriend,
+            rating: friend.rating,
+            lastSeen: friend.lastSeen,
+            rawData: friend.rawData
+          });
           
-          acc.push(transformedFriend);
           return acc;
         }, []);
         
+        console.log(`PeopleBar: Refreshed ${transformedFriends.length} friends with details`);
         setFriendsData(transformedFriends);
         setLastUpdated(new Date());
       } else {
-        console.error('Error fetching friends:', result.error);
+        console.error('Error fetching friends details:', detailsResult.error);
       }
     } catch (error) {
       console.error('Error refreshing friends:', error);
@@ -254,7 +488,7 @@ const PeopleBar = () => {
       setRefreshing(false);
     }
   };
-
+  
   // Gesture handler (unchanged from your original)
   const panResponder = useRef(
     PanResponder.create({

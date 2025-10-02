@@ -602,394 +602,473 @@ export const FirebaseService = {
     }
   },
 
-  /**
-   * Enhanced sendFriendRequest with proper user data fetching
-   * @param {Object} friendData - { firstName, lastName, phone, senderPhone, senderEmail, senderUserData, senderUserId }
-   * @returns {Object} - { success: boolean, message: string, requestId?: string }
-   */
-  sendFriendRequest: async (friendData) => {
-    try {
-      console.log('Starting enhanced friend request process...');
+/**
+ * Enhanced sendFriendRequest with proper validation
+ */
+sendFriendRequest: async (friendData) => {
+  try {
+    console.log('Starting enhanced friend request process...');
+    
+    const currentUser = auth.currentUser;
+    const { firstName, lastName, phone, senderPhone, senderEmail, senderUserData, senderUserId } = friendData;
+    
+    // CRITICAL FIX: Validate that we have a real user ID, not a temporary one
+    let senderId = senderUserId || currentUser?.uid;
+    
+    // If no valid ID, fetch it from the database using phone number
+    if (!senderId || senderId.startsWith('temp_')) {
+      console.log('No valid sender ID, fetching from database...');
       
-      const currentUser = auth.currentUser;
-      const { firstName, lastName, phone, senderPhone, senderEmail, senderUserData, senderUserId } = friendData;
-      
-      const senderId = senderUserId || currentUser?.uid || `temp_${Date.now()}`;
-      const userEmail = senderEmail || (currentUser ? currentUser.email : 'guest@alertnet.com');
-      
-      console.log('=== ENHANCED SENDER DATA FETCHING ===');
-      
-      // Enhanced sender data fetching - prioritize getting from users collection
-      let senderProfileData = senderUserData;
-      
-      // If we have a userId, fetch complete user document
-      if (senderId && senderId !== `temp_${Date.now()}` && !senderProfileData) {
-        console.log('Fetching sender data by userId:', senderId);
-        const userByIdResult = await FirebaseService.getUserById(senderId);
-        if (userByIdResult.success) {
-          senderProfileData = userByIdResult.userData;
-          console.log('Retrieved sender data by ID:', senderProfileData);
-        }
-      }
-      
-      // If still no data, try by phone
-      if (!senderProfileData && senderPhone) {
-        console.log('Fetching sender data by phone:', senderPhone);
-        const userByPhoneResult = await FirebaseService.getUserByPhone(senderPhone);
-        if (userByPhoneResult.exists) {
-          senderProfileData = userByPhoneResult.userData;
-          console.log('Retrieved sender data by phone:', senderProfileData);
-        }
-      }
-      
-      // Extract and map user data to notification format
-      const senderName = senderProfileData?.Name || 
-                        senderProfileData?.FirstName || 
-                        senderProfileData?.firstName ||
-                        currentUser?.displayName || 
-                        'AlertNet User';
-                        
-      const senderSurname = senderProfileData?.Surname || 
-                           senderProfileData?.LastName || 
-                           senderProfileData?.lastName ||
-                           '';
-      
-      // Map the correct profile picture field from your Firestore structure
-      const senderProfilePicture = senderProfileData?.ImageURL || 
-                                  senderProfileData?.imageUrl || 
-                                  senderProfileData?.localImagePath || 
-                                  senderProfileData?.profilePicture ||
-                                  senderProfileData?.image ||
-                                  null;
-      
-      console.log('Extracted sender info:', {
-        senderName,
-        senderSurname,
-        senderProfilePicture: senderProfilePicture ? 'URL present' : 'null',
-        senderPhone: FirebaseService.formatPhoneNumber(senderPhone)
-      });
-      console.log('=== END ENHANCED SENDER DATA FETCHING ===');
-      
-      const formattedRecipientPhone = FirebaseService.formatPhoneNumber(phone);
-      const formattedSenderPhone = FirebaseService.formatPhoneNumber(senderPhone);
-      
-      console.log('Sender:', senderName, senderSurname);
-      console.log('Sender phone:', formattedSenderPhone);
-      console.log('Recipient phone:', formattedRecipientPhone);
-      
-      // Check if recipient exists
-      const userCheck = await FirebaseService.getUserByPhone(formattedRecipientPhone);
-      if (userCheck.error) {
-        console.error('Error checking recipient user database');
-        return { success: false, error: 'Error checking user database' };
-      }
-      
-      if (!userCheck.exists) {
-        console.log('Recipient does not exist on platform');
+      if (!senderPhone) {
         return { 
           success: false, 
-          error: 'This person is not on AlertNet',
-          message: 'This person is not on AlertNet'
+          error: 'Cannot send friend request without valid user ID or phone number',
+          message: 'Please ensure you are logged in properly'
         };
       }
       
-      console.log('Recipient exists on platform:', userCheck.userData.Name);
-      
-      // Check for existing requests
-      const existingRequest = await FirebaseService.checkExistingFriendRequest(formattedSenderPhone, formattedRecipientPhone);
-      if (existingRequest.error) {
-        console.error('Error checking existing requests');
-        return { success: false, error: 'Error checking existing requests' };
-      }
-      
-      if (existingRequest.exists) {
-        if (existingRequest.direction === 'outgoing') {
-          console.log('Outgoing request already exists');
+      try {
+        const senderResult = await FirebaseService.getUserByPhone(senderPhone);
+        
+        // Check if the result exists and has the expected structure
+        if (!senderResult || !senderResult.exists || !senderResult.userData || !senderResult.userData.id) {
+          console.error('Invalid sender result:', senderResult);
           return { 
             success: false, 
-            error: 'Friend request already sent',
-            message: 'You have already sent a friend request to this person'
-          };
-        } else {
-          console.log('Incoming request already exists');
-          return { 
-            success: false, 
-            error: 'Pending request exists',
-            message: 'This person has already sent you a friend request. Check your notifications.'
+            error: 'Sender not found in database',
+            message: 'Please complete your profile setup first'
           };
         }
+        
+        senderId = senderResult.userData.id;
+        console.log('Fetched sender ID from database:', senderId);
+      } catch (fetchError) {
+        console.error('Error fetching sender by phone:', fetchError);
+        return {
+          success: false,
+          error: 'Failed to validate user',
+          message: 'Could not verify your account. Please try again.'
+        };
       }
-      
-      console.log('No existing requests found, proceeding...');
-      
-      // Create enhanced friend request with complete user data
-      const friendRequest = {
-        senderId: senderId,
-        senderEmail: userEmail,
+    }
+    
+    // Validate we now have a proper Firebase UID (not temp)
+    if (!senderId || senderId.startsWith('temp_')) {
+      return { 
+        success: false, 
+        error: 'Invalid user ID',
+        message: 'Unable to identify your account. Please log in again.'
+      };
+    }
+    
+    const userEmail = senderEmail || currentUser?.email || 'guest@alertnet.com';
+    
+    console.log('=== ENHANCED SENDER DATA FETCHING ===');
+    
+    // Enhanced sender data fetching
+    let senderProfileData = senderUserData;
+    
+    // If we have a userId, fetch complete user document
+    if (!senderProfileData) {
+      console.log('Fetching sender data by userId:', senderId);
+      try {
+        const userByIdResult = await FirebaseService.getUserById(senderId);
+        if (userByIdResult && userByIdResult.success && userByIdResult.userData) {
+          senderProfileData = userByIdResult.userData;
+          console.log('Retrieved sender data by ID:', senderProfileData);
+        }
+      } catch (error) {
+        console.warn('Error fetching user by ID:', error);
+      }
+    }
+    
+    // If still no data, try by phone
+    if (!senderProfileData && senderPhone) {
+      console.log('Fetching sender data by phone:', senderPhone);
+      try {
+        const userByPhoneResult = await FirebaseService.getUserByPhone(senderPhone);
+        if (userByPhoneResult && userByPhoneResult.exists && userByPhoneResult.userData) {
+          senderProfileData = userByPhoneResult.userData;
+          console.log('Retrieved sender data by phone:', senderProfileData);
+        }
+      } catch (error) {
+        console.warn('Error fetching user by phone:', error);
+      }
+    }
+    
+    // Extract sender information
+    const senderName = senderProfileData?.Name || 
+                      senderProfileData?.FirstName || 
+                      senderProfileData?.firstName ||
+                      currentUser?.displayName || 
+                      'AlertNet User';
+                      
+    const senderSurname = senderProfileData?.Surname || 
+                         senderProfileData?.LastName || 
+                         senderProfileData?.lastName ||
+                         '';
+    
+    const senderProfilePicture = senderProfileData?.ImageURL || 
+                                senderProfileData?.imageUrl || 
+                                senderProfileData?.localImagePath || 
+                                senderProfileData?.profilePicture ||
+                                null;
+    
+    console.log('Extracted sender info:', {
+      senderId, // Now guaranteed to be valid
+      senderName,
+      senderSurname,
+      senderProfilePicture: senderProfilePicture ? 'URL present' : 'null',
+      senderPhone: FirebaseService.formatPhoneNumber(senderPhone)
+    });
+    
+    const formattedRecipientPhone = FirebaseService.formatPhoneNumber(phone);
+    const formattedSenderPhone = FirebaseService.formatPhoneNumber(senderPhone);
+    
+    // Check if recipient exists
+    const userCheck = await FirebaseService.getUserByPhone(formattedRecipientPhone);
+    if (!userCheck.exists || !userCheck.userData) {
+      return { 
+        success: false, 
+        error: 'This person is not on AlertNet',
+        message: 'This person is not on AlertNet'
+      };
+    }
+    
+    console.log('Recipient exists:', userCheck.userData.Name);
+    
+    // Check for existing requests
+    const existingRequest = await FirebaseService.checkExistingFriendRequest(
+      formattedSenderPhone, 
+      formattedRecipientPhone
+    );
+    
+    if (existingRequest.exists) {
+      if (existingRequest.direction === 'outgoing') {
+        return { 
+          success: false, 
+          error: 'Friend request already sent',
+          message: 'You have already sent a friend request to this person'
+        };
+      } else {
+        return { 
+          success: false, 
+          error: 'Pending request exists',
+          message: 'This person has already sent you a friend request. Check your notifications.'
+        };
+      }
+    }
+    
+    // Create friend request with VALID sender ID
+    const friendRequest = {
+      senderId: senderId, // Valid Firebase UID
+      senderEmail: userEmail,
+      senderPhone: formattedSenderPhone,
+      senderName: senderName,
+      senderSurname: senderSurname,
+      senderProfilePicture: senderProfilePicture,
+      recipientFirstName: firstName,
+      recipientLastName: lastName,
+      recipientPhone: formattedRecipientPhone,
+      recipientUserId: userCheck.userData.id, // Valid Firebase UID
+      status: 'pending',
+      createdAt: serverTimestamp(),
+      senderUserData: senderProfileData
+    };
+    
+    console.log('Creating friend request with valid IDs:', {
+      senderId: friendRequest.senderId,
+      recipientUserId: friendRequest.recipientUserId
+    });
+    
+    const friendRequestsRef = collection(db, 'friendRequests');
+    const docRef = await addDoc(friendRequestsRef, friendRequest);
+    
+    console.log('Friend request created with ID:', docRef.id);
+    
+    // Create notification
+    const notificationResult = await FirebaseService.createNotification({
+      userId: userCheck.userData.id,
+      recipientPhone: formattedRecipientPhone,
+      type: 'friend_request',
+      title: 'New Friend Request',
+      message: `${senderName} ${senderSurname} wants to connect with you on AlertNet`,
+      priority: 'normal',
+      data: {
+        requestId: docRef.id,
         senderPhone: formattedSenderPhone,
         senderName: senderName,
         senderSurname: senderSurname,
-        senderProfilePicture: senderProfilePicture,
-        recipientFirstName: firstName,
-        recipientLastName: lastName,
-        recipientPhone: formattedRecipientPhone,
-        recipientUserId: userCheck.userData.id,
-        status: 'pending',
-        createdAt: serverTimestamp(),
-        // Add complete user data for future reference
-        senderUserData: senderProfileData
-      };
-      
-      console.log('Creating enhanced friend request document...');
-      const friendRequestsRef = collection(db, 'friendRequests');
-      const docRef = await addDoc(friendRequestsRef, friendRequest);
-      
-      console.log('Friend request created with ID:', docRef.id);
-      
-      // Create notification with proper profile data mapping
-      const notificationResult = await FirebaseService.createNotification({
-        userId: userCheck.userData.id,
-        recipientPhone: formattedRecipientPhone,
-        type: 'friend_request',
-        title: 'New Friend Request',
-        message: `${senderName} ${senderSurname} wants to connect with you on AlertNet`,
-        priority: 'normal',
-        data: {
-          requestId: docRef.id,
-          senderPhone: formattedSenderPhone,
-          senderName: senderName,
-          senderSurname: senderSurname,
-          senderFirstName: senderName, // For backward compatibility
-          senderLastName: senderSurname, // For backward compatibility
-          senderEmail: userEmail,
-          profilePicture: senderProfilePicture,
-          action: 'view_request',
-          // Include complete sender data for rich notifications
-          senderUserData: {
-            Name: senderName,
-            Surname: senderSurname,
-            ImageURL: senderProfilePicture,
-            Phone: formattedSenderPhone,
-            Email: userEmail
-          }
+        senderEmail: userEmail,
+        profilePicture: senderProfilePicture,
+        action: 'view_request',
+        senderUserData: {
+          Name: senderName,
+          Surname: senderSurname,
+          ImageURL: senderProfilePicture,
+          Phone: formattedSenderPhone,
+          Email: userEmail
         }
-      });
-      
-      if (notificationResult.success) {
-        console.log('Enhanced notification created successfully with profile data');
-      } else {
-        console.warn('Failed to create notification:', notificationResult.error);
       }
-      
-      return { 
-        success: true, 
-        message: 'Friend request sent successfully!',
-        requestId: docRef.id,
-        notificationSent: notificationResult.success,
-        senderData: {
-          name: senderName,
-          surname: senderSurname,
-          profilePicture: senderProfilePicture
-        }
-      };
+    });
+    
+    return { 
+      success: true, 
+      message: 'Friend request sent successfully!',
+      requestId: docRef.id,
+      notificationSent: notificationResult.success,
+      senderData: {
+        name: senderName,
+        surname: senderSurname,
+        profilePicture: senderProfilePicture
+      }
+    };
 
-    } catch (error) {
-      console.error('Error sending friend request:', error);
+  } catch (error) {
+    console.error('Error sending friend request:', error);
+    return { 
+      success: false, 
+      error: 'Failed to send friend request',
+      message: 'Something went wrong. Please try again.'
+    };
+  }
+},
+/**
+ * CORRECTED: Create bidirectional friendship after request acceptance
+ * Now matches the AddFriends.js structure: { uid, name, email, phoneNumber }
+ * @param {Object} friendshipData - Data for both users
+ * @returns {Object} - { success: boolean, message: string }
+ */
+createFriendship: async (friendshipData) => {
+  try {
+    const { 
+      user1Phone, user1Name, user1Email, user1Id,
+      user2Phone, user2Name, user2Email, user2Id,
+      requestId 
+    } = friendshipData;
+    
+    console.log('Creating bidirectional friendship...');
+    
+    // Get references to the user documents
+    const user1DocRef = doc(db, 'users', user1Id);
+    const user2DocRef = doc(db, 'users', user2Id);
+    const batch = writeBatch(db);
+    const friendsRef = collection(db, 'friends');
+    const timestamp = serverTimestamp();
+    
+    // Create friendship documents in friends collection (for backward compatibility)
+    const friendship1 = {
+      userId: user1Id,
+      userPhone: FirebaseService.formatPhoneNumber(user1Phone),
+      userEmail: user1Email,
+      userName: user1Name,
+      friendId: user2Id,
+      friendPhone: FirebaseService.formatPhoneNumber(user2Phone),
+      friendEmail: user2Email,
+      friendName: user2Name,
+      status: 'active',
+      createdAt: timestamp,
+      requestId: requestId,
+      lastInteraction: timestamp
+    };
+    batch.set(doc(friendsRef), friendship1);
+    
+    const friendship2 = {
+      userId: user2Id,
+      userPhone: FirebaseService.formatPhoneNumber(user2Phone),
+      userEmail: user2Email,
+      userName: user2Name,
+      friendId: user1Id,
+      friendPhone: FirebaseService.formatPhoneNumber(user1Phone),
+      friendEmail: user1Email,
+      friendName: user1Name,
+      status: 'active',
+      createdAt: timestamp,
+      requestId: requestId,
+      lastInteraction: timestamp
+    };
+    batch.set(doc(friendsRef), friendship2);
+
+    // CORRECTED: Update the Friends array in both user documents
+    // This matches the structure from AddFriends.js: { uid, name, email, phoneNumber }
+    const user1FriendData = { 
+      uid: user2Id,  // Friend's Firebase UID (most important field)
+      name: user2Name, 
+      email: user2Email, 
+      phoneNumber: FirebaseService.formatPhoneNumber(user2Phone)  // Changed from 'phone' to 'phoneNumber'
+    };
+    
+    const user2FriendData = { 
+      uid: user1Id,  // Friend's Firebase UID (most important field)
+      name: user1Name, 
+      email: user1Email, 
+      phoneNumber: FirebaseService.formatPhoneNumber(user1Phone)  // Changed from 'phone' to 'phoneNumber'
+    };
+
+    batch.update(user1DocRef, {
+      Friends: arrayUnion(user1FriendData)
+    });
+
+    batch.update(user2DocRef, {
+      Friends: arrayUnion(user2FriendData)
+    });
+
+    // Commit all writes at once
+    await batch.commit();
+    
+    console.log('Friendship created successfully with correct structure:', {
+      user1Friend: user1FriendData,
+      user2Friend: user2FriendData
+    });
+    
+    return { 
+      success: true, 
+      message: 'Friendship created successfully!'
+    };
+    
+  } catch (error) {
+    console.error('Error creating friendship:', error);
+    return { 
+      success: false, 
+      error: 'Failed to create friendship',
+      message: 'Something went wrong creating the friendship'
+    };
+  }
+},
+
+/**
+ * Enhanced acceptFriendRequest with better validation
+ */
+acceptFriendRequest: async (requestId, currentUserPhone) => {
+  try {
+    console.log('Starting friend request acceptance...');
+    
+    const requestRef = doc(db, 'friendRequests', requestId);
+    const requestDoc = await getDoc(requestRef);
+    
+    if (!requestDoc.exists()) {
+      return { success: false, error: 'Friend request not found' };
+    }
+    
+    const requestData = requestDoc.data();
+    const formattedCurrentPhone = FirebaseService.formatPhoneNumber(currentUserPhone);
+    
+    if (requestData.recipientPhone !== formattedCurrentPhone) {
+      return { success: false, error: 'Unauthorized action' };
+    }
+    
+    // Check if already processed
+    if (requestData.status === 'accepted') {
+      return { success: false, error: 'Friend already added' };
+    } else if (requestData.status === 'declined') {
+      return { success: false, error: 'This friend request was already declined.' };
+    }
+    
+    // CRITICAL FIX: Validate both user IDs before proceeding
+    const senderId = requestData.senderId;
+    const recipientId = requestData.recipientUserId;
+    
+    // Check if either ID is temporary/invalid
+    if (!senderId || senderId.startsWith('temp_')) {
+      console.error('Invalid sender ID in request:', senderId);
       return { 
         success: false, 
-        error: 'Failed to send friend request',
-        message: 'Something went wrong. Please try again.'
+        error: 'Invalid sender ID. The friend request may be corrupted.' 
       };
     }
-  },
-
-  /**
-   * Create bidirectional friendship after request acceptance
-   * @param {Object} friendshipData - Data for both users
-   * @returns {Object} - { success: boolean, message: string }
-   */
-  createFriendship: async (friendshipData) => {
-    try {
-      const { 
-        user1Phone, user1Name, user1Email, user1Id,
-        user2Phone, user2Name, user2Email, user2Id,
-        requestId 
-      } = friendshipData;
-      
-      console.log('Creating bidirectional friendship...');
-      
-      // Get references to the user documents and create a batch for atomic updates
-      const user1DocRef = doc(db, 'users', user1Id);
-      const user2DocRef = doc(db, 'users', user2Id);
-      const batch = writeBatch(db);
-      const friendsRef = collection(db, 'friends');
-      const timestamp = serverTimestamp();
-      
-      const friendship1 = {
-        userId: user1Id,
-        userPhone: FirebaseService.formatPhoneNumber(user1Phone),
-        userEmail: user1Email,
-        userName: user1Name,
-        friendId: user2Id,
-        friendPhone: FirebaseService.formatPhoneNumber(user2Phone),
-        friendEmail: user2Email,
-        friendName: user2Name,
-        status: 'active',
-        createdAt: timestamp,
-        requestId: requestId,
-        lastInteraction: timestamp
-      };
-      // Use a new doc ref for the batch operation
-      batch.set(doc(friendsRef), friendship1);
-      
-      const friendship2 = {
-        userId: user2Id,
-        userPhone: FirebaseService.formatPhoneNumber(user2Phone),
-        userEmail: user2Email,
-        userName: user2Name,
-        friendId: user1Id,
-        friendPhone: FirebaseService.formatPhoneNumber(user1Phone),
-        friendEmail: user1Email,
-        friendName: user1Name,
-        status: 'active',
-        createdAt: timestamp,
-        requestId: requestId,
-        lastInteraction: timestamp
-      };
-      // Use a new doc ref for the batch operation
-      batch.set(doc(friendsRef), friendship2);
-
-      // --- FIX: Update the `friends` array in both user documents ---
-      // This ensures other parts of the app (like FriendsContext) see the new friend.
-      const user1FriendData = { uid: user2Id, name: user2Name, email: user2Email, phone: user2Phone };
-      const user2FriendData = { uid: user1Id, name: user1Name, email: user1Email, phone: user1Phone };
-
-      batch.update(user1DocRef, {
-        friends: arrayUnion(user1FriendData)
-      });
-
-      batch.update(user2DocRef, {
-        friends: arrayUnion(user2FriendData)
-      });
-      // --- END FIX ---
-
-      // Commit all writes at once
-      await batch.commit();
-      
-      console.log('Friendship created and user documents updated successfully.');
-      
-      return { 
-        success: true, 
-        message: 'Friendship created successfully!'
-      };
-      
-    } catch (error) {
-      console.error('Error creating friendship:', error);
-      return { 
-        success: false, 
-        error: 'Failed to create friendship',
-        message: 'Something went wrong creating the friendship'
-      };
-    }
-  },
-
-  /**
-   * Enhanced accept friend request with friendship creation
-   * @param {string} requestId - Friend request document ID
-   * @param {string} currentUserPhone - Current user's phone number
-   * @returns {Object} - { success: boolean, message: string }
-   */
-  acceptFriendRequest: async (requestId, currentUserPhone) => {
-    try {
-      console.log('Starting enhanced friend request acceptance...');
-      
-      const requestRef = doc(db, 'friendRequests', requestId);
-      const requestDoc = await getDoc(requestRef);
-      
-      if (!requestDoc.exists()) {
-        return { success: false, error: 'Friend request not found' };
-      }
-      
-      const requestData = requestDoc.data();
-      const formattedCurrentPhone = FirebaseService.formatPhoneNumber(currentUserPhone);
-      
-      if (requestData.recipientPhone !== formattedCurrentPhone) {
-        return { success: false, error: 'Unauthorized action' };
-      }
-      
-      console.log('Request validation passed');
-      
+    
+    if (!recipientId || recipientId.startsWith('temp_')) {
+      console.error('Invalid recipient ID in request:', recipientId);
+      // Try to fetch the current user's real ID
       const currentUserResult = await FirebaseService.getUserByPhone(formattedCurrentPhone);
       if (!currentUserResult.exists) {
-        return { success: false, error: 'Current user not found in database' };
+        return { 
+          success: false, 
+          error: 'Your user account could not be found. Please log in again.' 
+        };
       }
-      
-      const senderResult = await FirebaseService.getUserByPhone(requestData.senderPhone);
-      if (!senderResult.exists) {
-        return { success: false, error: 'Sender user not found in database' };
-      }
-      
-      console.log('Both users found in database');
-      
-      await updateDoc(requestRef, {
-        status: 'accepted',
-        acceptedAt: serverTimestamp()
-      });
-      
-      console.log('Request status updated to accepted');
-      
-      const friendshipResult = await FirebaseService.createFriendship({
-        user1Phone: requestData.senderPhone,
-        user1Name: requestData.senderName || `${senderResult.userData.Name || ''} ${senderResult.userData.Surname || ''}`.trim(),
-        user1Email: requestData.senderEmail || senderResult.userData.Email,
-        user1Id: requestData.senderId,
-        
-        user2Phone: formattedCurrentPhone,
-        user2Name: `${requestData.recipientFirstName} ${requestData.recipientLastName}`,
-        user2Email: currentUserResult.userData.Email,
-        user2Id: currentUserResult.userData.id,
-        
-        requestId: requestId
-      });
-      
-      if (!friendshipResult.success) {
-        console.error('Failed to create friendship:', friendshipResult.error);
-        return { success: false, error: 'Failed to create friendship' };
-      }
-      
-      console.log('Friendship created successfully');
-      
-      await FirebaseService.createNotification({
-        userId: requestData.senderId,
-        recipientPhone: requestData.senderPhone,
-        type: 'friend_accepted',
-        title: 'Friend Request Accepted',
-        message: `${requestData.recipientFirstName} ${requestData.recipientLastName} accepted your friend request!`,
-        priority: 'normal',
-        data: {
-          requestId: requestId,
-          accepterPhone: formattedCurrentPhone,
-          accepterName: `${requestData.recipientFirstName} ${requestData.recipientLastName}`,
-          friendshipId: friendshipResult.friendship1Id
-        }
-      });
-      
-      console.log('Acceptance notification sent');
-      
-      return { 
-        success: true, 
-        message: 'Friend request accepted successfully! You are now connected.',
-        friendshipCreated: true
-      };
-      
-    } catch (error) {
-      console.error('Error accepting friend request:', error);
-      return { 
-        success: false, 
-        error: 'Failed to accept friend request' 
-      };
+      // Update recipientId with the correct value
+      requestData.recipientUserId = currentUserResult.userData.id;
     }
-  },
+    
+    console.log('Validated user IDs:', {
+      senderId: requestData.senderId,
+      recipientId: requestData.recipientUserId
+    });
+    
+    // Fetch complete user data
+    const currentUserResult = await FirebaseService.getUserByPhone(formattedCurrentPhone);
+    if (!currentUserResult.exists) {
+      return { success: false, error: 'Current user not found in database' };
+    }
+    
+    const senderResult = await FirebaseService.getUserByPhone(requestData.senderPhone);
+    if (!senderResult.exists) {
+      return { success: false, error: 'Sender user not found in database' };
+    }
+    
+    console.log('Both users validated');
+    
+    // Update request status
+    await updateDoc(requestRef, {
+      status: 'accepted',
+      acceptedAt: serverTimestamp()
+    });
+    
+    console.log('Request status updated to accepted');
+    
+    // Create friendship with VALID IDs
+    const friendshipResult = await FirebaseService.createFriendship({
+      user1Phone: requestData.senderPhone,
+      user1Name: requestData.senderName || 
+                `${senderResult.userData.Name || ''} ${senderResult.userData.Surname || ''}`.trim(),
+      user1Email: requestData.senderEmail || senderResult.userData.Email,
+      user1Id: requestData.senderId, // Validated ID
+      
+      user2Phone: formattedCurrentPhone,
+      user2Name: `${requestData.recipientFirstName} ${requestData.recipientLastName}`,
+      user2Email: currentUserResult.userData.Email,
+      user2Id: requestData.recipientUserId || currentUserResult.userData.id, // Validated ID
+      
+      requestId: requestId
+    });
+    
+    if (!friendshipResult.success) {
+      console.error('Failed to create friendship:', friendshipResult.error);
+      return { success: false, error: friendshipResult.error };
+    }
+    
+    console.log('Friendship created successfully');
+    
+    // Send acceptance notification
+    await FirebaseService.createNotification({
+      userId: requestData.senderId,
+      recipientPhone: requestData.senderPhone,
+      type: 'friend_accepted',
+      title: 'Friend Request Accepted',
+      message: `${requestData.recipientFirstName} ${requestData.recipientLastName} accepted your friend request!`,
+      priority: 'normal',
+      data: {
+        requestId: requestId,
+        accepterPhone: formattedCurrentPhone,
+        accepterName: `${requestData.recipientFirstName} ${requestData.recipientLastName}`,
+      }
+    });
+    
+    return { 
+      success: true, 
+      message: 'Friend request accepted successfully! You are now connected.',
+      friendshipCreated: true
+    };
+    
+  } catch (error) {
+    console.error('Error accepting friend request:', error);
+    return { 
+      success: false, 
+      error: 'Failed to accept friend request' 
+    };
+  }
+},
 
   /**
    * Decline a friend request
@@ -1227,6 +1306,391 @@ export const FirebaseService = {
       return { success: false, error: 'Failed to remove friend' };
     }
   },
+/**
+ * Fetch detailed user data for multiple friend IDs
+ * @param {Array<string>} friendIds - Array of user IDs to fetch
+ * @param {Object} currentUserLocation - Current user's location { latitude, longitude }
+ * @returns {Object} - { success: boolean, friendsDetails: array, error?: string }
+ */
+getFriendsDetails: async (friendIds, currentUserLocation = null) => {
+  try {
+    if (!friendIds || friendIds.length === 0) {
+      return { success: true, friendsDetails: [] };
+    }
+
+    console.log(`Fetching details for ${friendIds.length} friends`);
+    
+    // Calculate distance helper
+    const calculateDistance = (lat1, lon1, lat2, lon2) => {
+      if (!lat1 || !lon1 || !lat2 || !lon2) return null;
+      
+      const R = 6371; // Earth's radius in km
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      const distance = R * c;
+
+      if (distance < 1) {
+        return `${Math.round(distance * 1000)}m away`;
+      }
+      return `${distance.toFixed(1)}km away`;
+    };
+
+    // Fetch all friend documents
+    const friendsPromises = friendIds.map(async (friendId) => {
+      try {
+        const friendDoc = await getDoc(doc(db, 'users', friendId));
+        
+        if (!friendDoc.exists()) {
+          console.warn(`Friend document not found: ${friendId}`);
+          return null;
+        }
+        
+        const friendData = friendDoc.data();
+        
+        // Calculate distance if we have locations
+        let distance = 'Unknown';
+        if (currentUserLocation && 
+            friendData.ResidenceAddress?.latitude && 
+            friendData.ResidenceAddress?.longitude) {
+          const calc = calculateDistance(
+            currentUserLocation.latitude,
+            currentUserLocation.longitude,
+            friendData.ResidenceAddress.latitude,
+            friendData.ResidenceAddress.longitude
+          );
+          if (calc) distance = calc;
+        }
+
+        // Determine online status
+        let status = 'Offline';
+        let isOnline = false;
+        if (friendData.online === true) {
+          status = 'Online';
+          isOnline = true;
+        } else if (friendData.LastLogin || friendData.lastSeen) {
+          const lastSeenTime = friendData.LastLogin || friendData.lastSeen;
+          const lastSeen = lastSeenTime.toDate ? lastSeenTime.toDate() : new Date(lastSeenTime);
+          const now = new Date();
+          const minutesAgo = (now - lastSeen) / (1000 * 60);
+          
+          if (minutesAgo < 5) {
+            status = 'Online';
+            isOnline = true;
+          } else if (minutesAgo < 60) {
+            status = `${Math.round(minutesAgo)}m ago`;
+          } else if (minutesAgo < 1440) {
+            status = `${Math.round(minutesAgo / 60)}h ago`;
+          } else {
+            status = `${Math.round(minutesAgo / 1440)}d ago`;
+          }
+        }
+
+        // Get location name
+        let location = 'Unknown location';
+        if (friendData.ResidenceAddress) {
+          if (friendData.ResidenceAddress.city && friendData.ResidenceAddress.province) {
+            location = `${friendData.ResidenceAddress.city}, ${friendData.ResidenceAddress.province}`;
+          } else if (friendData.ResidenceAddress.latitude && friendData.ResidenceAddress.longitude) {
+            location = `${friendData.ResidenceAddress.latitude.toFixed(4)}, ${friendData.ResidenceAddress.longitude.toFixed(4)}`;
+          }
+        }
+
+        // Build complete friend object
+        return {
+          id: friendDoc.id,
+          friendId: friendDoc.id,
+          uid: friendDoc.id,
+          
+          // Name fields
+          name: `${friendData.Name || ''} ${friendData.Surname || ''}`.trim() || 'Unknown User',
+          firstName: friendData.Name || '',
+          lastName: friendData.Surname || '',
+          
+          // Contact info
+          phone: friendData.Phone || '',
+          phoneNumber: friendData.Phone || '',
+          email: friendData.Email || '',
+          
+          // Profile image
+          avatar: friendData.ImageURL || friendData.imageUrl || null,
+          imageUrl: friendData.ImageURL || friendData.imageUrl || null,
+          
+          // Status and location
+          status,
+          isOnline,
+          location,
+          distance,
+          
+          // Battery info
+          battery: friendData.Battery ? `${friendData.Battery}%` : '100%',
+          batteryLevel: friendData.Battery || 100,
+          
+          // Timestamps
+          lastSeen: friendData.LastLogin || friendData.lastSeen,
+          lastLogin: friendData.LastLogin,
+          
+          // Additional data
+          rating: friendData.Rating || 0,
+          isCloseFriend: (friendData.Rating || 0) > 3,
+          
+          // Raw data for advanced usage
+          rawData: friendData
+        };
+        
+      } catch (error) {
+        console.error(`Error fetching friend ${friendId}:`, error);
+        return null;
+      }
+    });
+
+    const friendsDetails = (await Promise.all(friendsPromises)).filter(Boolean);
+    
+    console.log(`Successfully fetched details for ${friendsDetails.length}/${friendIds.length} friends`);
+    
+    return { success: true, friendsDetails };
+    
+  } catch (error) {
+    console.error('Error fetching friends details:', error);
+    return { success: false, friendsDetails: [], error: error.message };
+  }
+},
+
+  /**
+ * Listen to the Friends array in the user's document for real-time updates
+ * This listens to the Friends array (capital F) in the users collection
+ * @param {string} userId - User's document ID (not phone number)
+ * @param {Function} callback - Callback function to handle friends updates
+ * @returns {Function} - Unsubscribe function
+ */
+listenToUserFriendsArray: (userId, callback) => {
+  try {
+    if (!userId) {
+      console.warn('listenToUserFriendsArray called with no userId');
+      callback([]);
+      return () => {};
+    }
+
+    console.log('Setting up Friends array listener for user:', userId);
+    
+    const userRef = doc(db, 'users', userId);
+    
+    return onSnapshot(userRef, (docSnap) => {
+      if (!docSnap.exists()) {
+        console.log('User document not found:', userId);
+        callback([]);
+        return;
+      }
+      
+      const userData = docSnap.data();
+      const friendsArray = userData?.Friends || [];
+      
+      if (!Array.isArray(friendsArray)) {
+        console.warn('Friends is not an array:', typeof friendsArray);
+        callback([]);
+        return;
+      }
+      
+      console.log(`Friends array updated: ${friendsArray.length} friends`);
+      
+      // Transform the Friends array to match the expected format
+      const transformedFriends = friendsArray.map((friend, index) => {
+        if (!friend || typeof friend !== 'object') {
+          console.warn('Invalid friend object in array:', friend);
+          return null;
+        }
+        
+        return {
+          id: `friend_array_${friend.uid || index}`,
+          friendId: friend.uid,
+          friendName: friend.name || 'Unknown Friend',
+          friendEmail: friend.email || '',
+          friendPhone: friend.phoneNumber || friend.phone || '',
+          status: 'active',
+          source: 'user_friends_array', // Mark the source
+          // Keep original data
+          uid: friend.uid,
+          name: friend.name,
+          email: friend.email,
+          phoneNumber: friend.phoneNumber
+        };
+      }).filter(Boolean); // Remove null values
+      
+      callback(transformedFriends);
+      
+    }, (error) => {
+      console.error('Error listening to Friends array:', error);
+      callback([]);
+    });
+    
+  } catch (error) {
+    console.error('Error setting up Friends array listener:', error);
+    return () => {};
+  }
+},
+
+/**
+ * Combined listener: Listen to both friends collection AND Friends array
+ * This ensures you get friends from all sources
+ * @param {string} userPhone - User's phone number
+ * @param {string} userId - User's document ID
+ * @param {Function} callback - Callback function to handle combined friends updates
+ * @returns {Function} - Unsubscribe function that cleans up both listeners
+ */
+listenToAllFriendsWithDetails: (userPhone, userId, currentUserLocation, callback) => {
+  try {
+    console.log('Setting up combined friends listeners with detailed data');
+    
+    let friendsFromCollection = [];
+    let friendsFromArray = [];
+    
+    // Helper to merge, fetch details, and call callback
+    const mergeAndFetchDetails = async () => {
+      const seenIds = new Set();
+      const allFriendIds = [];
+      
+      // Collect unique friend IDs from both sources
+      [...friendsFromCollection, ...friendsFromArray].forEach(friend => {
+        const uniqueId = friend.friendId || friend.uid;
+        if (!uniqueId) return;
+        
+        if (!seenIds.has(uniqueId)) {
+          seenIds.add(uniqueId);
+          allFriendIds.push(uniqueId);
+        }
+      });
+      
+      console.log(`Fetching detailed data for ${allFriendIds.length} unique friends`);
+      
+      // Fetch detailed user data for all friends
+      const detailsResult = await FirebaseService.getFriendsDetails(allFriendIds, currentUserLocation);
+      
+      if (detailsResult.success) {
+        console.log(`Fetched details for ${detailsResult.friendsDetails.length} friends`);
+        callback(detailsResult.friendsDetails);
+      } else {
+        console.error('Error fetching friends details:', detailsResult.error);
+        callback([]);
+      }
+    };
+    
+    // Listener 1: Friends collection
+    const formattedPhone = FirebaseService.formatPhoneNumber(userPhone);
+    const friendsRef = collection(db, 'friends');
+    const q = query(
+      friendsRef,
+      where('userPhone', '==', formattedPhone),
+      where('status', '==', 'active')
+    );
+    
+    const unsubscribe1 = onSnapshot(q, (snapshot) => {
+      friendsFromCollection = snapshot.docs.map(doc => ({
+        id: doc.id,
+        friendId: doc.data().friendId,
+        source: 'friends_collection'
+      }));
+      mergeAndFetchDetails();
+    }, (error) => {
+      console.error('Error in friends collection listener:', error);
+      friendsFromCollection = [];
+      mergeAndFetchDetails();
+    });
+    
+    // Listener 2: Friends array in user document
+    const userRef = doc(db, 'users', userId);
+    const unsubscribe2 = onSnapshot(userRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const userData = docSnap.data();
+        const friendsArray = userData?.Friends || [];
+        
+        if (Array.isArray(friendsArray)) {
+          friendsFromArray = friendsArray
+            .filter(friend => friend && typeof friend === 'object' && friend.uid)
+            .map(friend => ({
+              id: friend.uid,
+              friendId: friend.uid,
+              uid: friend.uid,
+              source: 'user_friends_array'
+            }));
+        } else {
+          friendsFromArray = [];
+        }
+      } else {
+        friendsFromArray = [];
+      }
+      mergeAndFetchDetails();
+    }, (error) => {
+      console.error('Error in Friends array listener:', error);
+      friendsFromArray = [];
+      mergeAndFetchDetails();
+    });
+    
+    // Return combined unsubscribe function
+    return () => {
+      console.log('Cleaning up friends listeners with details');
+      unsubscribe1();
+      unsubscribe2();
+    };
+    
+  } catch (error) {
+    console.error('Error setting up listeners with details:', error);
+    return () => {};
+  }
+},
+
+/**
+ * Get friends from the Friends array (one-time fetch, not real-time)
+ * @param {string} userId - User's document ID
+ * @returns {Object} - { success: boolean, friends: array, error?: string }
+ */
+getFriendsFromArray: async (userId) => {
+  try {
+    console.log('Fetching Friends array for user:', userId);
+    
+    const userDoc = await getDoc(doc(db, 'users', userId));
+    
+    if (!userDoc.exists()) {
+      return { success: false, friends: [], error: 'User not found' };
+    }
+    
+    const userData = userDoc.data();
+    const friendsArray = userData?.Friends || [];
+    
+    if (!Array.isArray(friendsArray)) {
+      console.warn('Friends is not an array');
+      return { success: true, friends: [] };
+    }
+    
+    const friends = friendsArray.map((friend, index) => {
+      if (!friend || typeof friend !== 'object') return null;
+      
+      return {
+        id: `array_${friend.uid || index}`,
+        friendId: friend.uid,
+        friendName: friend.name || 'Unknown Friend',
+        friendEmail: friend.email || '',
+        friendPhone: friend.phoneNumber || '',
+        status: 'active',
+        uid: friend.uid,
+        name: friend.name,
+        email: friend.email,
+        phoneNumber: friend.phoneNumber
+      };
+    }).filter(Boolean);
+    
+    console.log(`Found ${friends.length} friends in Friends array`);
+    
+    return { success: true, friends };
+    
+  } catch (error) {
+    console.error('Error fetching Friends array:', error);
+    return { success: false, friends: [], error: error.message };
+  }
+},
 
   // ========================
   // CHAT SYSTEM
