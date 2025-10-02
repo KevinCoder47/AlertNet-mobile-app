@@ -132,6 +132,7 @@ const PeopleBar = () => {
   // Set up real-time friends listener
 
   const setupFriendsListener = (user) => {
+    
     const userPhone = user.Phone || user.phone || user.phoneNumber;
     const userId = user.uid || user.id || user.userId || user.UID;
     
@@ -155,6 +156,14 @@ const PeopleBar = () => {
     console.log('  User ID:', userId);
     console.log('  Has location:', !!currentUserLocation);
     
+
+    console.log('🔍 DEBUG: Current user location:', currentUserLocation);
+    console.log('🔍 DEBUG: User data structure:', {
+      hasCurrentLocation: !!user.CurrentLocation,
+      hasResidenceAddress: !!user.ResidenceAddress,
+      CurrentLocation: user.CurrentLocation,
+      ResidenceAddress: user.ResidenceAddress
+    });
     // Use the simplified listener that only watches the Friends array
     friendsUnsubscribe.current = FirebaseService.listenToAllFriendsWithDetails(
       userPhone,
@@ -221,15 +230,29 @@ const PeopleBar = () => {
   };
   
   // Helper to get user's location from their data
-  const getUserLocation = (user) => {
-    if (user.ResidenceAddress?.latitude && user.ResidenceAddress?.longitude) {
-      return {
-        latitude: user.ResidenceAddress.latitude,
-        longitude: user.ResidenceAddress.longitude
-      };
-    }
-    return null;
-  };
+
+const getUserLocation = (user) => {
+  // Try CurrentLocation first (real-time location)
+  if (user.CurrentLocation?.latitude && user.CurrentLocation?.longitude) {
+    console.log('Using CurrentLocation for distance calculation');
+    return {
+      latitude: user.CurrentLocation.latitude,
+      longitude: user.CurrentLocation.longitude
+    };
+  }
+  
+  // Fallback to ResidenceAddress
+  if (user.ResidenceAddress?.latitude && user.ResidenceAddress?.longitude) {
+    console.log('Using ResidenceAddress for distance calculation');
+    return {
+      latitude: user.ResidenceAddress.latitude,
+      longitude: user.ResidenceAddress.longitude
+    };
+  }
+  
+  console.warn('No location data available for user');
+  return null;
+};
   
   // Helper to fetch user ID if missing
   const fetchUserIdAndSetupListener = async (userPhone) => {

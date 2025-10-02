@@ -22,6 +22,7 @@ import {
   deleteDoc,
   arrayUnion
 } from 'firebase/firestore';
+import { reverseGeocode, formatLocationForDisplay } from '../../assets/services/GeocodingService';
 
 export const FirebaseService = {
   // Auth methods
@@ -1307,18 +1308,19 @@ acceptFriendRequest: async (requestId, currentUserPhone) => {
     }
   },
 /**
- * Fetch detailed user data for multiple friend IDs
+ * UPDATED: Fetch detailed user data for multiple friend IDs with geocoding
  * @param {Array<string>} friendIds - Array of user IDs to fetch
  * @param {Object} currentUserLocation - Current user's location { latitude, longitude }
  * @returns {Object} - { success: boolean, friendsDetails: array, error?: string }
  */
+
 getFriendsDetails: async (friendIds, currentUserLocation = null) => {
   try {
     if (!friendIds || friendIds.length === 0) {
       return { success: true, friendsDetails: [] };
     }
 
-    console.log(`Fetching details for ${friendIds.length} friends`);
+    console.log(`Fetching details for ${friendIds.length} friends with geocoding`);
     
     // Calculate distance helper
     const calculateDistance = (lat1, lon1, lat2, lon2) => {
@@ -1354,17 +1356,30 @@ getFriendsDetails: async (friendIds, currentUserLocation = null) => {
         
         // Calculate distance if we have locations
         let distance = 'Unknown';
+        console.log('🔍 Calculating distance:', {
+          friendName: friendData.Name,
+          hasCurrentUserLocation: !!currentUserLocation,
+          hasFriendLocation: !!(friendData.CurrentLocation?.latitude && friendData.CurrentLocation?.longitude),
+          currentUserLat: currentUserLocation?.latitude,
+          currentUserLon: currentUserLocation?.longitude,
+          friendLat: friendData.CurrentLocation?.latitude,
+          friendLon: friendData.CurrentLocation?.longitude
+        });
+
         if (currentUserLocation && 
-            friendData.ResidenceAddress?.latitude && 
-            friendData.ResidenceAddress?.longitude) {
+            friendData.CurrentLocation?.latitude && 
+            friendData.CurrentLocation?.longitude) {
           const calc = calculateDistance(
             currentUserLocation.latitude,
             currentUserLocation.longitude,
-            friendData.ResidenceAddress.latitude,
-            friendData.ResidenceAddress.longitude
+            friendData.CurrentLocation.latitude,
+            friendData.CurrentLocation.longitude
           );
-          if (calc) distance = calc;
-        }
+            console.log('✅ Distance calculated:', calc);
+            if (calc) distance = calc;
+          } else {
+            console.warn('⚠️ Cannot calculate distance - missing location data');
+          }
 
         // Determine online status
         let status = 'Offline';
@@ -1390,13 +1405,26 @@ getFriendsDetails: async (friendIds, currentUserLocation = null) => {
           }
         }
 
-        // Get location name
+        //  Geocode the CurrentLocation coordinates**
         let location = 'Unknown location';
-        if (friendData.ResidenceAddress) {
-          if (friendData.ResidenceAddress.city && friendData.ResidenceAddress.province) {
-            location = `${friendData.ResidenceAddress.city}, ${friendData.ResidenceAddress.province}`;
-          } else if (friendData.ResidenceAddress.latitude && friendData.ResidenceAddress.longitude) {
-            location = `${friendData.ResidenceAddress.latitude.toFixed(4)}, ${friendData.ResidenceAddress.longitude.toFixed(4)}`;
+        let locationDetails = null;
+        
+        if (friendData.CurrentLocation?.latitude && friendData.CurrentLocation?.longitude) {
+          try {
+            console.log(`Geocoding location for ${friendData.Name}`);
+            locationDetails = await reverseGeocode(
+              friendData.CurrentLocation.latitude,
+              friendData.CurrentLocation.longitude
+            );
+            
+            // Format for display: "City, Province" or "City"
+            location = formatLocationForDisplay(locationDetails);
+            
+            console.log(`Location resolved: ${location}`);
+          } catch (geocodeError) {
+            console.warn(`Geocoding failed for ${friendData.Name}:`, geocodeError);
+            // Fallback to coordinates
+            location = `${friendData.CurrentLocation.latitude.toFixed(4)}, ${friendData.CurrentLocation.longitude.toFixed(4)}`;
           }
         }
 
@@ -1420,10 +1448,12 @@ getFriendsDetails: async (friendIds, currentUserLocation = null) => {
           avatar: friendData.ImageURL || friendData.imageUrl || null,
           imageUrl: friendData.ImageURL || friendData.imageUrl || null,
           
-          // Status and location
+          // Status and location (now with geocoding!)
           status,
           isOnline,
-          location,
+          location, // Human-readable location name
+          locationDetails, // Full geocoding details
+          coordinates: friendData.CurrentLocation, // Original coordinates
           distance,
           
           // Battery info
