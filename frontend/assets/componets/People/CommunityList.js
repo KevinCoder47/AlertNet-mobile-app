@@ -15,7 +15,6 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ColorContext';
- // Add this import
 
 // Enhanced EMS Channels Data
 const emsChannelsData = [
@@ -107,8 +106,8 @@ const broadcastMessages = [
 ];
 
 export default function AlertNetEMSChannels() {
-  const { colors, isDark } = useTheme(); // Use theme context instead of useColorScheme
-  const styles = getStyles(isDark, colors); // Pass colors to styles
+  const { colors, isDark } = useTheme();
+  const styles = getStyles(isDark, colors);
   
   // State management
   const [currentScreen, setCurrentScreen] = useState('channels'); // 'channels', 'detail', 'chat'
@@ -125,7 +124,7 @@ export default function AlertNetEMSChannels() {
     }
   ]);
   const [newMessage, setNewMessage] = useState('');
-  const [activeTab, setActiveTab] = useState('chat'); // 'chat', 'report', 'case'
+  const [activeTab, setActiveTab] = useState('chat'); // 'chat', 'report'
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -228,10 +227,7 @@ export default function AlertNetEMSChannels() {
       <View style={styles.channelInfo}>
         <Text style={styles.channelName}>{item.name}</Text>
         <Text style={styles.channelDescription}>{item.description}</Text>
-        <View style={styles.channelStats}>
-          <Text style={styles.statText}>{item.followers} followers</Text>
-          <Text style={styles.statText}>{item.lastMessageTime}</Text>
-        </View>
+
       </View>
       <Ionicons name="chevron-forward" size={18} color={colors.textSecondary || colors.secondary} />
     </TouchableOpacity>
@@ -385,12 +381,6 @@ export default function AlertNetEMSChannels() {
         >
           <Text style={[styles.tabText, activeTab === 'report' && styles.activeTabText]}>Report</Text>
         </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'case' && styles.activeTab]}
-          onPress={() => setActiveTab('case')}
-        >
-          <Text style={[styles.tabText, activeTab === 'case' && styles.activeTabText]}>Open Case</Text>
-        </TouchableOpacity>
       </View>
 
       {activeTab === 'chat' && (
@@ -444,7 +434,7 @@ export default function AlertNetEMSChannels() {
       {activeTab === 'report' && (
         <ScrollView style={styles.formContainer}>
           <View style={styles.emergencyForm}>
-            <Text style={styles.formTitle}>📝 {selectedChannel?.emergencyAction} Form</Text>
+            <Text style={styles.formTitle}> {selectedChannel?.emergencyAction} Form</Text>
             <Text style={styles.formLabel}>Incident Type</Text>
             <TextInput 
               style={styles.formInput} 
@@ -462,7 +452,7 @@ export default function AlertNetEMSChannels() {
               style={styles.locationBtn}
               onPress={() => handleEmergencyAction('location')}
             >
-              <Text style={styles.locationBtnText}>📍 Use Current Location</Text>
+              <Text style={styles.locationBtnText}>Share Current Location</Text>
             </TouchableOpacity>
             
             <Text style={styles.formLabel}>Description</Text>
@@ -479,53 +469,6 @@ export default function AlertNetEMSChannels() {
               onPress={() => handleEmergencyAction('report')}
             >
               <Text style={styles.submitBtnText}>Submit Report</Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-      )}
-
-      {activeTab === 'case' && (
-        <ScrollView style={styles.formContainer}>
-          <View style={styles.emergencyForm}>
-            <Text style={styles.formTitle}>📋 Open New Case</Text>
-            <Text style={styles.formLabel}>Case Type</Text>
-            <TextInput 
-              style={styles.formInput} 
-              placeholder="Select case type..." 
-              placeholderTextColor={colors.placeholder || colors.secondary}
-            />
-            
-            <Text style={styles.formLabel}>Your Details</Text>
-            <TextInput 
-              style={styles.formInput} 
-              placeholder="Full name" 
-              placeholderTextColor={colors.placeholder || colors.secondary}
-            />
-            <TextInput 
-              style={styles.formInput} 
-              placeholder="ID number" 
-              placeholderTextColor={colors.placeholder || colors.secondary}
-            />
-            <TextInput 
-              style={styles.formInput} 
-              placeholder="Contact number" 
-              placeholderTextColor={colors.placeholder || colors.secondary}
-            />
-            
-            <Text style={styles.formLabel}>Incident Details</Text>
-            <TextInput 
-              style={[styles.formInput, styles.textArea]} 
-              placeholder="Provide detailed information..."
-              placeholderTextColor={colors.placeholder || colors.secondary}
-              multiline
-              numberOfLines={4}
-            />
-            
-            <TouchableOpacity 
-              style={styles.submitBtn}
-              onPress={() => handleEmergencyAction('case')}
-            >
-              <Text style={styles.submitBtnText}>Open Case</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>

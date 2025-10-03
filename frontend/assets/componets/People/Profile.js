@@ -49,8 +49,7 @@ export default function Profile(props) {
   const navigation = useNavigation();
   const { params } = useRoute();
 
-  // The 'person' data can come from navigation params OR from props (when rendered directly)
-  const { person, onNavigateToChat: onNavigateToChatFromParams } = params || {};
+  const { person } = params || {};
 
   const [isEmergency, setIsEmergency] = useState(false);
   const [isLiveLoc, setIsLiveLoc] = useState(true);
@@ -59,13 +58,31 @@ export default function Profile(props) {
   const batteryIcon = getBatteryIconName(person.battery);
   const statusColor = statusOnline ? '#51e651' : '#9AA0A6';
 
+  // Get coordinates from person's actual location data or fallback to place names
   const coords = useMemo(() => {
+    // Priority 1: Use actual coordinates if available
+    if (person.coordinates?.latitude && person.coordinates?.longitude) {
+      return {
+        latitude: person.coordinates.latitude,
+        longitude: person.coordinates.longitude,
+      };
+    }
+    
+    // Priority 2: Use rawData coordinates if available
+    if (person.rawData?.CurrentLocation?.latitude && person.rawData?.CurrentLocation?.longitude) {
+      return {
+        latitude: person.rawData.CurrentLocation.latitude,
+        longitude: person.rawData.CurrentLocation.longitude,
+      };
+    }
+    
+    // Fallback: Use place name lookup
     const loc =
       person.location && PLACE_COORDS[person.location]
         ? person.location
         : 'Unknown';
     return PLACE_COORDS[loc];
-  }, [person.location]);
+  }, [person.location, person.coordinates, person.rawData]);
 
   const region = {
     latitude: coords.latitude,
@@ -128,6 +145,28 @@ export default function Profile(props) {
     mapOverlay: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.1)',
   };
 
+  // Format last seen time
+  const formatLastSeen = () => {
+    if (statusOnline) return 'Online now';
+    
+    if (person.lastSeen || person.lastLogin) {
+      const lastSeenTime = person.lastSeen || person.lastLogin;
+      const lastSeen = lastSeenTime.toDate ? lastSeenTime.toDate() : new Date(lastSeenTime);
+      const now = new Date();
+      const minutesAgo = (now - lastSeen) / (1000 * 60);
+      
+      if (minutesAgo < 60) {
+        return `${Math.round(minutesAgo)}m ago`;
+      } else if (minutesAgo < 1440) {
+        return `${Math.round(minutesAgo / 60)}h ago`;
+      } else {
+        return `${Math.round(minutesAgo / 1440)}d ago`;
+      }
+    }
+    
+    return 'Offline';
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* HEADER */}
@@ -141,14 +180,20 @@ export default function Profile(props) {
           </TouchableOpacity>
 
           <View style={styles.avatarWrap}>
-            {!!person.avatar && (
-              <Image source={person.avatar} style={styles.avatar} />
+            {person.avatar ? (
+              <Image source={{ uri: person.avatar }} style={styles.avatar} />
+            ) : (
+              <View style={[styles.defaultAvatar, { backgroundColor: colors.card }]}>
+                <Text style={[styles.avatarInitial, { color: colors.textPrimary }]}>
+                  {person.name ? person.name.charAt(0).toUpperCase() : 'F'}
+                </Text>
+              </View>
             )}
             <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
             <View style={[styles.batteryPill, { backgroundColor: colors.mapOverlay }]}>
               <Ionicons name={batteryIcon} size={11} color={colors.textPrimary} />
               <Text style={[styles.batteryPillText, { color: colors.textPrimary }]}>
-                {person.battery || '--%'}
+                {person.battery || '100%'}
               </Text>
             </View>
           </View>
@@ -158,18 +203,20 @@ export default function Profile(props) {
               <Text style={[styles.name, { color: colors.textPrimary }]}>
                 {person.name || 'Unknown User'}
               </Text>
-              <MaterialIcons
-                name="verified"
-                size={16}
-                color="#ffb74d"
-                style={{ marginLeft: 6 }}
-              />
+              {person.isCloseFriend && (
+                <MaterialIcons
+                  name="verified"
+                  size={16}
+                  color="#ffb74d"
+                  style={{ marginLeft: 6 }}
+                />
+              )}
             </View>
 
             <View style={[styles.subRow]}>
-              <Text style={[styles.locationText, { color: colors.textSecondary }]}>{person.location}</Text>
-              <Text style={[styles.bullet, { color: colors.bullet }]}> • </Text>
-              <Text style={[styles.distanceText, { color: colors.textSecondary }]}>{person.distance || '— km away'}</Text>
+              <Text style={[styles.locationText, { color: colors.textSecondary }]}>
+                {person.location || 'Unknown location'}
+              </Text>
             </View>
           </View>
         </View>
@@ -229,8 +276,6 @@ export default function Profile(props) {
                 return;
               }
 
-              // Navigate to the Home screen and pass a parameter to open the chat.
-              // The Home screen will listen for this parameter and open the chat.
               navigation.navigate('Home', { 
                 openChatWith: {
                     id: personId,
@@ -315,9 +360,11 @@ export default function Profile(props) {
 
           <View style={styles.routeSide}>
             <Text style={[styles.routeEta, { color: colors.textPrimary }]}>
-              <Text style={{ fontWeight: '700' }}>{person.eta || '35 min'}</Text> Away
+              {person.location || 'Unknown location'}
             </Text>
-            <Text style={[styles.routeKm, { color: colors.textSecondary }]}>{person.distance || '5 km'}</Text>
+            <Text style={[styles.routeKm, { color: colors.textSecondary }]}>
+              Tap Navigate to get directions
+            </Text>
 
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
               <TouchableOpacity style={styles.navigateBtn} onPress={navigateToLocation}>
@@ -365,6 +412,17 @@ const styles = StyleSheet.create({
   backBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   avatarWrap: { width: 48, height: 48, marginRight: 12 },
   avatar: { width: '100%', height: '100%', borderRadius: 24 },
+  defaultAvatar: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarInitial: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
   statusDot: { position: 'absolute', top: 0, right: 0, width: 12, height: 12, borderRadius: 6, borderWidth: 2, borderColor: '#fff' },
   batteryPill: { position: 'absolute', bottom: -6, left: '45%', transform: [{ translateX: -20 }], borderRadius: 10, paddingHorizontal: 6, paddingVertical: 2, flexDirection: 'row', alignItems: 'center' },
   batteryPillText: { fontSize: 10, marginLeft: 2 },
@@ -375,7 +433,8 @@ const styles = StyleSheet.create({
   bullet: { marginHorizontal: 6 },
   distanceText: { fontSize: scaleFont(13) },
   sectionDivider: { height: 1, marginVertical: 16, marginHorizontal: 16 },
-  actionsRow: { flexDirection: 'row', paddingHorizontal: 16, gap: 12 },
+  
+  actionsRow: { flexDirection: 'row', paddingHorizontal: 16, gap: 12, marginTop: 8 },
   checkInCard: { flex: 1, borderRadius: 16, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   checkInBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 4, borderRadius: 12 },
   checkInText: { fontWeight: '700', marginLeft: 4 },
@@ -401,8 +460,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   routeSide: { marginTop: 12 },
-  routeEta: { fontSize: scaleFont(14) },
-  routeKm: { fontSize: scaleFont(12) },
+  routeEta: { fontSize: scaleFont(14), fontWeight: '600' },
+  routeKm: { fontSize: scaleFont(12), marginTop: 4 },
   navigateBtn: { borderRadius: 12, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#35d07f', alignItems: 'center', width: '48%' },
   navigateBtnText: { color: '#fff', fontWeight: '600' },
   recenterBtn: { position: 'absolute', right: 20, bottom: 110, width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', elevation: 5 },

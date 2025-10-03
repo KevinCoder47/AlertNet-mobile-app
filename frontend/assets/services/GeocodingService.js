@@ -151,18 +151,80 @@ const reverseGeocodeNominatim = async (lat, lon) => {
 };
 
 /**
- * Calculate distance between two coordinates using Haversine formula
+ * Calculate distance between two coordinates in meters (Haversine formula)
+ * @param {number} lat1 - First latitude
+ * @param {number} lon1 - First longitude
+ * @param {number} lat2 - Second latitude
+ * @param {number} lon2 - Second longitude
+ * @returns {number} - Distance in meters
+ */
+const calculateDistanceInMeters = (lat1, lon1, lat2, lon2) => {
+  const R = 6371000; // Earth's radius in meters
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+};
+
+/**
+ * Calculate distance between two coordinates and return formatted string
+ * (Matches OLD GeocodingService API)
+ * @param {number} lat1 - First latitude
+ * @param {number} lon1 - First longitude
+ * @param {number} lat2 - Second latitude
+ * @param {number} lon2 - Second longitude
+ * @returns {string} - Formatted distance string (e.g., "5.2km away", "120m away")
+ */
+export const calculateDistance = (lat1, lon1, lat2, lon2) => {
+  // Validation
+  if (!lat1 && lat1 !== 0) return 'Unknown distance';
+  if (!lon1 && lon1 !== 0) return 'Unknown distance';
+  if (!lat2 && lat2 !== 0) return 'Unknown distance';
+  if (!lon2 && lon2 !== 0) return 'Unknown distance';
+
+  const numLat1 = Number(lat1);
+  const numLon1 = Number(lon1);
+  const numLat2 = Number(lat2);
+  const numLon2 = Number(lon2);
+
+  if (isNaN(numLat1) || isNaN(numLon1) || isNaN(numLat2) || isNaN(numLon2)) {
+    return 'Invalid coordinates';
+  }
+
+  if (Math.abs(numLat1) > 90 || Math.abs(numLat2) > 90) return 'Invalid coordinates';
+  if (Math.abs(numLon1) > 180 || Math.abs(numLon2) > 180) return 'Invalid coordinates';
+  
+  const distanceKm = calculateDistanceInMeters(numLat1, numLon1, numLat2, numLon2) / 1000;
+
+  if (distanceKm < 0.01) {
+    return 'Same location';
+  } else if (distanceKm < 0.1) {
+    return 'Nearby';
+  } else if (distanceKm < 1) {
+    return `${Math.round(distanceKm * 1000)}m away`;
+  } else if (distanceKm < 10) {
+    return `${distanceKm.toFixed(1)}km away`;
+  } else {
+    return `${Math.round(distanceKm)}km away`;
+  }
+};
+
+/**
+ * Calculate distance and return detailed object
  * @param {number} lat1 - First latitude
  * @param {number} lon1 - First longitude
  * @param {number} lat2 - Second latitude
  * @param {number} lon2 - Second longitude
  * @returns {Object} - { meters: number, kilometers: number, formatted: string }
  */
-export const calculateDistance = (lat1, lon1, lat2, lon2) => {
-  // Validate inputs with detailed logging
+export const calculateDistanceDetailed = (lat1, lon1, lat2, lon2) => {
+  // Validate inputs
   if (!lat1 || !lon1 || !lat2 || !lon2 ||
       isNaN(lat1) || isNaN(lon1) || isNaN(lat2) || isNaN(lon2)) {
-    console.log('Distance calculation failed - invalid inputs:', { lat1, lon1, lat2, lon2 });
     return {
       meters: null,
       kilometers: null,
@@ -170,28 +232,11 @@ export const calculateDistance = (lat1, lon1, lat2, lon2) => {
     };
   }
   
-  const R = 6371; // Earth's radius in kilometers
-  const dLat = toRadians(lat2 - lat1);
-  const dLon = toRadians(lon2 - lon1);
+  const distanceM = calculateDistanceInMeters(lat1, lon1, lat2, lon2);
+  const distanceKm = distanceM / 1000;
   
-  const a = 
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * 
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const distanceKm = R * c;
-  const distanceM = distanceKm * 1000;
-  
-  // Format for display
-  let formatted;
-  if (distanceKm < 1) {
-    formatted = `${Math.round(distanceM)}m away`;
-  } else if (distanceKm < 10) {
-    formatted = `${distanceKm.toFixed(1)}km away`;
-  } else {
-    formatted = `${Math.round(distanceKm)}km away`;
-  }
+  // Use the same formatting as calculateDistance
+  const formatted = calculateDistance(lat1, lon1, lat2, lon2);
   
   return {
     meters: distanceM,
@@ -201,19 +246,10 @@ export const calculateDistance = (lat1, lon1, lat2, lon2) => {
 };
 
 /**
- * Helper function to convert degrees to radians
- * @param {number} degrees - Angle in degrees
- * @returns {number} - Angle in radians
- */
-const toRadians = (degrees) => {
-  return degrees * (Math.PI / 180);
-};
-
-/**
  * Calculate distance and geocode location in one call
  * @param {Object} fromLocation - Starting location { latitude, longitude }
  * @param {Object} toLocation - Destination location { latitude, longitude }
- * @returns {Promise<Object>} - { location: Object, distance: Object }
+ * @returns {Promise<Object>} - { location: Object, distance: string }
  */
 export const geocodeWithDistance = async (fromLocation, toLocation) => {
   try {
@@ -223,12 +259,8 @@ export const geocodeWithDistance = async (fromLocation, toLocation) => {
       toLocation.longitude
     );
     
-    // Calculate distance if we have both locations
-    let distance = {
-      meters: null,
-      kilometers: null,
-      formatted: 'Unknown distance'
-    };
+    // Calculate distance if we have both locations (returns formatted string)
+    let distance = 'Unknown distance';
     
     if (fromLocation?.latitude && fromLocation?.longitude) {
       distance = calculateDistance(
@@ -253,11 +285,7 @@ export const geocodeWithDistance = async (fromLocation, toLocation) => {
         country: '',
         formattedAddress: 'Unknown location'
       },
-      distance: {
-        meters: null,
-        kilometers: null,
-        formatted: 'Unknown distance'
-      }
+      distance: 'Unknown distance'
     };
   }
 };
@@ -392,41 +420,3 @@ export const getCacheStats = () => {
     entries: Array.from(geocodeCache.keys())
   };
 };
-
-/**
- * Google Maps Geocoding API (requires API key - optional fallback)
- * Uncomment and add your API key if you want to use this
- */
-/*
-const reverseGeocodeGoogle = async (lat, lon) => {
-  const GOOGLE_MAPS_API_KEY = 'YOUR_API_KEY_HERE';
-  const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lon}&key=${GOOGLE_MAPS_API_KEY}`;
-  
-  const response = await fetch(url);
-  const data = await response.json();
-  
-  if (data.status !== 'OK' || !data.results.length) {
-    throw new Error('Google Geocoding failed');
-  }
-  
-  const result = data.results[0];
-  const addressComponents = result.address_components;
-  
-  const getComponent = (type) => {
-    const component = addressComponents.find(c => c.types.includes(type));
-    return component ? component.long_name : '';
-  };
-  
-  const streetNumber = getComponent('street_number');
-  const route = getComponent('route');
-  const street = streetNumber && route ? `${streetNumber} ${route}` : route;
-  
-  return {
-    street,
-    city: getComponent('locality') || getComponent('administrative_area_level_2'),
-    province: getComponent('administrative_area_level_1'),
-    country: getComponent('country'),
-    formattedAddress: result.formatted_address
-  };
-};
-*/

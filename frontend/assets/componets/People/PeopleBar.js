@@ -1,3 +1,4 @@
+//NEW PEOPLEBAR
 import React, { useState, useRef, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
@@ -164,6 +165,8 @@ const PeopleBar = ({ onOpenChat }) => {
       CurrentLocation: user.CurrentLocation,
       ResidenceAddress: user.ResidenceAddress
     });
+
+    
     // Use the simplified listener that only watches the Friends array
     friendsUnsubscribe.current = FirebaseService.listenToAllFriendsWithDetails(
       userPhone,
@@ -195,7 +198,7 @@ const PeopleBar = ({ onOpenChat }) => {
             status: friend.status,
             isOnline: friend.isOnline,
             location: friend.location,
-            distance: friend.distance,
+            distance: 'Nearby', 
             battery: friend.battery,
             batteryLevel: friend.batteryLevel,
             friendId: friend.friendId,
@@ -231,28 +234,46 @@ const PeopleBar = ({ onOpenChat }) => {
   
   // Helper to get user's location from their data
 
-const getUserLocation = (user) => {
-  // Try CurrentLocation first (real-time location)
-  if (user.CurrentLocation?.latitude && user.CurrentLocation?.longitude) {
-    console.log('Using CurrentLocation for distance calculation');
-    return {
-      latitude: user.CurrentLocation.latitude,
-      longitude: user.CurrentLocation.longitude
-    };
-  }
-  
-  // Fallback to ResidenceAddress
-  if (user.ResidenceAddress?.latitude && user.ResidenceAddress?.longitude) {
-    console.log('Using ResidenceAddress for distance calculation');
-    return {
-      latitude: user.ResidenceAddress.latitude,
-      longitude: user.ResidenceAddress.longitude
-    };
-  }
-  
-  console.warn('No location data available for user');
-  return null;
-};
+  const getUserLocation = (user) => {
+    console.log('=== DEBUG getUserLocation ENHANCED ===');
+    console.log('Full user object keys:', Object.keys(user));
+    console.log('CurrentLocation value:', JSON.stringify(user.CurrentLocation, null, 2));
+    console.log('CurrentLocation type:', typeof user.CurrentLocation);
+    
+    // Try CurrentLocation first (real-time location)
+    if (user.CurrentLocation) {
+      console.log('CurrentLocation exists, checking structure...');
+      console.log('  Has latitude:', 'latitude' in user.CurrentLocation);
+      console.log('  Has longitude:', 'longitude' in user.CurrentLocation);
+      console.log('  Latitude value:', user.CurrentLocation.latitude);
+      console.log('  Longitude value:', user.CurrentLocation.longitude);
+      console.log('  Latitude type:', typeof user.CurrentLocation.latitude);
+      console.log('  Longitude type:', typeof user.CurrentLocation.longitude);
+      
+      if (user.CurrentLocation.latitude != null && user.CurrentLocation.longitude != null) {
+        const location = {
+          latitude: Number(user.CurrentLocation.latitude),
+          longitude: Number(user.CurrentLocation.longitude)
+        };
+        console.log('✅ Returning CurrentLocation:', location);
+        return location;
+      }
+    }
+    
+    // Fallback to ResidenceAddress
+    if (user.ResidenceAddress?.latitude != null && user.ResidenceAddress?.longitude != null) {
+      const location = {
+        latitude: Number(user.ResidenceAddress.latitude),
+        longitude: Number(user.ResidenceAddress.longitude)
+      };
+      console.log('✅ Returning ResidenceAddress:', location);
+      return location;
+    }
+    
+    console.log('❌ No valid location found');
+    console.log('=== END DEBUG ===');
+    return null;
+  };
   
   // Helper to fetch user ID if missing
   const fetchUserIdAndSetupListener = async (userPhone) => {
@@ -486,7 +507,7 @@ const setupFriendsListenerWithId = (userPhone, userId) => {
             status: friend.status,
             isOnline: friend.isOnline,
             location: friend.location,
-            distance: friend.distance,
+            distance: 'Nearby', // ← CHANGED: Always display 'Nearby'
             battery: friend.battery,
             batteryLevel: friend.batteryLevel,
             friendId: friend.friendId,
