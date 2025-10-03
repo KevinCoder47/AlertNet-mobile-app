@@ -1,3 +1,4 @@
+//NEW FIREBASESERVICE
 import { auth, db } from './FirebaseConfig';
 import { 
   signInWithEmailAndPassword, 
@@ -22,7 +23,7 @@ import {
   deleteDoc,
   arrayUnion
 } from 'firebase/firestore';
-import { reverseGeocode, formatLocationForDisplay } from '../../assets/services/GeocodingService';
+import { calculateDistance, reverseGeocode, formatLocationForDisplay } from '../../assets/services/GeocodingService';
 
 export const FirebaseService = {
   // Auth methods
@@ -1153,48 +1154,179 @@ acceptFriendRequest: async (requestId, currentUserPhone) => {
    * @param {string} userPhone - User's phone number
    * @returns {Object} - { success: boolean, friends: array, error?: string }
    */
-  getFriendsForUser: async (userPhone) => {
+  getFriendsDetails: async (friendIds, currentUserLocation = null) => {
     try {
-      const formattedPhone = FirebaseService.formatPhoneNumber(userPhone);
-      console.log('Getting friends for:', formattedPhone);
+      if (!friendIds || friendIds.length === 0) {
+        return { success: true, friendsDetails: [] };
+      }
+  
+      console.log('=== getFriendsDetails DEBUG START ===');
+      console.log(`Fetching details for ${friendIds.length} friends`);
+      console.log('Current user location received:', currentUserLocation);
+      console.log('Has valid current user location:', !!(currentUserLocation?.latitude && currentUserLocation?.longitude));
       
-      const friendsRef = collection(db, 'friends');
-      const q = query(
-        friendsRef,
-        where('userPhone', '==', formattedPhone),
-        where('status', '==', 'active')
-      );
-      
-      const querySnapshot = await getDocs(q);
-      const friends = [];
-      
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        friends.push({
-          id: doc.id,
-          friendId: data.friendId,
-          friendPhone: data.friendPhone,
-          friendEmail: data.friendEmail,
-          friendName: data.friendName,
-          status: 'Online',
-          location: 'Unknown',
-          distance: 'Unknown',
-          battery: '100%',
-          avatar: null,
-          createdAt: data.createdAt,
-          lastInteraction: data.lastInteraction
-        });
+      // Fetch all friend documents
+      const friendsPromises = friendIds.map(async (friendId) => {
+        try {
+          const friendDoc = await getDoc(doc(db, 'users', friendId));
+          
+          if (!friendDoc.exists()) {
+            console.warn(`Friend document not found: ${friendId}`);
+            return null;
+          }
+          
+          const friendData = friendDoc.data();
+          console.log(`\n--- Processing friend: ${friendData.Name} ---`);
+          console.log('Friend data keys:', Object.keys(friendData));
+          console.log('Friend CurrentLocation:', friendData.CurrentLocation);
+          console.log('Has friend location:', !!(friendData.CurrentLocation?.latitude && friendData.CurrentLocation?.longitude));
+          
+          // Calculate distance - DETAILED DEBUGGING
+          let distance = 'Unknown';
+          
+          const hasCurrentUserLoc = currentUserLocation && 
+                                    currentUserLocation.latitude != null && 
+                                    currentUserLocation.longitude != null;
+          
+          const hasFriendLoc = friendData.CurrentLocation?.latitude != null && 
+                              friendData.CurrentLocation?.longitude != null;
+          
+          console.log('Distance calculation check:');
+          console.log('  Has current user location:', hasCurrentUserLoc);
+          console.log('  Has friend location:', hasFriendLoc);
+          
+          if (hasCurrentUserLoc && hasFriendLoc) {
+            console.log('  ✅ Both locations available, calculating...');
+            console.log('  Current user coords:', currentUserLocation.latitude, currentUserLocation.longitude);
+            console.log('  Friend coords:', friendData.CurrentLocation.latitude, friendData.CurrentLocation.longitude);
+            
+            try {
+              distance = calculateDistance(
+                currentUserLocation.latitude,
+                currentUserLocation.longitude,
+                friendData.CurrentLocation.latitude,
+                friendData.CurrentLocation.longitude
+              );
+              console.log('  ✅ Distance calculated:', distance);
+            } catch (distError) {
+              console.error('  ❌ Distance calculation error:', distError);
+              distance = 'Calculation error';
+            }
+          } else {
+            console.log('  ❌ Missing location data:');
+            if (!hasCurrentUserLoc) {
+              console.log('    - Current user location missing or invalid');
+              console.log('      Value:', currentUserLocation);
+            }
+            if (!hasFriendLoc) {
+              console.log('    - Friend location missing or invalid');
+              console.log('      Value:', friendData.CurrentLocation);
+            }
+          }
+  
+          // Determine online status
+          let status = 'Offline';
+          let isOnline = false;
+          if (friendData.online === true) {
+            status = 'Online';
+            isOnline = true;
+          } else if (friendData.LastLogin || friendData.lastSeen) {
+            const lastSeenTime = friendData.LastLogin || friendData.lastSeen;
+            const lastSeen = lastSeenTime.toDate ? lastSeenTime.toDate() : new Date(lastSeenTime);
+            const now = new Date();
+            const minutesAgo = (now - lastSeen) / (1000 * 60);
+            
+            if (minutesAgo < 5) {
+              status = 'Online';
+              isOnline = true;
+            } else if (minutesAgo < 60) {
+              status = `${Math.round(minutesAgo)}m ago`;
+            } else if (minutesAgo < 1440) {
+              status = `${Math.round(minutesAgo / 60)}h ago`;
+            } else {
+              status = `${Math.round(minutesAgo / 1440)}d ago`;
+            }
+          }
+  
+          // Geocode the CurrentLocation coordinates
+          let location = 'Unknown location';
+          let locationDetails = null;
+          
+          if (friendData.CurrentLocation?.latitude && friendData.CurrentLocation?.longitude) {
+            try {
+              locationDetails = await reverseGeocode(
+                friendData.CurrentLocation.latitude,
+                friendData.CurrentLocation.longitude
+              );
+              location = formatLocationForDisplay(locationDetails);
+              console.log(`  Location geocoded: ${location}`);
+            } catch (geocodeError) {
+              console.warn(`  Geocoding failed:`, geocodeError.message);
+              location = `${friendData.CurrentLocation.latitude.toFixed(4)}, ${friendData.CurrentLocation.longitude.toFixed(4)}`;
+            }
+          }
+  
+          console.log(`--- Friend ${friendData.Name} summary ---`);
+          console.log('  Location:', location);
+          console.log('  Distance:', distance);
+          console.log('  Status:', status);
+  
+          // Build complete friend object
+          return {
+            id: friendDoc.id,
+            friendId: friendDoc.id,
+            uid: friendDoc.id,
+            
+            name: `${friendData.Name || ''} ${friendData.Surname || ''}`.trim() || 'Unknown User',
+            firstName: friendData.Name || '',
+            lastName: friendData.Surname || '',
+            
+            phone: friendData.Phone || '',
+            phoneNumber: friendData.Phone || '',
+            email: friendData.Email || '',
+            
+            avatar: friendData.ImageURL || friendData.imageUrl || null,
+            imageUrl: friendData.ImageURL || friendData.imageUrl || null,
+            
+            status,
+            isOnline,
+            location,
+            locationDetails,
+            coordinates: friendData.CurrentLocation,
+            distance, // This is the key field!
+            
+            battery: friendData.Battery ? `${friendData.Battery}%` : '100%',
+            batteryLevel: friendData.Battery || 100,
+            
+            lastSeen: friendData.LastLogin || friendData.lastSeen,
+            lastLogin: friendData.LastLogin,
+            
+            rating: friendData.Rating || 0,
+            isCloseFriend: (friendData.Rating || 0) > 3,
+            
+            rawData: friendData
+          };
+          
+        } catch (error) {
+          console.error(`Error fetching friend ${friendId}:`, error);
+          return null;
+        }
       });
+  
+      const friendsDetails = (await Promise.all(friendsPromises)).filter(Boolean);
       
-      console.log(`Found ${friends.length} friends for ${formattedPhone}`);
+      console.log('=== getFriendsDetails DEBUG END ===');
+      console.log(`Total friends processed: ${friendsDetails.length}`);
+      console.log('Sample friend distances:', friendsDetails.slice(0, 3).map(f => ({ name: f.name, distance: f.distance })));
       
-      return { success: true, friends };
+      return { success: true, friendsDetails };
       
     } catch (error) {
-      console.error('Error getting friends:', error);
-      return { success: false, friends: [], error: error.message };
+      console.error('Error fetching friends details:', error);
+      return { success: false, friendsDetails: [], error: error.message };
     }
   },
+  
 
   /**
    * Listen to friends list changes for real-time updates
@@ -1307,8 +1439,11 @@ acceptFriendRequest: async (requestId, currentUserPhone) => {
       return { success: false, error: 'Failed to remove friend' };
     }
   },
+
+  
 /**
  * UPDATED: Fetch detailed user data for multiple friend IDs with geocoding
+ * Place this method in your NEW FirebaseService to replace the existing getFriendsDetails
  * @param {Array<string>} friendIds - Array of user IDs to fetch
  * @param {Object} currentUserLocation - Current user's location { latitude, longitude }
  * @returns {Object} - { success: boolean, friendsDetails: array, error?: string }
@@ -1321,27 +1456,8 @@ getFriendsDetails: async (friendIds, currentUserLocation = null) => {
     }
 
     console.log(`Fetching details for ${friendIds.length} friends with geocoding`);
+    console.log('Current user location:', currentUserLocation);
     
-    // Calculate distance helper
-    const calculateDistance = (lat1, lon1, lat2, lon2) => {
-      if (!lat1 || !lon1 || !lat2 || !lon2) return null;
-      
-      const R = 6371; // Earth's radius in km
-      const dLat = (lat2 - lat1) * Math.PI / 180;
-      const dLon = (lon2 - lon1) * Math.PI / 180;
-      const a = 
-        Math.sin(dLat/2) * Math.sin(dLat/2) +
-        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-        Math.sin(dLon/2) * Math.sin(dLon/2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-      const distance = R * c;
-
-      if (distance < 1) {
-        return `${Math.round(distance * 1000)}m away`;
-      }
-      return `${distance.toFixed(1)}km away`;
-    };
-
     // Fetch all friend documents
     const friendsPromises = friendIds.map(async (friendId) => {
       try {
@@ -1354,32 +1470,35 @@ getFriendsDetails: async (friendIds, currentUserLocation = null) => {
         
         const friendData = friendDoc.data();
         
-        // Calculate distance if we have locations
+        // Calculate distance using the SAME logic as OLD PeopleBar
         let distance = 'Unknown';
-        console.log('🔍 Calculating distance:', {
-          friendName: friendData.Name,
-          hasCurrentUserLocation: !!currentUserLocation,
-          hasFriendLocation: !!(friendData.CurrentLocation?.latitude && friendData.CurrentLocation?.longitude),
-          currentUserLat: currentUserLocation?.latitude,
-          currentUserLon: currentUserLocation?.longitude,
-          friendLat: friendData.CurrentLocation?.latitude,
-          friendLon: friendData.CurrentLocation?.longitude
-        });
-
+        
         if (currentUserLocation && 
+            currentUserLocation.latitude && 
+            currentUserLocation.longitude &&
             friendData.CurrentLocation?.latitude && 
             friendData.CurrentLocation?.longitude) {
-          const calc = calculateDistance(
+          
+          console.log('Calculating distance for friend:', friendData.Name);
+          console.log('  Current user:', currentUserLocation.latitude, currentUserLocation.longitude);
+          console.log('  Friend:', friendData.CurrentLocation.latitude, friendData.CurrentLocation.longitude);
+          
+          // Use calculateDistance from GeocodingService (returns formatted string)
+          distance = calculateDistance(
             currentUserLocation.latitude,
             currentUserLocation.longitude,
             friendData.CurrentLocation.latitude,
             friendData.CurrentLocation.longitude
           );
-            console.log('✅ Distance calculated:', calc);
-            if (calc) distance = calc;
-          } else {
-            console.warn('⚠️ Cannot calculate distance - missing location data');
-          }
+          
+          console.log('  Distance calculated:', distance);
+        } else {
+          console.warn('Missing location data for distance calculation:', {
+            hasCurrentUser: !!(currentUserLocation?.latitude && currentUserLocation?.longitude),
+            hasFriend: !!(friendData.CurrentLocation?.latitude && friendData.CurrentLocation?.longitude),
+            friendName: friendData.Name
+          });
+        }
 
         // Determine online status
         let status = 'Offline';
@@ -1405,7 +1524,7 @@ getFriendsDetails: async (friendIds, currentUserLocation = null) => {
           }
         }
 
-        //  Geocode the CurrentLocation coordinates**
+        // Geocode the CurrentLocation coordinates
         let location = 'Unknown location';
         let locationDetails = null;
         
@@ -1454,7 +1573,7 @@ getFriendsDetails: async (friendIds, currentUserLocation = null) => {
           location, // Human-readable location name
           locationDetails, // Full geocoding details
           coordinates: friendData.CurrentLocation, // Original coordinates
-          distance,
+          distance, // Formatted distance string (e.g., "5.2km away")
           
           // Battery info
           battery: friendData.Battery ? `${friendData.Battery}%` : '100%',
