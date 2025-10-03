@@ -33,7 +33,7 @@ target 'frontend' do
   pod 'react-native-google-maps', path: File.dirname(`node --print "require.resolve('react-native-maps/package.json')"`)
   # @generated end react-native-maps
 
-  pod 'GoogleMaps'
+  # pod 'GoogleMaps'
   
   config = use_native_modules!(config_command)
 
