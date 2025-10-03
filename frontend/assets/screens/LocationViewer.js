@@ -23,6 +23,7 @@ const LocationViewer = ({
   senderName, 
   senderPhone,
   senderId, // New prop for real-time updates
+  locationTimestamp, // The timestamp of the initial SOS location
   onClose, 
   onCallSender,
   onSendMessage 
@@ -37,6 +38,7 @@ const LocationViewer = ({
   // New state for real-time updates
   const [initialSenderLocation] = useState(senderLocation);
   const [liveLocation, setLiveLocation] = useState(null);
+  const [liveLocationLastUpdated, setLiveLocationLastUpdated] = useState(null);
 
   // Calculate distance between two coordinates
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
@@ -119,6 +121,7 @@ const LocationViewer = ({
         if (userData.currentLocation) {
           console.log("Live location update received:", userData.currentLocation);
           setLiveLocation(userData.currentLocation);
+          setLiveLocationLastUpdated(new Date()); // Record when we received the update
 
           // Update distance and walking time based on the new live location
           if (userLocation) {
@@ -240,6 +243,24 @@ const LocationViewer = ({
     }
     return `${hours}h ${remainingMinutes}min`;
   };
+
+  // Format the timestamp for display
+  const formatTimeAgo = (timestamp) => {
+    if (!timestamp) return null;
+    const now = new Date();
+    const past = new Date(timestamp);
+    const diffSeconds = Math.floor((now - past) / 1000);
+
+    if (diffSeconds < 60) return 'just now';
+    if (diffSeconds < 3600) return `${Math.floor(diffSeconds / 60)}m ago`;
+    if (diffSeconds < 86400) return `${Math.floor(diffSeconds / 3600)}h ago`;
+    return past.toLocaleDateString();
+  };
+
+  const lastUpdatedText = liveLocationLastUpdated 
+    ? `(live, updated ${formatTimeAgo(liveLocationLastUpdated)})`
+    : locationTimestamp ? `(updated ${formatTimeAgo(locationTimestamp)})`
+    : null;
 
   if (loading) {
     return (
@@ -382,6 +403,9 @@ const LocationViewer = ({
             </View>
             <View style={styles.profileInfo}>
               <Text style={styles.nameText}>{senderName}</Text>
+              {lastUpdatedText && (
+                <Text style={styles.lastUpdatedText}>{lastUpdatedText}</Text>
+              )}
             </View>
           </View>
 
@@ -581,7 +605,12 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#000000',
-    // marginBottom: 5, // Removed as the rating section below it is gone.
+  },
+  lastUpdatedText: {
+    fontSize: 14,
+    color: '#666666',
+    fontWeight: '500',
+    marginTop: 2,
   },
   statsSection: {
     flexDirection: 'row',

@@ -124,6 +124,7 @@ const Home = ({handleLogout}) => {
         senderName: notification.name,
         senderPhone: notification.phone,
         senderId: notification.senderId,
+        locationTimestamp: notification.timestamp, // Pass the timestamp
       });
     }
   };
@@ -274,8 +275,8 @@ useEffect(() => {
             const friendDoc = await getUserDocument(friendId);
             if (friendDoc) {
               friendsData[friendId] = {
-                name: friendDoc.name || friend.name || 'Unknown',
-                imageUrl: friendDoc.imageUrl || null,
+                name: friendDoc.name || friendDoc.Name || friend.name || 'Unknown',
+                imageUrl: friendDoc.imageUrl || friendDoc.ImageURL || null,
                 currentLocation: friendDoc.currentLocation || null,
                 // Add any other fields you need
               };
