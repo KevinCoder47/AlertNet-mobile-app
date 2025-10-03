@@ -15,18 +15,21 @@ export default {
       backgroundColor: '#ffffff',
     },
     ios: {
-      // MODIFIED: Removed LSApplicationQueriesSchemes from here.
-      "useFrameworks": "static",
-      "useModularHeaders": true,
+      useFrameworks: "static",
+      useModularHeaders: true,
       config: {
         googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY,
       },
       supportsTablet: true,
       bundleIdentifier: 'alertnet.co.za',
-      // MODIFIED: Added LSApplicationQueriesSchemes to the correct location inside infoPlist.
       infoPlist: {
         NSLocationWhenInUseUsageDescription:
           'This app uses your location for the SOS feature and to verify functionality during tests.',
+        NSLocationAlwaysAndWhenInUseUsageDescription:
+          'This app needs access to your location in the background for safety monitoring.',
+        NSLocationAlwaysUsageDescription:
+          'This app needs access to your location in the background for safety monitoring.',
+        UIBackgroundModes: ['location'], // Added for background location
         LSApplicationQueriesSchemes: ['youtube', 'https'],
       },
     },
@@ -41,8 +44,6 @@ export default {
         backgroundColor: '#ffffff',
       },
       package: 'alertnet.co.za',
-      // ADDED: This entire 'queries' block is new.
-      // It's required for Android 11+ to open external links.
       queries: {
         intent: [
           {
@@ -71,9 +72,26 @@ export default {
         {
           locationWhenInUsePermission:
             'This app uses your location for the SOS feature and to verify functionality during tests.',
+          locationAlwaysAndWhenInUsePermission:
+            'This app needs access to your location in the background for safety monitoring.',
+          locationAlwaysPermission:
+            'This app needs access to your location in the background for safety monitoring.',
         },
       ],
-      "expo-build-properties",
+      [
+        'react-native-maps',
+        {
+          useGoogleMaps: true,
+        },
+      ],
+      [
+        'expo-build-properties',
+        {
+          ios: {
+            useFrameworks: 'static',
+          },
+        },
+      ],
     ],
     extra: {
       eas: {
