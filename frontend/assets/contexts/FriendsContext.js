@@ -97,7 +97,7 @@ export const FriendsProvider = ({ children, userData }) => {
 
   // Fetch friends details
   const fetchFriendsDetails = async () => {
-    if (!userData || !userData.friends || userData.friends.length === 0) {
+    if (userData && userData.Friends && userData.Friends.length === 0) {
       setLoading(false);
       return;
     }

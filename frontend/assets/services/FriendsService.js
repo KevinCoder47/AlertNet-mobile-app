@@ -242,24 +242,30 @@ class FriendsService {
   }
 
   // Get friends from user's Friends object (legacy)
-  async getFriendsFromUserDoc() {
+  async getFriendsDataFromUserDoc() {
     try {
       const userDoc = await getDoc(doc(db, 'users', this.currentUserId));
       if (!userDoc.exists()) return [];
-
+  
       const userData = userDoc.data();
-      const userFriends = userData?.Friends || {};
+      const friendsArray = userData?.Friends || [];  // Capital F
       
-      const friendIds = Object.keys(userFriends).filter(friendId => 
-        userFriends[friendId] === true || 
-        userFriends[friendId] === 'accepted' ||
-        userFriends[friendId] === 'friend'
+      if (!Array.isArray(friendsArray)) {
+        console.warn('FriendsService: Friends is not an array');
+        return [];
+      }
+      
+      console.log('FriendsService: Found', friendsArray.length, 'friends in Friends array');
+      
+      // Return the complete friend data objects
+      // These already contain: { uid, name, email, phoneNumber }
+      return friendsArray.filter(friend => 
+        typeof friend === 'object' && 
+        friend !== null && 
+        friend.uid
       );
-      
-      console.log('FriendsService: Friends from user doc:', friendIds);
-      return friendIds;
     } catch (error) {
-      console.error('FriendsService: Error fetching from user doc:', error);
+      console.error('FriendsService: Error getting friends data from Friends array:', error);
       return [];
     }
   }
@@ -385,7 +391,7 @@ class FriendsService {
         friendData.ResidenceAddress.longitude
       );
     }
-
+  
     // Determine online status
     let status = 'Offline';
     if (friendData.LastLogin) {
@@ -394,16 +400,16 @@ class FriendsService {
       const timeDiff = now - lastLogin;
       status = timeDiff < 5 * 60 * 1000 ? 'Online' : 'Offline';
     }
-
+  
     // Get location name
     let location = 'Unknown';
     if (friendData.ResidenceAddress?.latitude && friendData.ResidenceAddress?.longitude) {
       location = `${friendData.ResidenceAddress.latitude.toFixed(4)}, ${friendData.ResidenceAddress.longitude.toFixed(4)}`;
     }
-
+  
     const friendName = `${friendData.Name || ''} ${friendData.Surname || ''}`.trim() || 'Unknown User';
     const isCloseFriend = (friendData.Rating || 0) > 3;
-
+  
     return {
       id,
       name: friendName,
