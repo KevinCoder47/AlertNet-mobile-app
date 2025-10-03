@@ -64,7 +64,7 @@ TaskManager.defineTask('backgroundLocationTask', async ({ data, error }) => {
     }
   }
 });
-const Home = ({handleLogout}) => {
+const Home = ({ route, handleLogout }) => {
   const [isNotHome, setIsNotHome] = useState(false);
   const [isSOS, setIsSOS] = useState(false);
   const [activeSosSessionId, setActiveSosSessionId] = useState(null);
@@ -124,9 +124,19 @@ const Home = ({handleLogout}) => {
         senderName: notification.name,
         senderPhone: notification.phone,
         senderId: notification.senderId,
+        locationTimestamp: notification.timestamp, // Pass the timestamp
       });
     }
   };
+
+  // Listen for navigation parameters to open a chat
+  useEffect(() => {
+    if (route.params?.openChatWith) {
+      const personToChat = route.params.openChatWith;
+      console.log('Home.js: Received request to open chat with:', personToChat.name);
+      handleOpenChat(personToChat);
+    }
+  }, [route.params?.openChatWith]);
 
   const handleOpenChat = async (personData) => {
     console.log('DEBUG: Opening chat with raw personData:', JSON.stringify(personData, null, 2));
@@ -274,8 +284,8 @@ useEffect(() => {
             const friendDoc = await getUserDocument(friendId);
             if (friendDoc) {
               friendsData[friendId] = {
-                name: friendDoc.name || friend.name || 'Unknown',
-                imageUrl: friendDoc.imageUrl || null,
+                name: friendDoc.name || friendDoc.Name || friend.name || 'Unknown',
+                imageUrl: friendDoc.imageUrl || friendDoc.ImageURL || null,
                 currentLocation: friendDoc.currentLocation || null,
                 // Add any other fields you need
               };
@@ -736,12 +746,10 @@ useEffect(() => {
   }
 
   if (isUserProfile){
-    return <Profile 
-          // ... other props
-          onNavigateToChat={(person) => {
-            setChatTarget(person);
-            setIsChatScreen(true);
-          }}
+    return <MyProfile 
+          setIsUserProfile={setIsUserProfile}
+          userImage={getImageSource()}
+          userData = {userData}
         />
   }
 
@@ -936,7 +944,7 @@ useEffect(() => {
           setIsWalkPartner={setIsWalkPartner}
           setIsSOS={(sessionId) => {
             setActiveSosSessionId(sessionId);
-            setIsSOS(true);
+            setIsSOS(true); 
           }}
           setIsPeopleActive={setIsPeopleActive}
           setIsTopBarManuallyExpanded={setIsTopBarManuallyExpanded}

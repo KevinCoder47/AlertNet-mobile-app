@@ -1019,7 +1019,7 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
                           <View style={styles.sectionHeader}>
                             <Text style={styles.sectionTitle}>New</Text>
                             <TouchableOpacity 
-                              style={styles.markAllButton}
+                              style={styles.markAllButton} // This is the button you wanted to make functional
                               onPress={handleMarkAllAsRead}
                             >
                               <Text style={styles.markAllText}>Mark all read</Text>
