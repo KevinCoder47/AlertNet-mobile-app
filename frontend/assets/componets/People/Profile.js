@@ -50,7 +50,7 @@ export default function Profile(props) {
   const { params } = useRoute();
 
   // The 'person' data can come from navigation params OR from props (when rendered directly)
-  const person = props.person || params?.person || {};
+  const { person, onNavigateToChat: onNavigateToChatFromParams } = params || {};
 
   const [isEmergency, setIsEmergency] = useState(false);
   const [isLiveLoc, setIsLiveLoc] = useState(true);
@@ -222,49 +222,26 @@ export default function Profile(props) {
           <TouchableOpacity 
             style={[styles.viewChatsBox, { backgroundColor: colors.card }]}
             onPress={() => {
-              console.log('Chat button pressed with person:', person);
-              
-              // Get the correct person ID - prioritize friendId over id
               const personId = person.friendId || person.id;
               
               if (!personId) {
                 Alert.alert('Error', 'Cannot open chat: Invalid user ID');
-                console.error('No valid person ID found:', { person });
                 return;
               }
-              
-              // Instead of using navigation.navigate, use a callback if available
-              if (props.onNavigateToChat) {
-                const chatPerson = {
-                  id: personId,
-                  friendId: personId,
-                  name: person.name || 'Unknown User',
-                  phone: person.phone,
-                  email: person.email,
-                  avatar: person.avatar,
-                  profilePicture: person.avatar,
-                  imageUrl: person.avatar,
-                  status: person.status,
-                };
-                console.log('Calling onNavigateToChat with:', chatPerson);
-                props.onNavigateToChat(chatPerson);
-              } else {
-                // Fallback to navigation if callback not available
-                console.log('Using navigation fallback');
-                navigation.navigate('ChatScreen', {
-                  person: {
+
+              // Navigate to the Home screen and pass a parameter to open the chat.
+              // The Home screen will listen for this parameter and open the chat.
+              navigation.navigate('Home', { 
+                openChatWith: {
                     id: personId,
                     friendId: personId,
                     name: person.name || 'Unknown User',
                     phone: person.phone,
                     email: person.email,
                     avatar: person.avatar,
-                    profilePicture: person.avatar,
-                    imageUrl: person.avatar,
                     status: person.status,
-                  }
-                });
-              }
+                } 
+              });
             }}
           >
             <Text style={[styles.viewChatsText, { color: colors.textSecondary }]}>View Chats</Text>

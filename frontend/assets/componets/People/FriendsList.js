@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../contexts/ColorContext';
 
-const getBatteryIconName = (batteryPercentStr) => {
+const getBatteryIconName = (batteryPercentStr = '100%') => {
   const percent = parseInt(batteryPercentStr, 10);
   if (isNaN(percent)) return 'battery-dead';
   if (percent >= 80) return 'battery-full';
@@ -69,7 +69,7 @@ const FriendList = ({ friendsData = [], onOpenChat }) => {
     const batteryIcon = getBatteryIconName(friend.battery);
     const batteryLevel = parseInt(friend.battery);
     const batteryColor = batteryLevel < 20 ? '#ff6b6b' : '#51e651';
-    const statusColor = friend.status === 'Online' ? '#51e651' : '#a0a0a0';
+    const statusColor = friend.isOnline ? '#51e651' : '#a0a0a0';
     const isLast = index === friendsData.length - 1;
 
     return (
@@ -84,7 +84,8 @@ const FriendList = ({ friendsData = [], onOpenChat }) => {
               phone: friend.phone,
               email: friend.email,
               avatar: friend.avatar,
-            }
+            },
+            onNavigateToChat: onOpenChat // Pass the onOpenChat function as a param
           });
         }}
         activeOpacity={0.7}
@@ -114,7 +115,7 @@ const FriendList = ({ friendsData = [], onOpenChat }) => {
           <Text style={styles.friendName} numberOfLines={1}>{friend.name}</Text>
           <Text style={styles.friendLocation} numberOfLines={1}>{friend.location}</Text>
           <View style={styles.statusRow}>
-            <Text style={[styles.friendStatus, { color: statusColor }]}>{friend.status}</Text>
+            <Text style={[styles.friendStatus, { color: statusColor }]}>{friend.isOnline ? 'Online' : 'Offline'}</Text>
             <Text style={styles.divider}>•</Text>
             <Text style={styles.friendDistance} numberOfLines={1}>{friend.distance}</Text>
           </View>
