@@ -29,7 +29,7 @@ export default {
           'This app needs access to your location in the background for safety monitoring.',
         NSLocationAlwaysUsageDescription:
           'This app needs access to your location in the background for safety monitoring.',
-        UIBackgroundModes: ['location'], // Added for background location
+        UIBackgroundModes: ['location'],
         LSApplicationQueriesSchemes: ['youtube', 'https'],
       },
     },
@@ -76,12 +76,6 @@ export default {
             'This app needs access to your location in the background for safety monitoring.',
           locationAlwaysPermission:
             'This app needs access to your location in the background for safety monitoring.',
-        },
-      ],
-      [
-        'react-native-maps',
-        {
-          useGoogleMaps: true,
         },
       ],
       [
