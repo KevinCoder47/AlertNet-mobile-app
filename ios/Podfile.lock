@@ -2257,7 +2257,6 @@ DEPENDENCIES:
   - FBLazyVector (from `../node_modules/react-native/Libraries/FBLazyVector`)
   - fmt (from `../node_modules/react-native/third-party-podspecs/fmt.podspec`)
   - glog (from `../node_modules/react-native/third-party-podspecs/glog.podspec`)
-  - GoogleMaps
   - hermes-engine (from `../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec`)
   - lottie-react-native (from `../node_modules/lottie-react-native`)
   - RCT-Folly (from `../node_modules/react-native/third-party-podspecs/RCT-Folly.podspec`)
@@ -2684,6 +2683,6 @@ SPEC CHECKSUMS:
   Yoga: 1259c7a8cbaccf7b4c3ddf8ee36ca11be9dee407
   ZXingObjC: 8898711ab495761b2dbbdec76d90164a6d7e14c5
 
-PODFILE CHECKSUM: 8840f0b9ae2f907340639e3f655023d77b59cbb0
+PODFILE CHECKSUM: e54bf521b0b2c03b3f8e79fb6a2ee43aa0ada8a6
 
 COCOAPODS: 1.16.2
