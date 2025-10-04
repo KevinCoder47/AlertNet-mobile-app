@@ -16,7 +16,6 @@ export const useFriends = () => {
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
   console.log('Calculating distance between:', { lat1, lon1, lat2, lon2 });
   
-  // Validate inputs
   if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) {
     console.log('Distance calc: Missing coordinate');
     return 'Unknown';
@@ -42,7 +41,7 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
     return 'Unknown';
   }
 
-  const R = 6371; // Earth's radius in kilometers
+  const R = 6371;
   const toRadians = (degrees) => degrees * (Math.PI / 180);
   
   const dLat = toRadians(numLat2 - numLat1);
@@ -58,7 +57,6 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
   
   console.log('Calculated distance:', distanceKm, 'km');
   
-  // Format distance
   if (distanceKm < 1) {
     const meters = Math.round(distanceKm * 1000);
     return `${meters} m`;
@@ -73,7 +71,6 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
 const extractFriendLocation = (friend) => {
   console.log('Extracting friend location for:', friend.name || friend.friendId);
   
-  // Handle Firebase GeoPoint in currentLocation
   if (friend.currentLocation?._latitude != null && friend.currentLocation?._longitude != null) {
     console.log('Found currentLocation (GeoPoint)');
     return {
@@ -82,7 +79,6 @@ const extractFriendLocation = (friend) => {
     };
   }
   
-  // Handle object with latitude/longitude in currentLocation
   if (friend.currentLocation?.latitude != null && friend.currentLocation?.longitude != null) {
     console.log('Found currentLocation (object)');
     return {
@@ -91,7 +87,6 @@ const extractFriendLocation = (friend) => {
     };
   }
   
-  // Handle lat/lng in currentLocation
   if (friend.currentLocation?.lat != null && friend.currentLocation?.lng != null) {
     console.log('Found currentLocation (lat/lng)');
     return {
@@ -100,7 +95,6 @@ const extractFriendLocation = (friend) => {
     };
   }
   
-  // Handle Firebase GeoPoint in CurrentLocation
   if (friend.CurrentLocation?._latitude != null && friend.CurrentLocation?._longitude != null) {
     console.log('Found CurrentLocation (GeoPoint)');
     return {
@@ -109,7 +103,6 @@ const extractFriendLocation = (friend) => {
     };
   }
   
-  // Handle object with latitude/longitude in CurrentLocation
   if (friend.CurrentLocation?.latitude != null && friend.CurrentLocation?.longitude != null) {
     console.log('Found CurrentLocation (object)');
     return {
@@ -118,7 +111,6 @@ const extractFriendLocation = (friend) => {
     };
   }
   
-  // Handle lat/lng in CurrentLocation
   if (friend.CurrentLocation?.lat != null && friend.CurrentLocation?.lng != null) {
     console.log('Found CurrentLocation (lat/lng)');
     return {
@@ -127,7 +119,6 @@ const extractFriendLocation = (friend) => {
     };
   }
 
-  // Handle location field
   if (friend.location?.latitude != null && friend.location?.longitude != null) {
     console.log('Found location');
     return {
@@ -144,7 +135,6 @@ const extractFriendLocation = (friend) => {
     };
   }
   
-  // Handle ResidenceAddress as fallback
   if (friend.ResidenceAddress?._latitude != null && friend.ResidenceAddress?._longitude != null) {
     console.log('Found ResidenceAddress (GeoPoint)');
     return {
@@ -184,14 +174,9 @@ export const FriendsProvider = ({ children }) => {
   const presenceUnsubscribers = useRef(new Map());
   const userDataRef = useRef(null);
 
-  // Helper to get user location with all possible formats
   const getUserLocation = useCallback((user) => {
     console.log('Getting user location from user data');
-    console.log('User data keys:', Object.keys(user));
-    console.log('CurrentLocation type:', typeof user.CurrentLocation);
-    console.log('CurrentLocation value:', user.CurrentLocation);
     
-    // Handle Firebase GeoPoint (has _latitude and _longitude)
     if (user.CurrentLocation?._latitude != null && user.CurrentLocation?._longitude != null) {
       console.log('User CurrentLocation found (GeoPoint)');
       return {
@@ -200,7 +185,6 @@ export const FriendsProvider = ({ children }) => {
       };
     }
     
-    // Handle coordinates object with latitude/longitude
     if (user.CurrentLocation?.latitude != null && user.CurrentLocation?.longitude != null) {
       console.log('User CurrentLocation found (object)');
       return {
@@ -209,7 +193,6 @@ export const FriendsProvider = ({ children }) => {
       };
     }
     
-    // Handle coordinates array [latitude, longitude]
     if (Array.isArray(user.CurrentLocation) && user.CurrentLocation.length === 2) {
       console.log('User CurrentLocation found (array)');
       return {
@@ -218,7 +201,6 @@ export const FriendsProvider = ({ children }) => {
       };
     }
     
-    // Handle coordinates object with lat/lng (shorter names)
     if (user.CurrentLocation?.lat != null && user.CurrentLocation?.lng != null) {
       console.log('User CurrentLocation found (lat/lng)');
       return {
@@ -227,7 +209,6 @@ export const FriendsProvider = ({ children }) => {
       };
     }
     
-    // Try ResidenceAddress as fallback
     if (user.ResidenceAddress?._latitude != null && user.ResidenceAddress?._longitude != null) {
       console.log('User ResidenceAddress found (GeoPoint)');
       return {
@@ -256,10 +237,8 @@ export const FriendsProvider = ({ children }) => {
     return null;
   }, []);
 
-  // Calculate distance for a friend
   const calculateFriendDistance = useCallback((friend, currentUserLocation) => {
     console.log('calculateFriendDistance called for:', friend.name);
-    console.log('User location:', currentUserLocation);
     
     if (!currentUserLocation) {
       console.log('No user location provided');
@@ -283,7 +262,6 @@ export const FriendsProvider = ({ children }) => {
     return distance;
   }, []);
 
-  // Format last seen timestamp
   const formatLastSeen = useCallback((timestamp) => {
     if (!timestamp) return 'Offline';
     
@@ -301,15 +279,13 @@ export const FriendsProvider = ({ children }) => {
     return `last seen on ${lastSeenDate.toLocaleDateString()}`;
   }, []);
 
-  // Setup presence listeners for all friends
+  // Setup presence listeners for all friends - FIXED WITH BATTERY MONITORING
   const setupPresenceListeners = useCallback((friends, currentUserLocation) => {
-    // Clean up old listeners
     presenceUnsubscribers.current.forEach((unsubscribe) => {
       unsubscribe();
     });
     presenceUnsubscribers.current.clear();
 
-    // Setup new listeners for each friend
     friends.forEach((friend) => {
       const friendId = friend.friendId || friend.id;
       if (!friendId) return;
@@ -318,17 +294,21 @@ export const FriendsProvider = ({ children }) => {
       
       const unsubscribe = FirebaseService.listenToUser(friendId, (userData) => {
         if (userData) {
-          console.log(`Presence update for ${friendId}:`, userData.status);
+          console.log(`Presence update for ${friendId}:`, {
+            status: userData.status,
+            battery: userData.Battery
+          });
           
-          // Update the specific friend's presence data
           setFriendsData((prevFriends) => 
             prevFriends.map((f) => {
               if ((f.friendId || f.id) === friendId) {
-                // Recalculate distance if location changed
                 const newDistance = calculateFriendDistance(
                   { ...f, ...userData }, 
                   currentUserLocation
                 );
+                
+                // Extract battery data - THIS IS KEY!
+                const batteryLevel = userData.Battery || userData.battery || f.batteryLevel || 100;
                 
                 return {
                   ...f,
@@ -341,6 +321,9 @@ export const FriendsProvider = ({ children }) => {
                   distance: newDistance,
                   currentLocation: userData.CurrentLocation || f.currentLocation,
                   location: userData.location || f.location,
+                  // UPDATE BATTERY IN REAL-TIME
+                  battery: `${batteryLevel}%`,
+                  batteryLevel: batteryLevel,
                 };
               }
               return f;
@@ -353,7 +336,6 @@ export const FriendsProvider = ({ children }) => {
     });
   }, [formatLastSeen, calculateFriendDistance]);
 
-  // Manual refresh function
   const refreshFriends = useCallback(async () => {
     if (!userDataRef.current) {
       console.log('No user data for refresh');
@@ -368,10 +350,7 @@ export const FriendsProvider = ({ children }) => {
       const currentUserLocation = getUserLocation(userDataRef.current);
       setUserLocation(currentUserLocation);
       
-      const result = await FirebaseService.getFriendsDetails(
-        [],
-        currentUserLocation
-      );
+      await FirebaseService.getFriendsDetails([], currentUserLocation);
       
       console.log('Manual refresh completed');
     } catch (error) {
@@ -380,7 +359,6 @@ export const FriendsProvider = ({ children }) => {
     }
   }, [getUserLocation]);
 
-  // Initialize friends listener
   useEffect(() => {
     const initializeFriends = async () => {
       try {
@@ -395,8 +373,6 @@ export const FriendsProvider = ({ children }) => {
         }
 
         let user = JSON.parse(jsonValue);
-        
-        // CRITICAL FIX: If CurrentLocation is missing, fetch fresh data from Firebase
         const userId = user.uid || user.id || user.userId || user.UID;
         
         if (!user.CurrentLocation && userId) {
@@ -405,9 +381,7 @@ export const FriendsProvider = ({ children }) => {
           try {
             const freshDataResult = await FirebaseService.getUserById(userId);
             if (freshDataResult.success && freshDataResult.userData) {
-              // Merge fresh data
               user = { ...user, ...freshDataResult.userData };
-              // Update AsyncStorage with fresh data
               await AsyncStorage.setItem('userData', JSON.stringify(user));
               console.log('Updated AsyncStorage with CurrentLocation from Firebase');
             }
@@ -422,8 +396,7 @@ export const FriendsProvider = ({ children }) => {
           name: user.name || user.Name,
           email: user.email || user.Email,
           hasCurrentLocation: !!user.CurrentLocation,
-          currentLocationValue: user.CurrentLocation,
-          hasResidenceAddress: !!user.ResidenceAddress
+          hasBattery: !!user.Battery
         });
         
         if (!userId) {
@@ -435,17 +408,14 @@ export const FriendsProvider = ({ children }) => {
         const currentUserLocation = getUserLocation(user);
         setUserLocation(currentUserLocation);
         
-        console.log('Current user location:', currentUserLocation);
         console.log('Setting up real-time listener for userId:', userId);
 
-        // Set up real-time listener for friends list
         friendsUnsubscribe.current = FirebaseService.listenToFriendsWithDetails(
           userId,
           currentUserLocation,
           (friendsWithDetails) => {
             console.log('Received', friendsWithDetails.length, 'friends from Firebase');
             
-            // Transform for consistent structure with distance calculation
             const transformedFriends = friendsWithDetails.map((friend) => {
               const distance = calculateFriendDistance(friend, currentUserLocation);
               
@@ -475,18 +445,13 @@ export const FriendsProvider = ({ children }) => {
               };
             });
             
-            console.log('Transformed friends with distances:', 
-              transformedFriends.map(f => ({ name: f.name, distance: f.distance }))
-            );
-            
             setFriendsData(transformedFriends);
             setLoading(false);
             setLastUpdated(new Date());
             
-            // Setup presence listeners for all friends
             setupPresenceListeners(transformedFriends, currentUserLocation);
             
-            console.log('Updated with', transformedFriends.length, 'friends with distances');
+            console.log('Updated with', transformedFriends.length, 'friends');
           }
         );
         
@@ -499,14 +464,12 @@ export const FriendsProvider = ({ children }) => {
 
     initializeFriends();
     
-    // Cleanup on unmount
     return () => {
       if (friendsUnsubscribe.current) {
         console.log('Cleaning up friends listener');
         friendsUnsubscribe.current();
       }
       
-      // Cleanup all presence listeners
       console.log('Cleaning up presence listeners');
       presenceUnsubscribers.current.forEach((unsubscribe) => {
         unsubscribe();
@@ -515,7 +478,6 @@ export const FriendsProvider = ({ children }) => {
     };
   }, [getUserLocation, setupPresenceListeners, formatLastSeen, calculateFriendDistance]);
 
-  // Memoize the context value
   const value = React.useMemo(() => ({
     friendsData,
     loading,
