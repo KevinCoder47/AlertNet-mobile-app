@@ -1,4 +1,5 @@
 //NEW PEOPLEBAR
+// PeopleBar.js - Optimized with FriendsContext
 import React, { useState, useRef, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
@@ -20,16 +21,15 @@ import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../contexts/ColorContext';
+import { useFriends } from '../../contexts/FriendsContext';
 import PhoneOverlay from './PhoneOverlay';
 import FriendList from './FriendsList';
 import CommunityList from './CommunityList';
 import FeedList from './Feed/FeedList';
 import NotificationBell from '../NotificationBell';
-import { FirebaseService } from '../../../backend/Firebase/FirebaseService';
 
 const { width, height } = Dimensions.get('window');
 
-// Cross-platform safe area calculations
 const getStatusBarHeight = () => {
   if (Platform.OS === 'ios') {
     return height >= 812 ? 44 : 20;
@@ -50,39 +50,19 @@ const getBatteryIconName = (batteryPercentStr) => {
   return 'battery-dead';
 };
 
-// Generate unique key for each friend
-const generateUniqueKey = (friend, index) => {
-  // Use multiple fallback strategies to ensure uniqueness
-  if (friend.friendId) {
-    return `friend_${friend.friendId}`;
-  }
-  if (friend.phone) {
-    return `phone_${friend.phone.replace(/\D/g, '')}`; // Remove non-digits
-  }
-  if (friend.email) {
-    return `email_${friend.email}`;
-  }
-  // Last resort: use index with timestamp
-  return `fallback_${index}_${Date.now()}`;
-};
-
 const PeopleBar = ({ onOpenChat, onFriendsUpdate }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState(new Date());
   const [phoneOverlayVisible, setPhoneOverlayVisible] = useState(false);
   const [userData, setUserData] = useState(null);
   const [activeTab, setActiveTab] = useState('friends');
-  const [friendsData, setFriendsData] = useState([]);
-  const [loading, setLoading] = useState(true);
   const navigation = useNavigation();
   
-  // Real-time listeners
-  const friendsUnsubscribe = useRef(null);
+  // Use FriendsContext - data is preloaded!
+  const { friendsData, loading, lastUpdated, refreshFriends } = useFriends();
   
-  // Use your theme context instead of useColorScheme
   const { colors, isDark } = useTheme();
-  const styles = getStyles(isDark, colors); // Pass colors to styles
+  const styles = getStyles(isDark, colors);
   
   // Responsive dimensions
   const statusBarHeight = getStatusBarHeight();
@@ -101,381 +81,47 @@ const PeopleBar = ({ onOpenChat, onFriendsUpdate }) => {
     maxHeight,
   }).current;
 
-  // Load user data and initialize friends listener
+  // Load user data on mount
   useEffect(() => {
-    const initializePeopleBar = async () => {
+    const loadUserData = async () => {
       try {
         const jsonValue = await AsyncStorage.getItem('userData');
         if (jsonValue) {
           const user = JSON.parse(jsonValue);
           console.log('PeopleBar: User data loaded:', user.Phone || user.phone);
           setUserData(user);
-          
-          // Set up real-time friends listener
-          setupFriendsListener(user);
         }
       } catch (error) {
-        console.error('PeopleBar: Error initializing:', error);
-        setLoading(false);
+        console.error('PeopleBar: Error loading user data:', error);
       }
     };
 
-    initializePeopleBar();
-    
-    // Cleanup listener on unmount
-    return () => {
-      if (friendsUnsubscribe.current) {
-        friendsUnsubscribe.current();
-      }
-    };
+    loadUserData();
   }, []);
 
-  // Set up real-time friends listener
-
- //etupFriendsListener function
- const setupFriendsListener = (user) => {
-  const userId = user.uid || user.id || user.userId || user.UID;
-  
-  if (!userId) {
-    console.error('PeopleBar: Missing user ID');
-    setLoading(false);
-    return;
-  }
-
-  const currentUserLocation = getUserLocation(user);
-  
-  console.log('PeopleBar: Setting up listener with userId:', userId);
-
-  friendsUnsubscribe.current = FirebaseService.listenToFriendsWithDetails(
-    userId,
-    currentUserLocation,
-    (friendsWithDetails) => {
-      console.log('PeopleBar: Received', friendsWithDetails.length, 'friends');
-      
-      // Transform for display
-      const transformedFriends = friendsWithDetails.map((friend, index) => ({
-        id: friend.friendId || friend.uid,
-        friendId: friend.friendId,
-        name: friend.name,
-        firstName: friend.firstName,
-        lastName: friend.lastName,
-        phone: friend.phone,
-        email: friend.email,
-        avatar: friend.avatar,
-        status: friend.status,
-        isOnline: friend.isOnline,
-        location: friend.location,
-        currentLocation: friend.currentLocation, // CRITICAL for map
-        distance: friend.distance,
-        battery: friend.battery,
-        batteryLevel: friend.batteryLevel,
-        isCloseFriend: friend.isCloseFriend,
-        rating: friend.rating,
-        rawData: friend.rawData
-      }));
-      
-      console.log('PeopleBar: Transformed', transformedFriends.length, 'friends');
-      console.log('PeopleBar: Friends with locations:', 
-        transformedFriends.filter(f => f.currentLocation).length
-      );
-      
-      setFriendsData(transformedFriends);
-      setLoading(false);
-      setLastUpdated(new Date());
-      
-      // CRITICAL: Call the callback to update Home.js
-      if (onFriendsUpdate) {
-        console.log('PeopleBar: Calling onFriendsUpdate with', transformedFriends.length, 'friends');
-        onFriendsUpdate(transformedFriends);
-      } else {
-        console.warn('PeopleBar: onFriendsUpdate callback not provided!');
-      }
+  // Notify Home.js when friends update (for map) - removed onFriendsUpdate from dependencies
+  useEffect(() => {
+    if (onFriendsUpdate && friendsData.length > 0) {
+      console.log('PeopleBar: Notifying Home.js of', friendsData.length, 'friends');
+      onFriendsUpdate(friendsData);
     }
-  );
-};
-  
-  // Helper to get user's location from their data
+  }, [friendsData]); // Only depend on friendsData
 
-  const getUserLocation = (user) => {
-    console.log('=== DEBUG getUserLocation ENHANCED ===');
-    console.log('Full user object keys:', Object.keys(user));
-    console.log('CurrentLocation value:', JSON.stringify(user.CurrentLocation, null, 2));
-    console.log('CurrentLocation type:', typeof user.CurrentLocation);
-    
-    // Try CurrentLocation first (real-time location)
-    if (user.CurrentLocation) {
-      console.log('CurrentLocation exists, checking structure...');
-      console.log('  Has latitude:', 'latitude' in user.CurrentLocation);
-      console.log('  Has longitude:', 'longitude' in user.CurrentLocation);
-      console.log('  Latitude value:', user.CurrentLocation.latitude);
-      console.log('  Longitude value:', user.CurrentLocation.longitude);
-      console.log('  Latitude type:', typeof user.CurrentLocation.latitude);
-      console.log('  Longitude type:', typeof user.CurrentLocation.longitude);
-      
-      if (user.CurrentLocation.latitude != null && user.CurrentLocation.longitude != null) {
-        const location = {
-          latitude: Number(user.CurrentLocation.latitude),
-          longitude: Number(user.CurrentLocation.longitude)
-        };
-        console.log('✅ Returning CurrentLocation:', location);
-        return location;
-      }
-    }
-    
-    // Fallback to ResidenceAddress
-    if (user.ResidenceAddress?.latitude != null && user.ResidenceAddress?.longitude != null) {
-      const location = {
-        latitude: Number(user.ResidenceAddress.latitude),
-        longitude: Number(user.ResidenceAddress.longitude)
-      };
-      console.log('✅ Returning ResidenceAddress:', location);
-      return location;
-    }
-    
-    console.log('❌ No valid location found');
-    console.log('=== END DEBUG ===');
-    return null;
-  };
-  
-  // Helper to fetch user ID if missing
-  const fetchUserIdAndSetupListener = async (userPhone) => {
-    try {
-      console.log('PeopleBar: Fetching user ID by phone:', userPhone);
-      const result = await FirebaseService.getUserByPhone(userPhone);
-      
-      if (result.exists && result.userData) {
-        const userId = result.userData.id;
-        console.log('PeopleBar: Found user ID:', userId);
-        
-        const updatedUserData = { ...userData, uid: userId, id: userId };
-        setUserData(updatedUserData);
-        
-        await AsyncStorage.setItem('userData', JSON.stringify(updatedUserData));
-        
-        const currentUserLocation = getUserLocation(updatedUserData);
-        
-        friendsUnsubscribe.current = FirebaseService.listenToAllFriendsWithDetails(
-          userPhone,
-          userId,
-          currentUserLocation,
-          (friendsWithDetails) => {
-            console.log('PeopleBar: Received detailed friend data:', friendsWithDetails.length);
-            
-            const seenIdentifiers = new Set();
-            
-            const transformedFriends = friendsWithDetails.reduce((acc, friend, index) => {
-              const identifier = friend.friendId || friend.uid || friend.phone;
-              
-              if (seenIdentifiers.has(identifier)) {
-                return acc;
-              }
-              
-              seenIdentifiers.add(identifier);
-              
-              acc.push({
-                id: generateUniqueKey(friend, acc.length),
-                name: friend.name,
-                firstName: friend.firstName,
-                lastName: friend.lastName,
-                phone: friend.phone,
-                email: friend.email,
-                avatar: friend.avatar,
-                status: friend.status,
-                isOnline: friend.isOnline,
-                location: friend.location,
-                distance: friend.distance,
-                battery: friend.battery,
-                batteryLevel: friend.batteryLevel,
-                friendId: friend.friendId,
-                isCloseFriend: friend.isCloseFriend,
-                rating: friend.rating,
-                lastSeen: friend.lastSeen,
-                rawData: friend.rawData
-              });
-              
-              return acc;
-            }, []);
-            
-            setFriendsData(transformedFriends);
-            setLoading(false);
-            setLastUpdated(new Date());
-          }
-        );
-        
-      } else {
-        console.error('PeopleBar: Could not find user by phone');
-        setLoading(false);
-      }
-    } catch (error) {
-      console.error('PeopleBar: Error fetching user ID:', error);
-      setLoading(false);
-    }
-  };
-
-
-  // Helper function to fetch user ID if it's missing
-const fetchUserIdByPhone = async (userPhone) => {
-  try {
-    console.log('PeopleBar: Fetching user ID by phone:', userPhone);
-    const result = await FirebaseService.getUserByPhone(userPhone);
-    
-    if (result.exists && result.userData) {
-      const userId = result.userData.id;
-      console.log('PeopleBar: Found user ID:', userId);
-      
-      // Update userData with the ID
-      const updatedUserData = { ...userData, uid: userId, id: userId };
-      setUserData(updatedUserData);
-      
-      // Save to AsyncStorage for future use
-      await AsyncStorage.setItem('userData', JSON.stringify(updatedUserData));
-      
-      // Now set up the listener with the correct ID
-      setupFriendsListenerWithId(userPhone, userId);
-    } else {
-      console.error('PeopleBar: Could not find user by phone');
-      setLoading(false);
-    }
-  } catch (error) {
-    console.error('PeopleBar: Error fetching user ID:', error);
-    setLoading(false);
-  }
-};
-
-// Separate function to set up listener when we have the ID
-const setupFriendsListenerWithId = (userPhone, userId) => {
-  console.log('PeopleBar: Setting up listener with fetched ID');
-  
-  friendsUnsubscribe.current = FirebaseService.listenToAllFriends(
-    userPhone,
-    userId,
-    (friends) => {
-      console.log('PeopleBar: Friends updated from all sources:', friends.length);
-      
-      const fromCollection = friends.filter(f => f.source === 'friends_collection').length;
-      const fromArray = friends.filter(f => f.source === 'user_friends_array').length;
-      console.log(`  From friends collection: ${fromCollection}`);
-      console.log(`  From Friends array: ${fromArray}`);
-      
-      const seenIdentifiers = new Set();
-      
-      const transformedFriends = friends.reduce((acc, friend, index) => {
-        const identifier = friend.friendId || friend.uid || friend.friendPhone || friend.friendEmail || `index_${index}`;
-        
-        if (seenIdentifiers.has(identifier)) {
-          console.warn('PeopleBar: Duplicate friend detected, skipping:', identifier);
-          return acc;
-        }
-        
-        seenIdentifiers.add(identifier);
-        
-        const transformedFriend = {
-          id: generateUniqueKey(friend, acc.length),
-          name: friend.friendName || friend.name || 'Unknown Friend',
-          location: 'Unknown',
-          status: 'Online',
-          distance: 'Unknown',
-          battery: '100%',
-          avatar: friend.avatar || null,
-          phone: friend.friendPhone || friend.phoneNumber || '',
-          email: friend.friendEmail || friend.email || '',
-          isCloseFriend: true,
-          friendId: friend.friendId || friend.uid,
-          createdAt: friend.createdAt,
-          lastInteraction: friend.lastInteraction,
-          source: friend.source
-        };
-        
-        acc.push(transformedFriend);
-        return acc;
-      }, []);
-      
-      console.log('PeopleBar: Processed friends:', transformedFriends.length);
-      setFriendsData(transformedFriends);
-      setLoading(false);
-      setLastUpdated(new Date());
-    }
-  );
-};
-
-  // Enhanced refresh function
+  // Simplified refresh function using context
   const onRefresh = async () => {
     setRefreshing(true);
     
     try {
-      if (!userData) {
-        setRefreshing(false);
-        return;
-      }
-  
-      const userId = userData.uid || userData.id || userData.userId;
-      
-      if (!userId) {
-        console.error('Cannot refresh, missing user ID');
-        setRefreshing(false);
-        return;
-      }
-  
-      console.log('Refreshing friends...');
-      
-      const currentUserLocation = getUserLocation(userData);
-      
-      // Fetch Friends array
-      const userDoc = await getDoc(doc(db, 'users', userId));
-      
-      if (!userDoc.exists()) {
-        setRefreshing(false);
-        return;
-      }
-      
-      const friendsArray = userDoc.data()?.Friends || [];
-      const friendUids = friendsArray.filter(f => f.uid).map(f => f.uid);
-      
-      if (friendUids.length === 0) {
-        setFriendsData([]);
-        setRefreshing(false);
-        return;
-      }
-      
-      // Fetch details
-      const detailsResult = await FirebaseService.getFriendsDetails(
-        friendUids,
-        currentUserLocation
-      );
-      
-      if (detailsResult.success) {
-        const transformedFriends = detailsResult.friendsDetails.map(friend => ({
-          id: friend.friendId,
-          friendId: friend.friendId,
-          name: friend.name,
-          firstName: friend.firstName,
-          lastName: friend.lastName,
-          phone: friend.phone,
-          email: friend.email,
-          avatar: friend.avatar,
-          status: friend.status,
-          isOnline: friend.isOnline,
-          location: friend.location,
-          currentLocation: friend.currentLocation,
-          distance: friend.distance,
-          battery: friend.battery,
-          batteryLevel: friend.batteryLevel,
-          isCloseFriend: friend.isCloseFriend,
-          rating: friend.rating,
-          rawData: friend.rawData
-        }));
-        
-        setFriendsData(transformedFriends);
-        setLastUpdated(new Date());
-      }
+      console.log('PeopleBar: Refreshing friends...');
+      await refreshFriends();
     } catch (error) {
-      console.error('Error refreshing:', error);
+      console.error('PeopleBar: Error refreshing:', error);
     } finally {
       setRefreshing(false);
     }
   };
   
-  // Gesture handler (unchanged from your original)
+  // Gesture handler
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -575,66 +221,92 @@ const setupFriendsListenerWithId = (userPhone, userId) => {
     ]).start();
   };
 
-  const formatTime = (date) => date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-  // Enhanced person item renderer with real friend data and proper key handling
-  const renderPersonItem = (person, index) => {
-    const batteryIcon = getBatteryIconName(person.battery);
-    const batteryLevel = parseInt(person.battery);
-    const batteryColor = batteryLevel < 20 ? '#ff6b6b' : '#51e651';
-    const statusColor = person.status === 'Online' ? '#51e651' : '#a0a0a0';
-    const isLast = index === friendsData.length - 1;
-
-    return (
-        <TouchableOpacity
-          key={person.friendId}  // Use friendId instead of id for uniqueness
-          style={[styles.personContainer, isLast && { borderBottomWidth: 0 }]}
-          onPress={() => {
-            navigation.navigate('Profile', { 
-              person: {
-                ...person,
-                id: person.friendId || person.id,
-                name: person.name,
-                phone: person.phone,
-                email: person.email,
-                avatar: person.avatar,
-              }
-            });
-          }}
-          activeOpacity={0.7}
-        >
-        <View style={styles.avatarSection}>
-          {/* Enhanced avatar rendering */}
-          {person.avatar ? (
-            <Image source={{ uri: person.avatar }} style={styles.avatar} />
-          ) : (
-            <View style={styles.defaultAvatar}>
-              <Text style={styles.avatarInitial}>
-                {person.name ? person.name.charAt(0).toUpperCase() : 'F'}
-              </Text>
-            </View>
-          )}
-          <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-          <View style={styles.batteryInfo}>
-            <Ionicons name={batteryIcon} size={12} color={batteryColor} />
-            <Text style={[styles.batteryText, { color: batteryColor }]}>{person.battery}</Text>
-          </View>
-        </View>
-
-        <View style={styles.infoSection}>
-          <Text style={styles.personName} numberOfLines={1}>{person.name}</Text>
-          <Text style={styles.personLocation} numberOfLines={1}>{person.location}</Text>
-          <View style={styles.statusRow}>
-            <Text style={[styles.personStatus, { color: statusColor }]}>{person.status}</Text>
-            <Text style={styles.divider}>•</Text>
-            <Text style={styles.personDistance} numberOfLines={1}>{person.distance}</Text>
-          </View>
-        </View>
-
-        <Ionicons name="chevron-forward" size={18} color={colors.textSecondary || colors.secondary} />
-      </TouchableOpacity>
-    );
+  // Safe formatTime function with validation
+  const formatTime = (date) => {
+    if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+      return 'Never';
+    }
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
+
+ // Key changes in the renderPersonItem function to display presence
+
+ const renderPersonItem = (person, index) => {
+  const batteryIcon = getBatteryIconName(person.battery);
+  const batteryLevel = parseInt(person.battery);
+  const batteryColor = batteryLevel < 20 ? '#ff6b6b' : '#51e651';
+  
+  // Presence data (already working)
+  const isOnline = person.isOnline || person.status === 'online';
+  const statusColor = isOnline ? '#51e651' : '#a0a0a0';
+  const statusText = person.presenceText || (isOnline ? 'Online' : 'Offline');
+  
+  // Distance is now calculated and formatted (e.g., "2.5 km" or "500 m")
+  const distance = person.distance || 'Unknown';
+  
+  const isLast = index === friendsData.length - 1;
+
+  return (
+    <TouchableOpacity
+      key={person.friendId || person.id || index}
+      style={[styles.personContainer, isLast && { borderBottomWidth: 0 }]}
+      onPress={() => {
+        navigation.navigate('Profile', { 
+          person: {
+            ...person,
+            id: person.friendId || person.id,
+            name: person.name,
+            phone: person.phone,
+            email: person.email,
+            avatar: person.avatar,
+          }
+        });
+      }}
+      activeOpacity={0.7}
+    >
+      <View style={styles.avatarSection}>
+        {person.avatar ? (
+          <Image source={{ uri: person.avatar }} style={styles.avatar} />
+        ) : (
+          <View style={styles.defaultAvatar}>
+            <Text style={styles.avatarInitial}>
+              {person.name ? person.name.charAt(0).toUpperCase() : 'F'}
+            </Text>
+          </View>
+        )}
+        <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+        
+        <View style={styles.batteryInfo}>
+          <Ionicons name={batteryIcon} size={12} color={batteryColor} />
+          <Text style={[styles.batteryText, { color: batteryColor }]}>
+            {person.battery || 'N/A'}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.infoSection}>
+        <Text style={styles.personName} numberOfLines={1}>
+          {person.name || 'Unknown'}
+        </Text>
+        <Text style={styles.personLocation} numberOfLines={1}>
+          {person.location || 'Unknown location'}
+        </Text>
+        <View style={styles.statusRow}>
+          <Text style={[styles.personStatus, { color: statusColor }]}>
+            {statusText}
+          </Text>
+          <Text style={styles.divider}>•</Text>
+          {/* Distance now shows actual calculated distance */}
+          <Text style={styles.personDistance} numberOfLines={1}>
+            {distance}
+          </Text>
+        </View>
+      </View>
+
+      <Ionicons name="chevron-forward" size={18} color={colors.textSecondary || colors.secondary} />
+    </TouchableOpacity>
+  );
+};
 
   const renderTabContent = () => {
     const TabComponents = { friends: FriendList, community: CommunityList, feed: FeedList };
@@ -688,7 +360,6 @@ const setupFriendsListenerWithId = (userPhone, userId) => {
     </View>
   );
 
-  // Helper function to get header text based on active tab
   const getHeaderText = () => {
     switch (activeTab) {
       case 'friends':
@@ -758,7 +429,6 @@ const setupFriendsListenerWithId = (userPhone, userId) => {
             )}
           </View>
 
-          {/* Only show the add button when on the friends tab */}
           {activeTab === 'friends' && (
             <TouchableOpacity 
               style={styles.addButton} 
@@ -771,7 +441,6 @@ const setupFriendsListenerWithId = (userPhone, userId) => {
         </BlurView>
       </Animated.View>
 
-      {/* NotificationBell positioned lower to give PeopleBar more space */}
       <View style={styles.notificationBellContainer}>
         <NotificationBell />
       </View>
@@ -786,7 +455,6 @@ const setupFriendsListenerWithId = (userPhone, userId) => {
   );
 };
 
-// Updated styles to use theme colors
 const getStyles = (isDark, colors) => StyleSheet.create({
   container: {
     position: 'absolute',
@@ -1020,18 +688,6 @@ const getStyles = (isDark, colors) => StyleSheet.create({
     marginTop: 4,
     textAlign: 'center',
   },
-  addFriendsButton: {
-    marginTop: 16,
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  addFriendsButtonText: {
-    color: 'white',
-    fontWeight: '600',
-    fontSize: 14,
-  },
   loadingState: {
     flex: 1,
     alignItems: 'center',
@@ -1042,12 +698,11 @@ const getStyles = (isDark, colors) => StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary || colors.secondary,
   },
-  // New style for NotificationBell container
   notificationBellContainer: {
     position: 'absolute',
-    top: '-120%', // Moved down from the original position
+    top: '-120%',
     right: 120,
-    zIndex: 25, // Higher than PeopleBar to stay on top
+    zIndex: 25,
   },
 });
 

@@ -1,323 +1,530 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { doc, updateDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
-import { db } from '../../backend/Firebase/FirebaseConfig';
-import * as Battery from 'expo-battery';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getUserDocument } from '../../services/firestore';
+import { FirebaseService } from '../../backend/Firebase/FirebaseService';
 
 const FriendsContext = createContext();
 
 export const useFriends = () => {
   const context = useContext(FriendsContext);
   if (!context) {
-    throw new Error('useFriends must be used within a FriendsProvider');
+    throw new Error('useFriends must be used within FriendsProvider');
   }
   return context;
 };
 
-export const FriendsProvider = ({ children, userData }) => {
-  const [friendsDetails, setFriendsDetails] = useState({});
+// Inline distance calculation using Haversine formula
+const calculateDistance = (lat1, lon1, lat2, lon2) => {
+  console.log('Calculating distance between:', { lat1, lon1, lat2, lon2 });
+  
+  // Validate inputs
+  if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) {
+    console.log('Distance calc: Missing coordinate');
+    return 'Unknown';
+  }
+  
+  const numLat1 = Number(lat1);
+  const numLon1 = Number(lon1);
+  const numLat2 = Number(lat2);
+  const numLon2 = Number(lon2);
+  
+  if (isNaN(numLat1) || isNaN(numLon1) || isNaN(numLat2) || isNaN(numLon2)) {
+    console.log('Distance calc: Invalid number');
+    return 'Unknown';
+  }
+  
+  if (numLat1 < -90 || numLat1 > 90 || numLat2 < -90 || numLat2 > 90) {
+    console.log('Distance calc: Invalid latitude range');
+    return 'Unknown';
+  }
+  
+  if (numLon1 < -180 || numLon1 > 180 || numLon2 < -180 || numLon2 > 180) {
+    console.log('Distance calc: Invalid longitude range');
+    return 'Unknown';
+  }
+
+  const R = 6371; // Earth's radius in kilometers
+  const toRadians = (degrees) => degrees * (Math.PI / 180);
+  
+  const dLat = toRadians(numLat2 - numLat1);
+  const dLon = toRadians(numLon2 - numLon1);
+  
+  const a = 
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRadians(numLat1)) * Math.cos(toRadians(numLat2)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const distanceKm = R * c;
+  
+  console.log('Calculated distance:', distanceKm, 'km');
+  
+  // Format distance
+  if (distanceKm < 1) {
+    const meters = Math.round(distanceKm * 1000);
+    return `${meters} m`;
+  } else if (distanceKm < 10) {
+    return `${distanceKm.toFixed(1)} km`;
+  } else {
+    return `${Math.round(distanceKm)} km`;
+  }
+};
+
+// Extract friend location from various possible structures
+const extractFriendLocation = (friend) => {
+  console.log('Extracting friend location for:', friend.name || friend.friendId);
+  
+  // Handle Firebase GeoPoint in currentLocation
+  if (friend.currentLocation?._latitude != null && friend.currentLocation?._longitude != null) {
+    console.log('Found currentLocation (GeoPoint)');
+    return {
+      latitude: Number(friend.currentLocation._latitude),
+      longitude: Number(friend.currentLocation._longitude)
+    };
+  }
+  
+  // Handle object with latitude/longitude in currentLocation
+  if (friend.currentLocation?.latitude != null && friend.currentLocation?.longitude != null) {
+    console.log('Found currentLocation (object)');
+    return {
+      latitude: Number(friend.currentLocation.latitude),
+      longitude: Number(friend.currentLocation.longitude)
+    };
+  }
+  
+  // Handle lat/lng in currentLocation
+  if (friend.currentLocation?.lat != null && friend.currentLocation?.lng != null) {
+    console.log('Found currentLocation (lat/lng)');
+    return {
+      latitude: Number(friend.currentLocation.lat),
+      longitude: Number(friend.currentLocation.lng)
+    };
+  }
+  
+  // Handle Firebase GeoPoint in CurrentLocation
+  if (friend.CurrentLocation?._latitude != null && friend.CurrentLocation?._longitude != null) {
+    console.log('Found CurrentLocation (GeoPoint)');
+    return {
+      latitude: Number(friend.CurrentLocation._latitude),
+      longitude: Number(friend.CurrentLocation._longitude)
+    };
+  }
+  
+  // Handle object with latitude/longitude in CurrentLocation
+  if (friend.CurrentLocation?.latitude != null && friend.CurrentLocation?.longitude != null) {
+    console.log('Found CurrentLocation (object)');
+    return {
+      latitude: Number(friend.CurrentLocation.latitude),
+      longitude: Number(friend.CurrentLocation.longitude)
+    };
+  }
+  
+  // Handle lat/lng in CurrentLocation
+  if (friend.CurrentLocation?.lat != null && friend.CurrentLocation?.lng != null) {
+    console.log('Found CurrentLocation (lat/lng)');
+    return {
+      latitude: Number(friend.CurrentLocation.lat),
+      longitude: Number(friend.CurrentLocation.lng)
+    };
+  }
+
+  // Handle location field
+  if (friend.location?.latitude != null && friend.location?.longitude != null) {
+    console.log('Found location');
+    return {
+      latitude: Number(friend.location.latitude),
+      longitude: Number(friend.location.longitude)
+    };
+  }
+  
+  if (friend.location?.lat != null && friend.location?.lng != null) {
+    console.log('Found location (lat/lng)');
+    return {
+      latitude: Number(friend.location.lat),
+      longitude: Number(friend.location.lng)
+    };
+  }
+  
+  // Handle ResidenceAddress as fallback
+  if (friend.ResidenceAddress?._latitude != null && friend.ResidenceAddress?._longitude != null) {
+    console.log('Found ResidenceAddress (GeoPoint)');
+    return {
+      latitude: Number(friend.ResidenceAddress._latitude),
+      longitude: Number(friend.ResidenceAddress._longitude)
+    };
+  }
+  
+  if (friend.ResidenceAddress?.latitude != null && friend.ResidenceAddress?.longitude != null) {
+    console.log('Found ResidenceAddress');
+    return {
+      latitude: Number(friend.ResidenceAddress.latitude),
+      longitude: Number(friend.ResidenceAddress.longitude)
+    };
+  }
+  
+  if (friend.ResidenceAddress?.lat != null && friend.ResidenceAddress?.lng != null) {
+    console.log('Found ResidenceAddress (lat/lng)');
+    return {
+      latitude: Number(friend.ResidenceAddress.lat),
+      longitude: Number(friend.ResidenceAddress.lng)
+    };
+  }
+
+  console.log('No valid location found for friend');
+  return null;
+};
+
+export const FriendsProvider = ({ children }) => {
+  const [friendsData, setFriendsData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [onlineUsers, setOnlineUsers] = useState(new Set());
-  const [userBatteryLevel, setUserBatteryLevel] = useState(100);
+  const [lastUpdated, setLastUpdated] = useState(new Date());
+  const [error, setError] = useState(null);
+  const [userLocation, setUserLocation] = useState(null);
+  
+  const friendsUnsubscribe = useRef(null);
+  const presenceUnsubscribers = useRef(new Map());
+  const userDataRef = useRef(null);
 
-  // Calculate distance between two coordinates
-  const calculateDistance = (lat1, lon1, lat2, lon2) => {
-    if (!lat1 || !lon1 || !lat2 || !lon2) return 'Unknown location';
+  // Helper to get user location with all possible formats
+  const getUserLocation = useCallback((user) => {
+    console.log('Getting user location from user data');
+    console.log('User data keys:', Object.keys(user));
+    console.log('CurrentLocation type:', typeof user.CurrentLocation);
+    console.log('CurrentLocation value:', user.CurrentLocation);
     
-    const R = 6371; // Earth's radius in kilometers
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    const distance = R * c;
-
-    if (distance < 1) {
-      return `${Math.round(distance * 1000)}m away`;
-    } else {
-      return `${Math.round(distance)}km away`;
-    }
-  };
-
-  // Get user's current location for distance calculations
-  const getUserLocation = () => {
-    if (userData?.ResidenceAddress?.latitude && userData?.ResidenceAddress?.longitude) {
+    // Handle Firebase GeoPoint (has _latitude and _longitude)
+    if (user.CurrentLocation?._latitude != null && user.CurrentLocation?._longitude != null) {
+      console.log('User CurrentLocation found (GeoPoint)');
       return {
-        latitude: userData.ResidenceAddress.latitude,
-        longitude: userData.ResidenceAddress.longitude
+        latitude: Number(user.CurrentLocation._latitude),
+        longitude: Number(user.CurrentLocation._longitude)
       };
     }
+    
+    // Handle coordinates object with latitude/longitude
+    if (user.CurrentLocation?.latitude != null && user.CurrentLocation?.longitude != null) {
+      console.log('User CurrentLocation found (object)');
+      return {
+        latitude: Number(user.CurrentLocation.latitude),
+        longitude: Number(user.CurrentLocation.longitude)
+      };
+    }
+    
+    // Handle coordinates array [latitude, longitude]
+    if (Array.isArray(user.CurrentLocation) && user.CurrentLocation.length === 2) {
+      console.log('User CurrentLocation found (array)');
+      return {
+        latitude: Number(user.CurrentLocation[0]),
+        longitude: Number(user.CurrentLocation[1])
+      };
+    }
+    
+    // Handle coordinates object with lat/lng (shorter names)
+    if (user.CurrentLocation?.lat != null && user.CurrentLocation?.lng != null) {
+      console.log('User CurrentLocation found (lat/lng)');
+      return {
+        latitude: Number(user.CurrentLocation.lat),
+        longitude: Number(user.CurrentLocation.lng)
+      };
+    }
+    
+    // Try ResidenceAddress as fallback
+    if (user.ResidenceAddress?._latitude != null && user.ResidenceAddress?._longitude != null) {
+      console.log('User ResidenceAddress found (GeoPoint)');
+      return {
+        latitude: Number(user.ResidenceAddress._latitude),
+        longitude: Number(user.ResidenceAddress._longitude)
+      };
+    }
+    
+    if (user.ResidenceAddress?.latitude != null && user.ResidenceAddress?.longitude != null) {
+      console.log('User ResidenceAddress found (object)');
+      return {
+        latitude: Number(user.ResidenceAddress.latitude),
+        longitude: Number(user.ResidenceAddress.longitude)
+      };
+    }
+    
+    if (user.ResidenceAddress?.lat != null && user.ResidenceAddress?.lng != null) {
+      console.log('User ResidenceAddress found (lat/lng)');
+      return {
+        latitude: Number(user.ResidenceAddress.lat),
+        longitude: Number(user.ResidenceAddress.lng)
+      };
+    }
+    
+    console.log('No user location found');
     return null;
-  };
+  }, []);
 
-  // Update user's online status and battery
-  const updateUserPresence = async () => {
-    if (!userData?.uid) return;
-
-    try {
-      // Get battery level
-      const batteryLevel = await Battery.getBatteryLevelAsync();
-      const batteryPercentage = Math.round(batteryLevel * 100);
-      setUserBatteryLevel(batteryPercentage);
-
-      // Update user's presence in Firestore
-      await updateDoc(doc(db, "users", userData.uid), {
-        online: true,
-        lastSeen: serverTimestamp(),
-        battery: batteryPercentage,
-        updatedAt: serverTimestamp()
-      });
-
-      console.log('User presence updated:', {
-        online: true,
-        battery: batteryPercentage
-      });
-    } catch (error) {
-      console.error('Error updating user presence:', error);
+  // Calculate distance for a friend
+  const calculateFriendDistance = useCallback((friend, currentUserLocation) => {
+    console.log('calculateFriendDistance called for:', friend.name);
+    console.log('User location:', currentUserLocation);
+    
+    if (!currentUserLocation) {
+      console.log('No user location provided');
+      return 'Unknown';
     }
-  };
 
-  // Set user offline when app closes
-  const setUserOffline = async () => {
-    if (!userData?.uid) return;
-
-    try {
-      await updateDoc(doc(db, "users", userData.uid), {
-        online: false,
-        lastSeen: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      });
-    } catch (error) {
-      console.error('Error setting user offline:', error);
+    const friendLocation = extractFriendLocation(friend);
+    if (!friendLocation) {
+      console.log('No friend location found');
+      return 'Unknown';
     }
-  };
 
-  // Fetch friends details
-  const fetchFriendsDetails = async () => {
-    if (userData && userData.Friends && userData.Friends.length === 0) {
-      setLoading(false);
+    const distance = calculateDistance(
+      currentUserLocation.latitude,
+      currentUserLocation.longitude,
+      friendLocation.latitude,
+      friendLocation.longitude
+    );
+    
+    console.log('Final distance for', friend.name, ':', distance);
+    return distance;
+  }, []);
+
+  // Format last seen timestamp
+  const formatLastSeen = useCallback((timestamp) => {
+    if (!timestamp) return 'Offline';
+    
+    const now = new Date();
+    const lastSeenDate = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    const diffSeconds = Math.floor((now - lastSeenDate) / 1000);
+    const diffMinutes = Math.floor(diffSeconds / 60);
+    const diffHours = Math.floor(diffMinutes / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMinutes < 1) return 'last seen just now';
+    if (diffMinutes < 60) return `last seen ${diffMinutes} min ago`;
+    if (diffHours < 24) return `last seen ${diffHours} hr ago`;
+    if (diffDays === 1) return 'last seen yesterday';
+    return `last seen on ${lastSeenDate.toLocaleDateString()}`;
+  }, []);
+
+  // Setup presence listeners for all friends
+  const setupPresenceListeners = useCallback((friends, currentUserLocation) => {
+    // Clean up old listeners
+    presenceUnsubscribers.current.forEach((unsubscribe) => {
+      unsubscribe();
+    });
+    presenceUnsubscribers.current.clear();
+
+    // Setup new listeners for each friend
+    friends.forEach((friend) => {
+      const friendId = friend.friendId || friend.id;
+      if (!friendId) return;
+
+      console.log(`Setting up presence listener for friend: ${friendId}`);
+      
+      const unsubscribe = FirebaseService.listenToUser(friendId, (userData) => {
+        if (userData) {
+          console.log(`Presence update for ${friendId}:`, userData.status);
+          
+          // Update the specific friend's presence data
+          setFriendsData((prevFriends) => 
+            prevFriends.map((f) => {
+              if ((f.friendId || f.id) === friendId) {
+                // Recalculate distance if location changed
+                const newDistance = calculateFriendDistance(
+                  { ...f, ...userData }, 
+                  currentUserLocation
+                );
+                
+                return {
+                  ...f,
+                  status: userData.status,
+                  lastSeen: userData.lastSeen,
+                  isOnline: userData.status === 'online',
+                  presenceText: userData.status === 'online' 
+                    ? 'Online' 
+                    : formatLastSeen(userData.lastSeen),
+                  distance: newDistance,
+                  currentLocation: userData.CurrentLocation || f.currentLocation,
+                  location: userData.location || f.location,
+                };
+              }
+              return f;
+            })
+          );
+        }
+      });
+
+      presenceUnsubscribers.current.set(friendId, unsubscribe);
+    });
+  }, [formatLastSeen, calculateFriendDistance]);
+
+  // Manual refresh function
+  const refreshFriends = useCallback(async () => {
+    if (!userDataRef.current) {
+      console.log('No user data for refresh');
       return;
     }
 
+    const userId = userDataRef.current.uid || userDataRef.current.id;
+    if (!userId) return;
+
     try {
-      setLoading(true);
-      const userLocation = getUserLocation();
-      const friendsData = {};
+      console.log('Manual refresh triggered');
+      const currentUserLocation = getUserLocation(userDataRef.current);
+      setUserLocation(currentUserLocation);
       
-      // Fetch details for each friend
-      for (const friend of userData.friends) {
-        try {
-          const friendDoc = await getUserDocument(friend.uid);
-          if (friendDoc) {
-            // Calculate distance
-            let distance = 'Unknown location';
-            if (userLocation && friendDoc.ResidenceAddress?.latitude && friendDoc.ResidenceAddress?.longitude) {
-              distance = calculateDistance(
-                userLocation.latitude,
-                userLocation.longitude,
-                friendDoc.ResidenceAddress.latitude,
-                friendDoc.ResidenceAddress.longitude
-              );
-            }
-
-            // Determine online status
-            let isOnline = false;
-            if (friendDoc.online === true) {
-              isOnline = true;
-            } else if (friendDoc.lastSeen) {
-              // Consider user online if last seen within 5 minutes
-              const lastSeen = new Date(friendDoc.lastSeen.toDate ? friendDoc.lastSeen.toDate() : friendDoc.lastSeen);
-              const now = new Date();
-              const timeDiff = now - lastSeen;
-              isOnline = timeDiff < 5 * 60 * 1000; // 5 minutes
-            }
-
-            friendsData[friend.uid] = {
-              uid: friend.uid,
-              name: friendDoc.name || `${friendDoc.Name || ''} ${friendDoc.Surname || ''}`.trim() || 'Unknown User',
-              firstName: friendDoc.Name || friendDoc.name || 'Unknown',
-              lastName: friendDoc.Surname || friendDoc.surname || '',
-              imageUrl: friendDoc.imageUrl || friendDoc.ImageURL || null,
-              location: distance,
-              isOnline,
-              battery: friendDoc.battery || 100,
-              lastSeen: friendDoc.lastSeen,
-              currentLocation: friendDoc.currentLocation || null,
-              phone: friendDoc.Phone || friendDoc.phone || '',
-              email: friendDoc.Email || friendDoc.email || '',
-              // Add raw data for compatibility
-              ...friendDoc
-            };
-
-            // Update online users set
-            if (isOnline) {
-              setOnlineUsers(prev => new Set(prev).add(friend.uid));
-            }
-          }
-        } catch (error) {
-          console.error(`Error fetching details for friend ${friend.uid}:`, error);
-          // Add placeholder data to avoid repeated failed attempts
-          friendsData[friend.uid] = {
-            uid: friend.uid,
-            name: friend.name || 'Unknown User',
-            firstName: friend.name || 'Unknown',
-            lastName: '',
-            imageUrl: null,
-            location: 'Unknown location',
-            isOnline: false,
-            battery: 100,
-            lastSeen: null,
-            currentLocation: null,
-          };
-        }
-      }
-      
-      setFriendsDetails(friendsData);
-      setLoading(false);
-    } catch (error) {
-      console.error("Error in fetchFriendsDetails:", error);
-      setLoading(false);
-    }
-  };
-
-  // Set up real-time listeners for friends' online status
-  const setupPresenceListeners = () => {
-    if (!userData?.friends) return [];
-
-    const unsubscribers = [];
-
-    userData.friends.forEach(friend => {
-      const unsubscribe = onSnapshot(
-        doc(db, "users", friend.uid),
-        (doc) => {
-          if (doc.exists()) {
-            const data = doc.data();
-            
-            // Update friend's details
-            setFriendsDetails(prev => ({
-              ...prev,
-              [friend.uid]: {
-                ...prev[friend.uid],
-                isOnline: data.online || false,
-                battery: data.battery || 100,
-                lastSeen: data.lastSeen,
-                updatedAt: data.updatedAt
-              }
-            }));
-
-            // Update online users set
-            setOnlineUsers(prev => {
-              const newSet = new Set(prev);
-              if (data.online) {
-                newSet.add(friend.uid);
-              } else {
-                newSet.delete(friend.uid);
-              }
-              return newSet;
-            });
-          }
-        },
-        (error) => {
-          console.error(`Error listening to friend ${friend.uid} presence:`, error);
-        }
+      const result = await FirebaseService.getFriendsDetails(
+        [],
+        currentUserLocation
       );
-
-      unsubscribers.push(unsubscribe);
-    });
-
-    return unsubscribers;
-  };
-
-  // Initialize friends data and presence
-  useEffect(() => {
-    if (userData) {
-      // Update user's own presence
-      updateUserPresence();
       
-      // Fetch friends details
-      fetchFriendsDetails();
-
-      // Set up presence listeners
-      const unsubscribers = setupPresenceListeners();
-
-      // Update battery every 5 minutes
-      const batteryInterval = setInterval(updateUserPresence, 5 * 60 * 1000);
-
-      // Cleanup function
-      return () => {
-        unsubscribers.forEach(unsubscribe => unsubscribe());
-        clearInterval(batteryInterval);
-      };
+      console.log('Manual refresh completed');
+    } catch (error) {
+      console.error('Error refreshing:', error);
+      setError(error.message);
     }
-  }, [userData]);
+  }, [getUserLocation]);
 
-  // Set user offline when component unmounts
+  // Initialize friends listener
   useEffect(() => {
-    return () => {
-      if (userData?.uid) {
-        setUserOffline();
+    const initializeFriends = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const jsonValue = await AsyncStorage.getItem('userData');
+        if (!jsonValue) {
+          console.log('No user data found in AsyncStorage');
+          setLoading(false);
+          return;
+        }
+
+        let user = JSON.parse(jsonValue);
+        
+        // CRITICAL FIX: If CurrentLocation is missing, fetch fresh data from Firebase
+        const userId = user.uid || user.id || user.userId || user.UID;
+        
+        if (!user.CurrentLocation && userId) {
+          console.log('CurrentLocation missing in AsyncStorage, fetching from Firebase...');
+          
+          try {
+            const freshDataResult = await FirebaseService.getUserById(userId);
+            if (freshDataResult.success && freshDataResult.userData) {
+              // Merge fresh data
+              user = { ...user, ...freshDataResult.userData };
+              // Update AsyncStorage with fresh data
+              await AsyncStorage.setItem('userData', JSON.stringify(user));
+              console.log('Updated AsyncStorage with CurrentLocation from Firebase');
+            }
+          } catch (fetchError) {
+            console.error('Error fetching fresh user data:', fetchError);
+          }
+        }
+        
+        userDataRef.current = user;
+        
+        console.log('Loaded user data:', {
+          name: user.name || user.Name,
+          email: user.email || user.Email,
+          hasCurrentLocation: !!user.CurrentLocation,
+          currentLocationValue: user.CurrentLocation,
+          hasResidenceAddress: !!user.ResidenceAddress
+        });
+        
+        if (!userId) {
+          console.error('Missing user ID');
+          setLoading(false);
+          return;
+        }
+
+        const currentUserLocation = getUserLocation(user);
+        setUserLocation(currentUserLocation);
+        
+        console.log('Current user location:', currentUserLocation);
+        console.log('Setting up real-time listener for userId:', userId);
+
+        // Set up real-time listener for friends list
+        friendsUnsubscribe.current = FirebaseService.listenToFriendsWithDetails(
+          userId,
+          currentUserLocation,
+          (friendsWithDetails) => {
+            console.log('Received', friendsWithDetails.length, 'friends from Firebase');
+            
+            // Transform for consistent structure with distance calculation
+            const transformedFriends = friendsWithDetails.map((friend) => {
+              const distance = calculateFriendDistance(friend, currentUserLocation);
+              
+              return {
+                id: friend.friendId || friend.uid,
+                friendId: friend.friendId,
+                name: friend.name,
+                firstName: friend.firstName,
+                lastName: friend.lastName,
+                phone: friend.phone,
+                email: friend.email,
+                avatar: friend.avatar,
+                status: friend.status || 'offline',
+                isOnline: friend.status === 'online',
+                lastSeen: friend.lastSeen,
+                presenceText: friend.status === 'online' 
+                  ? 'Online' 
+                  : formatLastSeen(friend.lastSeen),
+                location: friend.location,
+                currentLocation: friend.currentLocation,
+                distance: distance,
+                battery: friend.battery,
+                batteryLevel: friend.batteryLevel,
+                isCloseFriend: friend.isCloseFriend,
+                rating: friend.rating,
+                rawData: friend.rawData
+              };
+            });
+            
+            console.log('Transformed friends with distances:', 
+              transformedFriends.map(f => ({ name: f.name, distance: f.distance }))
+            );
+            
+            setFriendsData(transformedFriends);
+            setLoading(false);
+            setLastUpdated(new Date());
+            
+            // Setup presence listeners for all friends
+            setupPresenceListeners(transformedFriends, currentUserLocation);
+            
+            console.log('Updated with', transformedFriends.length, 'friends with distances');
+          }
+        );
+        
+      } catch (error) {
+        console.error('Error initializing:', error);
+        setError(error.message);
+        setLoading(false);
       }
     };
-  }, [userData?.uid]);
 
-  // Update user presence when app becomes active
-  useEffect(() => {
-    const handleAppStateChange = (nextAppState) => {
-      if (nextAppState === 'active' && userData?.uid) {
-        updateUserPresence();
-      } else if (nextAppState === 'background' || nextAppState === 'inactive') {
-        setUserOffline();
-      }
-    };
-
-    // Note: You'll need to import AppState from 'react-native' and add this listener
-    // AppState.addEventListener('change', handleAppStateChange);
+    initializeFriends();
     
-    // return () => {
-    //   AppState.removeEventListener('change', handleAppStateChange);
-    // };
-  }, [userData]);
+    // Cleanup on unmount
+    return () => {
+      if (friendsUnsubscribe.current) {
+        console.log('Cleaning up friends listener');
+        friendsUnsubscribe.current();
+      }
+      
+      // Cleanup all presence listeners
+      console.log('Cleaning up presence listeners');
+      presenceUnsubscribers.current.forEach((unsubscribe) => {
+        unsubscribe();
+      });
+      presenceUnsubscribers.current.clear();
+    };
+  }, [getUserLocation, setupPresenceListeners, formatLastSeen, calculateFriendDistance]);
 
-  // Get friends list as array
-  const getFriendsArray = () => {
-    return Object.values(friendsDetails).filter(friend => friend.uid);
-  };
-
-  // Get online friends
-  const getOnlineFriends = () => {
-    return getFriendsArray().filter(friend => friend.isOnline);
-  };
-
-  // Get offline friends  
-  const getOfflineFriends = () => {
-    return getFriendsArray().filter(friend => !friend.isOnline);
-  };
-
-  // Get friend by ID
-  const getFriendById = (friendId) => {
-    return friendsDetails[friendId] || null;
-  };
-
-  // Refresh friends data
-  const refreshFriends = async () => {
-    await fetchFriendsDetails();
-  };
-
-  const value = {
-    friendsDetails,
+  // Memoize the context value
+  const value = React.useMemo(() => ({
+    friendsData,
     loading,
-    onlineUsers,
-    userBatteryLevel,
-    getFriendsArray,
-    getOnlineFriends,
-    getOfflineFriends,
-    getFriendById,
+    lastUpdated,
+    error,
     refreshFriends,
-    updateUserPresence
-  };
+    friendsCount: friendsData.length,
+    userLocation
+  }), [friendsData, loading, lastUpdated, error, refreshFriends, userLocation]);
 
   return (
     <FriendsContext.Provider value={value}>

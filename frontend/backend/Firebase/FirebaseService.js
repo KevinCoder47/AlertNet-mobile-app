@@ -38,6 +38,40 @@ export const FirebaseService = {
   // ========================
 
   /**
+ * Get fresh user data from Firebase by userId
+ * @param {string} userId - User document ID
+ * @returns {Object} - { success: boolean, userData: object|null, error?: string }
+ */
+getUserData: async (userId) => {
+  try {
+    if (!userId) {
+      return { success: false, userData: null, error: 'User ID required' };
+    }
+    
+    console.log('Fetching fresh user data for:', userId);
+    const userDoc = await getDoc(doc(db, 'users', userId));
+    
+    if (!userDoc.exists()) {
+      return { success: false, userData: null, error: 'User not found' };
+    }
+    
+    const userData = userDoc.data();
+    console.log('Fresh user data fetched with CurrentLocation:', !!userData.CurrentLocation);
+    
+    return { 
+      success: true, 
+      userData: {
+        id: userDoc.id,
+        ...userData
+      }
+    };
+  } catch (error) {
+    console.error('Error fetching user data:', error);
+    return { success: false, userData: null, error: error.message };
+  }
+},
+
+  /**
    * Updates the status of a user in Firestore.
    * @param {string} userId - The ID of the user to update.
    * @param {Object} statusData - The data to update, e.g., { status: 'online' } or { status: 'offline', lastSeen: serverTimestamp() }.
