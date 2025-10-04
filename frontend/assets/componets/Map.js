@@ -119,13 +119,50 @@ export default function SafetyMap({userImage, friendsDetails, setFriendsDetails,
   // Platform-specific configuration
   const isAndroid = Platform.OS === 'android';
   
+  // Normalize friendsDetails to always work with an array
+  const friendsArray = useMemo(() => {
+    if (!friendsDetails) return [];
+    
+    if (Array.isArray(friendsDetails)) {
+      return friendsDetails;
+    }
+    
+    // Convert object format to array
+    return Object.entries(friendsDetails).map(([uid, friend]) => ({
+      ...friend,
+      uid: uid,
+      friendId: friend.friendId || uid
+    }));
+  }, [friendsDetails]);
+
+  // Debug logging to track friend data
+  useEffect(() => {
+    console.log('=== SAFETYMAP DEBUG ===');
+    console.log('friendsDetails type:', Array.isArray(friendsDetails) ? 'array' : typeof friendsDetails);
+    console.log('friendsArray length:', friendsArray.length);
+    
+    const friendsWithLocations = friendsArray.filter(f => f.currentLocation);
+    console.log('Friends with currentLocation:', friendsWithLocations.length);
+    
+    friendsWithLocations.forEach(f => {
+      console.log(`  ${f.name}:`, {
+        lat: f.currentLocation?.latitude,
+        lng: f.currentLocation?.longitude,
+        hasImage: !!f.imageUrl || !!f.avatar
+      });
+    });
+    
+    if (friendsWithLocations.length === 0 && friendsArray.length > 0) {
+      console.warn('⚠️ WARNING: Friends exist but none have currentLocation!');
+      console.log('Sample friend data:', JSON.stringify(friendsArray[0], null, 2));
+    }
+  }, [friendsDetails, friendsArray]);
+  
   // Determine which approach to use based on platform
   const mapId = useMemo(() => {
-    // On Android, use mapId approach with our cloud-stored styles
     if (isAndroid) {
       return colors.isDark ? MAP_IDS.dark : MAP_IDS.light;
     }
-    // On iOS, we can use either approach
     return colors.isDark ? MAP_IDS.dark : MAP_IDS.light;
   }, [colors.isDark, isAndroid]);
   
@@ -142,7 +179,7 @@ export default function SafetyMap({userImage, friendsDetails, setFriendsDetails,
     const col = index % gridSize;
 
     return {
-      latitude: baseLat + (row - 1) * OFFSET_DISTANCE, // -1, 0, +1
+      latitude: baseLat + (row - 1) * OFFSET_DISTANCE,
       longitude: baseLng + (col - 1) * OFFSET_DISTANCE,
     };
   };
@@ -151,10 +188,12 @@ export default function SafetyMap({userImage, friendsDetails, setFriendsDetails,
   useEffect(() => {
     if (!userLocation || !mapRef.current) return;
     
-    // Get all valid friend locations
-    const friendLocations = Object.values(friendsDetails)
+    // Get all valid friend locations from normalized array
+    const friendLocations = friendsArray
       .filter(friend => friend.currentLocation)
       .map(friend => friend.currentLocation);
+    
+    console.log('Adjusting map region with', friendLocations.length, 'friend locations');
     
     // If no friends or friends are far away, focus on user only
     if (friendLocations.length === 0) {
@@ -187,26 +226,43 @@ export default function SafetyMap({userImage, friendsDetails, setFriendsDetails,
     mapRef.current.animateToRegion({
       latitude: userLocation.latitude,
       longitude: userLocation.longitude,
-      latitudeDelta: Math.max(0.01, Math.min(0.1, latDelta)), // Keep within reasonable bounds
-      longitudeDelta: Math.max(0.01, Math.min(0.1, lngDelta)), // Keep within reasonable bounds
+      latitudeDelta: Math.max(0.01, Math.min(0.1, latDelta)),
+      longitudeDelta: Math.max(0.01, Math.min(0.1, lngDelta)),
     }, 1000);
-  }, [userLocation, friendsDetails]);
+  }, [userLocation, friendsArray]);
 
-  // friends location listener
+  // Friends location listener - using normalized array
   useEffect(() => {
     const interval = setInterval(() => {
       // Refresh friends' locations periodically
-      Object.keys(friendsDetails).forEach(async (uid) => {
+      friendsArray.forEach(async (friend) => {
+        const uid = friend.friendId || friend.uid;
+        if (!uid) return;
+        
         try {
           const friendDoc = await getUserDocument(uid);
           if (friendDoc && friendDoc.currentLocation) {
-            setFriendsDetails(prev => ({
-              ...prev,
-              [uid]: {
-                ...prev[uid],
-                currentLocation: friendDoc.currentLocation
-              }
-            }));
+            // Update via setFriendsDetails if available
+            if (setFriendsDetails && typeof setFriendsDetails === 'function') {
+              setFriendsDetails(prev => {
+                // Handle both array and object formats
+                if (Array.isArray(prev)) {
+                  return prev.map(f => 
+                    (f.friendId === uid || f.uid === uid) 
+                      ? { ...f, currentLocation: friendDoc.currentLocation }
+                      : f
+                  );
+                } else {
+                  return {
+                    ...prev,
+                    [uid]: {
+                      ...prev[uid],
+                      currentLocation: friendDoc.currentLocation
+                    }
+                  };
+                }
+              });
+            }
           }
         } catch (error) {
           console.error(`Error updating location for ${uid}:`, error);
@@ -215,7 +271,7 @@ export default function SafetyMap({userImage, friendsDetails, setFriendsDetails,
     }, 30000); // Update every 30 seconds
 
     return () => clearInterval(interval);
-  }, [friendsDetails]);
+  }, [friendsArray, setFriendsDetails]);
 
   // Initial region calculation - focus on user
   const initialRegion = useMemo(() => {
@@ -224,8 +280,8 @@ export default function SafetyMap({userImage, friendsDetails, setFriendsDetails,
     return {
       latitude: userLocation.latitude,
       longitude: userLocation.longitude,
-      latitudeDelta: 0.01, // Smaller delta for closer zoom
-      longitudeDelta: 0.01, // Smaller delta for closer zoom
+      latitudeDelta: 0.01,
+      longitudeDelta: 0.01,
     };
   }, [userLocation]);
 
@@ -239,7 +295,7 @@ export default function SafetyMap({userImage, friendsDetails, setFriendsDetails,
           provider="google"
           customMapStyle={!isAndroid ? mapStyle : mapId} 
           googleMapId={isAndroid ? mapId : undefined}
-          showsMyLocationButton={false} // Disable default button
+          showsMyLocationButton={false}
           showsCompass={true}
           showsBuildings={true}
           showsTraffic={false}
@@ -248,7 +304,7 @@ export default function SafetyMap({userImage, friendsDetails, setFriendsDetails,
           initialRegion={initialRegion}
           zoomEnabled={true}
         >
-          {/* user marker - make it more prominent */}
+          {/* User marker */}
           <Marker
             coordinate={{
               latitude: userLocation.latitude,
@@ -256,15 +312,20 @@ export default function SafetyMap({userImage, friendsDetails, setFriendsDetails,
             }}
             title="My Location"
             anchor={{ x: 0.5, y: 1 }} 
-            pinColor={Platform.OS === 'android' ? "#FF0000" : undefined} // Android-only
+            pinColor={Platform.OS === 'android' ? "#FF0000" : undefined}
             zIndex={1000}
           >
             {Platform.OS === 'ios' && <UserMapMarker userImage={userImage} />}
           </Marker>
 
-          {/* Friend Markers with offset to prevent overlapping */}
-          {Object.entries(friendsDetails).map(([uid, friend], index) => {
-            if (!friend.currentLocation) return null;
+          {/* Friend Markers - now using normalized array */}
+          {friendsArray.map((friend, index) => {
+            // Skip if no location data
+            if (!friend.currentLocation || 
+                friend.currentLocation.latitude == null || 
+                friend.currentLocation.longitude == null) {
+              return null;
+            }
             
             const offsetCoords = getOffsetCoordinates(
               friend.currentLocation.latitude,
@@ -272,18 +333,34 @@ export default function SafetyMap({userImage, friendsDetails, setFriendsDetails,
               index
             );
             
+            // Get unique key
+            const key = friend.friendId || friend.uid || `friend_${index}`;
+            
+            // Get image URL (try multiple possible fields)
+            const imageUrl = friend.imageUrl || friend.avatar || friend.ImageURL;
+            
             return (
               <Marker
-                key={uid}
+                key={key}
                 coordinate={offsetCoords}
-                title={friend.name}
+                title={friend.name || 'Friend'}
                 zIndex={1}
               >
-                <Image 
-                  source={{ uri: friend.imageUrl }} 
-                  style={styles.friendMarker}
-                  onError={() => console.log("Error loading friend image")}
-                />
+                {imageUrl ? (
+                  <Image 
+                    source={{ uri: imageUrl }} 
+                    style={styles.friendMarker}
+                    onError={(error) => {
+                      console.log(`Error loading image for ${friend.name}:`, error.nativeEvent.error);
+                    }}
+                  />
+                ) : (
+                  <View style={[styles.friendMarker, styles.placeholderMarker]}>
+                    <Text style={styles.placeholderText}>
+                      {friend.name?.charAt(0)?.toUpperCase() || '?'}
+                    </Text>
+                  </View>
+                )}
               </Marker>
             );
           })}
@@ -311,12 +388,6 @@ const styles = StyleSheet.create({
     width: Dimensions.get('window').width,
     height: Dimensions.get('window').height,
   },
-  androidMarker: {
-    width: 50,
-    height: 50,
-    backgroundColor: '#C80110',
-    borderRadius: 25
-  },
   friendMarker: {
     width: 50, 
     height: 50,
@@ -329,9 +400,14 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 3,
   },
-  friendAvatar: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 25,
+  placeholderMarker: {
+    backgroundColor: '#C84022',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  placeholderText: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: 'bold',
   },
 });

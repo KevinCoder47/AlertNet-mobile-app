@@ -8,7 +8,17 @@ import PeopleBar from './People/PeopleBar';
 
 const { width, height } = Dimensions.get('window');
 
-const BottomNav = ({ isNotHome, setIsNotHome, isWalkPartner, setIsWalkPartner, setIsSOS, setIsPeopleActive, setIsTopBarManuallyExpanded, onOpenChat }) => {
+const BottomNav = ({ 
+  isNotHome, 
+  setIsNotHome, 
+  isWalkPartner, 
+  setIsWalkPartner, 
+  setIsSOS, 
+  setIsPeopleActive, 
+  setIsTopBarManuallyExpanded, 
+  onOpenChat,
+  onFriendsUpdate // Add this prop
+}) => {
   const [isHome, setIsHome] = useState(true);
   const [isPeople, setIsPeople] = useState(false);
   const [isHelpLine, setIsHelpLine] = useState(false);
@@ -91,7 +101,11 @@ const BottomNav = ({ isNotHome, setIsNotHome, isWalkPartner, setIsWalkPartner, s
               {isExpanded ? (
                 <PeoplePanel onCollapse={() => setIsExpanded(false)} />
               ) : (
-                <PeopleBar onExpand={() => setIsExpanded(true)} onOpenChat={onOpenChat} />
+                <PeopleBar 
+                  onExpand={() => setIsExpanded(true)} 
+                  onOpenChat={onOpenChat}
+                  onFriendsUpdate={onFriendsUpdate} // Pass it to PeopleBar
+                />
               )}
             </View>
           )}

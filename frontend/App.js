@@ -36,7 +36,7 @@ export default function App() {
             <FontSizeProvider>
               <View style={styles.container}>
                 <AppNavigator />
-                <NotificationHandler /> {/* Add this line */}
+                <NotificationHandler /> 
                 <StatusBar style="auto" />
               </View>
             </FontSizeProvider>

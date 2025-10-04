@@ -949,6 +949,17 @@ useEffect(() => {
           setIsPeopleActive={setIsPeopleActive}
           setIsTopBarManuallyExpanded={setIsTopBarManuallyExpanded}
           onOpenChat={handleOpenChat}
+          onFriendsUpdate={(friends) => {
+            // Convert array to object format for SafetyMap
+            const friendsObj = friends.reduce((acc, friend) => {
+              const id = friend.friendId || friend.uid;
+              if (id) {
+                acc[id] = friend;
+              }
+              return acc;
+            }, {});
+            setFriendsDetails(friendsObj);
+          }}
         />
         
         {/* Notifications Popup */}
