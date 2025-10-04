@@ -38,6 +38,36 @@ export const FirebaseService = {
   // ========================
 
   /**
+ * Update user's battery level in Firebase
+ * @param {string} userId - User's document ID
+ * @param {number} batteryLevel - Battery percentage (0-100)
+ * @returns {Object} - { success: boolean, error?: string }
+ */
+updateUserBattery: async (userId, batteryLevel) => {
+  try {
+    if (!userId) {
+      return { success: false, error: 'User ID required' };
+    }
+    
+    if (batteryLevel < 0 || batteryLevel > 100) {
+      console.warn('Battery level out of range:', batteryLevel);
+      batteryLevel = Math.max(0, Math.min(100, batteryLevel));
+    }
+    
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, {
+      Battery: batteryLevel,
+      BatteryLastUpdated: serverTimestamp()
+    });
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating battery:', error);
+    return { success: false, error: error.message };
+  }
+},
+
+  /**
  * Get fresh user data from Firebase by userId
  * @param {string} userId - User document ID
  * @returns {Object} - { success: boolean, userData: object|null, error?: string }

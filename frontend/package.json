@@ -28,7 +28,7 @@
     "dotenv": "^17.2.2",
     "expo": "^54.0.9",
     "expo-av": "~15.1.7",
-    "expo-battery": "~9.1.4",
+    "expo-battery": "~10.0.7",
     "expo-blur": "~14.1.5",
     "expo-build-properties": "~1.0.9",
     "expo-camera": "~17.0.8",
