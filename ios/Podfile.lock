@@ -242,6 +242,8 @@ PODS:
     - ExpoModulesCore
   - ExpoCrypto (14.0.2):
     - ExpoModulesCore
+  - ExpoDevice (7.0.3):
+    - ExpoModulesCore
   - ExpoFileSystem (18.0.12):
     - ExpoModulesCore
   - ExpoFont (13.0.4):
@@ -294,6 +296,33 @@ PODS:
     - ExpoModulesCore
   - fast_float (6.1.4)
   - FBLazyVector (0.76.9)
+  - Firebase/CoreOnly (12.3.0):
+    - FirebaseCore (~> 12.3.0)
+  - Firebase/Messaging (12.3.0):
+    - Firebase/CoreOnly
+    - FirebaseMessaging (~> 12.3.0)
+  - FirebaseCore (12.3.0):
+    - FirebaseCoreInternal (~> 12.3.0)
+    - GoogleUtilities/Environment (~> 8.1)
+    - GoogleUtilities/Logger (~> 8.1)
+  - FirebaseCoreExtension (12.3.0):
+    - FirebaseCore (~> 12.3.0)
+  - FirebaseCoreInternal (12.3.0):
+    - "GoogleUtilities/NSData+zlib (~> 8.1)"
+  - FirebaseInstallations (12.3.0):
+    - FirebaseCore (~> 12.3.0)
+    - GoogleUtilities/Environment (~> 8.1)
+    - GoogleUtilities/UserDefaults (~> 8.1)
+    - PromisesObjC (~> 2.4)
+  - FirebaseMessaging (12.3.0):
+    - FirebaseCore (~> 12.3.0)
+    - FirebaseInstallations (~> 12.3.0)
+    - GoogleDataTransport (~> 10.1)
+    - GoogleUtilities/AppDelegateSwizzler (~> 8.1)
+    - GoogleUtilities/Environment (~> 8.1)
+    - GoogleUtilities/Reachability (~> 8.1)
+    - GoogleUtilities/UserDefaults (~> 8.1)
+    - nanopb (~> 3.30910.0)
   - fmt (11.0.2)
   - glog (0.3.5)
   - Google-Maps-iOS-Utils (4.2.2):
@@ -315,11 +344,38 @@ PODS:
     - GoogleMaps (~> 7.3)
   - Google-Maps-iOS-Utils/QuadTree (4.2.2):
     - GoogleMaps (~> 7.3)
+  - GoogleDataTransport (10.1.0):
+    - nanopb (~> 3.30910.0)
+    - PromisesObjC (~> 2.4)
   - GoogleMaps (7.4.0):
     - GoogleMaps/Maps (= 7.4.0)
   - GoogleMaps/Base (7.4.0)
   - GoogleMaps/Maps (7.4.0):
     - GoogleMaps/Base
+  - GoogleUtilities/AppDelegateSwizzler (8.1.0):
+    - GoogleUtilities/Environment
+    - GoogleUtilities/Logger
+    - GoogleUtilities/Network
+    - GoogleUtilities/Privacy
+  - GoogleUtilities/Environment (8.1.0):
+    - GoogleUtilities/Privacy
+  - GoogleUtilities/Logger (8.1.0):
+    - GoogleUtilities/Environment
+    - GoogleUtilities/Privacy
+  - GoogleUtilities/Network (8.1.0):
+    - GoogleUtilities/Logger
+    - "GoogleUtilities/NSData+zlib"
+    - GoogleUtilities/Privacy
+    - GoogleUtilities/Reachability
+  - "GoogleUtilities/NSData+zlib (8.1.0)":
+    - GoogleUtilities/Privacy
+  - GoogleUtilities/Privacy (8.1.0)
+  - GoogleUtilities/Reachability (8.1.0):
+    - GoogleUtilities/Logger
+    - GoogleUtilities/Privacy
+  - GoogleUtilities/UserDefaults (8.1.0):
+    - GoogleUtilities/Logger
+    - GoogleUtilities/Privacy
   - hermes-engine (0.76.9):
     - hermes-engine/Pre-built (= 0.76.9)
   - hermes-engine/Pre-built (0.76.9)
@@ -346,6 +402,12 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
+  - nanopb (3.30910.0):
+    - nanopb/decode (= 3.30910.0)
+    - nanopb/encode (= 3.30910.0)
+  - nanopb/decode (3.30910.0)
+  - nanopb/encode (3.30910.0)
+  - PromisesObjC (2.4.0)
   - RCT-Folly (2024.10.14.00):
     - boost
     - DoubleConversion
@@ -2055,6 +2117,14 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
+  - RNFBApp (23.4.0):
+    - Firebase/CoreOnly (= 12.3.0)
+    - React-Core
+  - RNFBMessaging (23.4.0):
+    - Firebase/Messaging (= 12.3.0)
+    - FirebaseCoreExtension
+    - React-Core
+    - RNFBApp
   - RNGestureHandler (2.20.2):
     - DoubleConversion
     - glog
@@ -2239,6 +2309,7 @@ DEPENDENCIES:
   - ExpoClipboard (from `../node_modules/expo-clipboard/ios`)
   - ExpoContacts (from `../node_modules/expo-contacts/ios`)
   - ExpoCrypto (from `../node_modules/expo-crypto/ios`)
+  - ExpoDevice (from `../node_modules/expo-device/ios`)
   - ExpoFileSystem (from `../node_modules/expo-file-system/ios`)
   - ExpoFont (from `../node_modules/expo-font/ios`)
   - ExpoHead (from `../node_modules/expo-router/ios`)
@@ -2326,6 +2397,8 @@ DEPENDENCIES:
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
   - "RNCAsyncStorage (from `../node_modules/@react-native-async-storage/async-storage`)"
   - "RNCPicker (from `../node_modules/@react-native-picker/picker`)"
+  - "RNFBApp (from `../node_modules/@react-native-firebase/app`)"
+  - "RNFBMessaging (from `../node_modules/@react-native-firebase/messaging`)"
   - RNGestureHandler (from `../node_modules/react-native-gesture-handler`)
   - RNReanimated (from `../node_modules/react-native-reanimated`)
   - RNScreens (from `../node_modules/react-native-screens`)
@@ -2334,9 +2407,19 @@ DEPENDENCIES:
 
 SPEC REPOS:
   trunk:
+    - Firebase
+    - FirebaseCore
+    - FirebaseCoreExtension
+    - FirebaseCoreInternal
+    - FirebaseInstallations
+    - FirebaseMessaging
     - Google-Maps-iOS-Utils
+    - GoogleDataTransport
     - GoogleMaps
+    - GoogleUtilities
     - lottie-ios
+    - nanopb
+    - PromisesObjC
     - SocketRocket
     - ZXingObjC
 
@@ -2383,6 +2466,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-contacts/ios"
   ExpoCrypto:
     :path: "../node_modules/expo-crypto/ios"
+  ExpoDevice:
+    :path: "../node_modules/expo-device/ios"
   ExpoFileSystem:
     :path: "../node_modules/expo-file-system/ios"
   ExpoFont:
@@ -2554,6 +2639,10 @@ EXTERNAL SOURCES:
     :path: "../node_modules/@react-native-async-storage/async-storage"
   RNCPicker:
     :path: "../node_modules/@react-native-picker/picker"
+  RNFBApp:
+    :path: "../node_modules/@react-native-firebase/app"
+  RNFBMessaging:
+    :path: "../node_modules/@react-native-firebase/messaging"
   RNGestureHandler:
     :path: "../node_modules/react-native-gesture-handler"
   RNReanimated:
@@ -2587,6 +2676,7 @@ SPEC CHECKSUMS:
   ExpoClipboard: 44fd1c8959ee8f6175d059dc011b154c9709a969
   ExpoContacts: 98484e09e4caccd2daa6042f341dc2e62a29697e
   ExpoCrypto: e97e864c8d7b9ce4a000bca45dddb93544a1b2b4
+  ExpoDevice: d36ab4186b6799a28fd449bb9a1c77455f23fd1a
   ExpoFileSystem: 42d363d3b96f9afab980dcef60d5657a4443c655
   ExpoFont: f354e926f8feae5e831ec8087f36652b44a0b188
   ExpoHead: df924203fbf8e0913fc38b0f6aec71f9a9115482
@@ -2603,13 +2693,23 @@ SPEC CHECKSUMS:
   EXUpdatesInterface: 7c977640bdd8b85833c19e3959ba46145c5719db
   fast_float: 06eeec4fe712a76acc9376682e4808b05ce978b6
   FBLazyVector: 7605ea4810e0e10ae4815292433c09bf4324ba45
+  Firebase: f5439b235721ceeef14ca1f327c0da8e4e8556b5
+  FirebaseCore: ff47fe1ad3ab9ef66edd3e8bc4647b493d2067f8
+  FirebaseCoreExtension: 898ca55c7cb126f83747b32cb0daa95394b10853
+  FirebaseCoreInternal: a9e1ff270f217489d9258563b693d11a312903bf
+  FirebaseInstallations: ca48ec60ea51b66b9f214a91847ea3720cde97f5
+  FirebaseMessaging: 919ce76cb353f0c36d463f5461d8ab584e6ed765
   fmt: 01b82d4ca6470831d1cc0852a1af644be019e8f6
   glog: 08b301085f15bcbb6ff8632a8ebaf239aae04e6a
   Google-Maps-iOS-Utils: f77eab4c4326d7e6a277f8e23a0232402731913a
+  GoogleDataTransport: aae35b7ea0c09004c3797d53c8c41f66f219d6a7
   GoogleMaps: 032f676450ba0779bd8ce16840690915f84e57ac
+  GoogleUtilities: 00c88b9a86066ef77f0da2fab05f65d7768ed8e1
   hermes-engine: 9e868dc7be781364296d6ee2f56d0c1a9ef0bb11
   lottie-ios: a881093fab623c467d3bce374367755c272bdd59
   lottie-react-native: 505ac0821ad985d02e2d3f57d2ed71e16ff8ea5c
+  nanopb: fad817b59e0457d11a5dfbde799381cd727c1275
+  PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
   RCT-Folly: ea9d9256ba7f9322ef911169a9f696e5857b9e17
   RCTDeprecation: ebe712bb05077934b16c6bf25228bdec34b64f83
   RCTRequired: ca91e5dd26b64f577b528044c962baf171c6b716
@@ -2675,6 +2775,8 @@ SPEC CHECKSUMS:
   ReactCommon: b2eb96a61b826ff327a773a74357b302cf6da678
   RNCAsyncStorage: 9ff617df4a485f2efba57bdf4face05a41767390
   RNCPicker: 474d7305d1f1fc3c9e521fd5e8b7d5045aa6df07
+  RNFBApp: 8d27c7545e7e06d78974e204ff95f207a60a5cb2
+  RNFBMessaging: 614675f78c9f357a1c7a3abeeda265afb6eff276
   RNGestureHandler: de2b7ccdbf18766609fb9490c7f11c18805705a3
   RNReanimated: 758e433dea58eb219208bd209ef91a6f8ee096fb
   RNScreens: 2fe3d999c2dee6ef1d5e863fec0fb6f7de60c45a
