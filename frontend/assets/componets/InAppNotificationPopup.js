@@ -74,6 +74,7 @@ const InAppNotificationPopup = ({ notification, onDismiss, onNavigate, onViewLoc
         name: notification.data.senderName,
         phone: notification.data.senderPhone,
         senderId: notification.data.senderId,
+        profilePicture: notification.data.profilePicture || notification.profilePicture,
       };
       onViewLocation(viewableData);
     }

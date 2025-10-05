@@ -118,23 +118,27 @@ export default function QrCode({ setIsQrCode, setIsSOS, emergencyContacts = [], 
         <View style={styles.emergencySection}>
           <Text style={styles.emergencyTitle}>Emergency Contacts</Text>
           
-          {displayContacts.map((contact) => (
-            <View key={contact.id} style={styles.contactCard}>
-              <View style={styles.contactImagePlaceholder}>
-                <Text style={styles.contactInitial}>{contact.name ? contact.name.charAt(0).toUpperCase() : '?'}</Text>
+          {displayContacts && displayContacts.length > 0 ? (
+            displayContacts.map((contact) => (
+              <View key={contact.id} style={styles.contactCard}>
+                <View style={styles.contactImagePlaceholder}>
+                  <Text style={styles.contactInitial}>{contact.name ? contact.name.charAt(0).toUpperCase() : '?'}</Text>
+                </View>
+                <View style={styles.contactInfo}>
+                  <Text style={styles.contactName}>{contact.name}</Text>
+                  <Text style={styles.contactPhone}>{contact.phoneNumber}</Text>
+                </View>
+                <TouchableOpacity 
+                  style={styles.callButton}
+                  onPress={() => handleCall(contact.phoneNumber)}
+                >
+                  <Ionicons name="call" size={20} color="#FFFFFF" />
+                </TouchableOpacity>
               </View>
-              <View style={styles.contactInfo}>
-                <Text style={styles.contactName}>{contact.name}</Text>
-                <Text style={styles.contactPhone}>{contact.phoneNumber}</Text>
-              </View>
-              <TouchableOpacity 
-                style={styles.callButton}
-                onPress={() => handleCall(contact.phoneNumber)}
-              >
-                <Ionicons name="call" size={20} color="#FFFFFF" />
-              </TouchableOpacity>
-            </View>
-          ))}
+            ))
+          ) : (
+            <Text style={styles.noContactsText}>User has no emergency contacts.</Text>
+          )}
         </View>
       </View>
     </ImageBackground>
@@ -236,5 +240,11 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 20,
     fontWeight: 'bold',
+  },
+  noContactsText: {
+    color: '#AAAAAA',
+    textAlign: 'center',
+    marginTop: 20,
+    fontSize: 16,
   },
 });
