@@ -42,13 +42,22 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 }
 
 const getBatteryIconName = (batteryPercentStr) => {
-  const percent = parseInt(batteryPercentStr);
-  if (isNaN(percent)) return 'battery-dead';
+  // Handle both "35%" format and just "35"
+  const cleanPercent = typeof batteryPercentStr === 'string' 
+    ? batteryPercentStr.replace('%', '').trim()
+    : String(batteryPercentStr || '');
+  
+  const percent = parseInt(cleanPercent, 10);
+  
+  // Return valid Ionicons battery icon names
+  if (Number.isNaN(percent)) return 'battery-dead';
+  
   if (percent >= 80) return 'battery-full';
   if (percent >= 50) return 'battery-half';
-  if (percent >= 20) return 'battery-low';
+  if (percent >= 20) return 'battery-half'; // For 35%, this will be used
   return 'battery-dead';
 };
+
 
 const PeopleBar = ({ onOpenChat, onFriendsUpdate }) => {
   const [isExpanded, setIsExpanded] = useState(false);

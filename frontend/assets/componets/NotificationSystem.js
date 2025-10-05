@@ -144,23 +144,23 @@ const NotificationSystem = ({ children }) => {
   };
 
   // Enhanced display name extraction with proper Firestore field mapping
-  const getDisplayName = (notification) => {
-    const { data = {} } = notification;
-    
-    // Try multiple field combinations based on Firestore structure
-    const firstName = data.senderName || 
-                     data.senderFirstName || 
-                     data.senderUserData?.Name ||
+// Enhanced display name extraction with proper Firestore field mapping
+const getDisplayName = (notification) => {
+  const { data = {}, type } = notification;
+  
+  // For friend_accepted notifications, look for accepter data
+  if (type === 'friend_accepted') {
+    const firstName = data.accepterUserData?.Name || 
+                     data.accepterName?.split(' ')[0] ||
                      'Unknown';
                      
-    const lastName = data.senderSurname || 
-                    data.senderLastName || 
-                    data.senderUserData?.Surname ||
+    const lastName = data.accepterUserData?.Surname || 
+                    data.accepterName?.split(' ')[1] ||
                     '';
     
     const displayName = `${firstName} ${lastName}`.trim();
     
-    console.log('Extracted display name:', {
+    console.log('Extracted accepter name:', {
       firstName,
       lastName,
       displayName,
@@ -168,7 +168,30 @@ const NotificationSystem = ({ children }) => {
     });
     
     return displayName !== 'Unknown' ? displayName : 'AlertNet User';
-  };
+  }
+  
+  // For friend_request and other notifications, look for sender data
+  const firstName = data.senderName || 
+                   data.senderFirstName || 
+                   data.senderUserData?.Name ||
+                   'Unknown';
+                   
+  const lastName = data.senderSurname || 
+                  data.senderLastName || 
+                  data.senderUserData?.Surname ||
+                  '';
+  
+  const displayName = `${firstName} ${lastName}`.trim();
+  
+  console.log('Extracted sender name:', {
+    firstName,
+    lastName,
+    displayName,
+    availableFields: Object.keys(data)
+  });
+  
+  return displayName !== 'Unknown' ? displayName : 'AlertNet User';
+};
 
   // Enhanced slide-down notification with profile info
   const showEnhancedSlideNotification = (notification) => {
@@ -420,42 +443,52 @@ const NotificationSystem = ({ children }) => {
 
   // Enhanced profile picture rendering with proper fallbacks for Firestore data structure
   const renderProfilePicture = (notification, size = 44) => {
-    // Extract profile data from multiple possible sources
-    const { data = {} } = notification;
+    const { data = {}, type } = notification;
     
-    // Look for profile picture in multiple possible fields
-    const profilePicture = data.profilePicture || 
-                          data.senderUserData?.ImageURL ||
-                          data.senderUserData?.imageUrl ||
-                          data.ImageURL ||
-                          data.imageUrl ||
-                          null;
+    // For friend_accepted notifications, look for accepter's profile picture
+    let profilePicture;
+    let senderName;
     
-    // Extract name for fallback initial
-    const senderName = data.senderName || 
-                      data.senderFirstName ||
-                      data.senderUserData?.Name ||
-                      'U';
+    if (type === 'friend_accepted') {
+      profilePicture = data.accepterUserData?.ImageURL ||
+                      data.accepterUserData?.imageUrl ||
+                      null;
+      
+      senderName = data.accepterUserData?.Name ||
+                  data.accepterName?.split(' ')[0] ||
+                  'U';
+    } else {
+      // For other notifications, look for sender's profile picture
+      profilePicture = data.profilePicture || 
+                      data.senderUserData?.ImageURL ||
+                      data.senderUserData?.imageUrl ||
+                      data.ImageURL ||
+                      data.imageUrl ||
+                      null;
+      
+      senderName = data.senderName || 
+                  data.senderFirstName ||
+                  data.senderUserData?.Name ||
+                  'U';
+    }
     
-    console.log('Rendering slide notification profile picture:', {
+    console.log('Rendering profile picture:', {
+      notificationType: type,
       profilePicture: profilePicture ? 'URL present' : 'null',
-      senderName,
-      notificationType: notification.type
+      senderName
     });
     
-    // Render profile picture if available
     if (profilePicture && profilePicture.trim() !== '') {
       return (
         <Image
           source={{ uri: profilePicture }}
           style={[styles.profilePicture, { width: size, height: size, borderRadius: size / 2 }]}
           onError={(error) => {
-            console.log('Slide notification profile picture failed to load:', error.nativeEvent.error);
+            console.log('Profile picture failed to load:', error.nativeEvent.error);
           }}
         />
       );
     } else {
-      // Default avatar with user's initial
       const initial = senderName ? senderName.charAt(0).toUpperCase() : 'U';
       return (
         <View style={[styles.defaultProfilePicture, { width: size, height: size, borderRadius: size / 2 }]}>
