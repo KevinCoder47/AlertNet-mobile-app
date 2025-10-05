@@ -20,9 +20,9 @@ import { useTheme } from '../../contexts/ColorContext';
 const emsChannelsData = [
   {
     id: '1',
-    name: 'Metro Police',
+    name: 'Brixton Police',
     description: 'Report incidents • Emergency updates',
-    logo: '🚓',
+    logo: require('../../images/police.jpg'),
     followers: '12,847',
     lastMessage: 'Traffic alert: Major accident on M1 North...',
     lastMessageTime: '2 hours ago',
@@ -32,9 +32,9 @@ const emsChannelsData = [
   },
   {
     id: '2',
-    name: 'Emergency Medical Services',
-    description: 'Medical emergencies • Ambulance requests',
-    logo: '🚑',
+    name: 'University of Johannesburg',
+    description: 'APK Campus • SRC',
+    logo: require('../../images/uj.png'),
     followers: '8,243',
     lastMessage: 'Health advisory: Heat wave precautions...',
     lastMessageTime: '45 minutes ago',
@@ -46,7 +46,7 @@ const emsChannelsData = [
     id: '3',
     name: 'Fire & Rescue Department',
     description: 'Fire emergencies • Safety alerts',
-    logo: '🚒',
+    logo: require('../../images/ems.png'),
     followers: '5,921',
     lastMessage: 'Fire safety reminder: Check smoke detectors...',
     lastMessageTime: '1 hour ago',
@@ -56,9 +56,9 @@ const emsChannelsData = [
   },
   {
     id: '4',
-    name: 'Charlotte Maxeke Hospital',
+    name: 'Halen Joseph Hospital',
     description: 'Hospital updates • Visiting hours',
-    logo: '🏥',
+    logo: require('../../images/hospital.jpg'),
     followers: '3,156',
     lastMessage: 'Visiting hours update for this week...',
     lastMessageTime: '3 hours ago',
@@ -70,7 +70,7 @@ const emsChannelsData = [
     id: '5',
     name: 'Disaster Management',
     description: 'Weather alerts • Emergency warnings',
-    logo: '⚠️',
+    logo: require('../../images/disaster.jpeg'),
     followers: '15,632',
     lastMessage: 'Weather warning: Severe thunderstorms expected...',
     lastMessageTime: '6 hours ago',
@@ -222,12 +222,11 @@ export default function AlertNetEMSChannels() {
       onPress={() => handleChannelPress(item)}
     >
       <View style={styles.channelAvatar}>
-        <Text style={styles.avatarEmoji}>{item.logo}</Text>
+        <Image source={item.logo} style={styles.avatarImage} />
       </View>
       <View style={styles.channelInfo}>
         <Text style={styles.channelName}>{item.name}</Text>
         <Text style={styles.channelDescription}>{item.description}</Text>
-
       </View>
       <Ionicons name="chevron-forward" size={18} color={colors.textSecondary || colors.secondary} />
     </TouchableOpacity>
@@ -306,7 +305,7 @@ export default function AlertNetEMSChannels() {
           <Ionicons name="chevron-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <View style={styles.channelAvatar}>
-          <Text style={styles.avatarEmoji}>{selectedChannel?.logo}</Text>
+          <Image source={selectedChannel?.logo} style={styles.avatarImage} />
         </View>
         <View style={styles.channelHeaderInfo}>
           <Text style={styles.channelHeaderName}>{selectedChannel?.name}</Text>
@@ -547,9 +546,12 @@ const getStyles = (isDark, colors) =>
       alignItems: 'center',
       justifyContent: 'center',
       marginRight: 15,
+      overflow: 'hidden',
     },
-    avatarEmoji: {
-      fontSize: 30,
+    avatarImage: {
+      width: '100%',
+      height: '100%',
+      resizeMode: 'cover',
     },
     channelInfo: {
       flex: 1,

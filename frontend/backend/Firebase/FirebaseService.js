@@ -1070,6 +1070,14 @@ acceptFriendRequest: async (requestId, currentUserPhone) => {
         requestId: requestId,
         accepterPhone: formattedCurrentPhone,
         accepterName: `${requestData.recipientFirstName} ${requestData.recipientLastName}`,
+        // Add the accepter's full user data here
+        accepterUserData: {
+          Name: currentUserResult.userData.Name || requestData.recipientFirstName,
+          Surname: currentUserResult.userData.Surname || requestData.recipientLastName,
+          ImageURL: currentUserResult.userData.ImageURL || null,
+          Phone: formattedCurrentPhone,
+          Email: currentUserResult.userData.Email
+        }
       }
     });
     
@@ -1350,64 +1358,106 @@ acceptFriendRequest: async (requestId, currentUserPhone) => {
     }
   },
 
-  /**
-   * Remove a friendship (unfriend)
-   * @param {string} userPhone - Current user's phone
-   * @param {string} friendPhone - Friend's phone to remove
-   * @returns {Object} - { success: boolean, message: string }
-   */
-  removeFriend: async (userPhone, friendPhone) => {
-    try {
-      const formattedUserPhone = FirebaseService.formatPhoneNumber(userPhone);
-      const formattedFriendPhone = FirebaseService.formatPhoneNumber(friendPhone);
-      
-      console.log('Removing friendship between:', formattedUserPhone, 'and', formattedFriendPhone);
-      
-      const friendsRef = collection(db, 'friends');
-      
-      const q1 = query(
-        friendsRef,
-        where('userPhone', '==', formattedUserPhone),
-        where('friendPhone', '==', formattedFriendPhone)
+/**
+ * Remove a friend (enhanced version with complete cleanup)
+ * Removes from Friends array and cleans up friend requests
+ * @param {string} currentUserId - Current user's document ID
+ * @param {string} friendUserId - Friend's document ID to remove
+ * @param {string} currentUserPhone - Current user's phone
+ * @param {string} friendPhone - Friend's phone
+ * @returns {Object} - { success: boolean, message: string }
+ */
+removeFriend: async (currentUserId, friendUserId, currentUserPhone, friendPhone) => {
+  try {
+    console.log('Removing friendship between:', currentUserId, 'and', friendUserId);
+    
+    const formattedCurrentPhone = FirebaseService.formatPhoneNumber(currentUserPhone);
+    const formattedFriendPhone = FirebaseService.formatPhoneNumber(friendPhone);
+    
+    const batch = writeBatch(db);
+    
+    // 1. Remove from current user's Friends array
+    const currentUserRef = doc(db, 'users', currentUserId);
+    const currentUserDoc = await getDoc(currentUserRef);
+    
+    if (currentUserDoc.exists()) {
+      const currentUserData = currentUserDoc.data();
+      const updatedFriends = (currentUserData.Friends || []).filter(
+        friend => friend.uid !== friendUserId
       );
-      
-      const q2 = query(
-        friendsRef,
-        where('userPhone', '==', formattedFriendPhone),
-        where('friendPhone', '==', formattedUserPhone)
-      );
-      
-      const [snapshot1, snapshot2] = await Promise.all([
-        getDocs(q1),
-        getDocs(q2)
-      ]);
-      
-      const updates = [];
-      
-      snapshot1.forEach((doc) => {
-        updates.push(updateDoc(doc.ref, {
-          status: 'removed',
-          removedAt: serverTimestamp()
-        }));
-      });
-      
-      snapshot2.forEach((doc) => {
-        updates.push(updateDoc(doc.ref, {
-          status: 'removed',
-          removedAt: serverTimestamp()
-        }));
-      });
-      
-      await Promise.all(updates);
-      
-      console.log('Friendship removed');
-      return { success: true, message: 'Friend removed successfully' };
-      
-    } catch (error) {
-      console.error('Error removing friend:', error);
-      return { success: false, error: 'Failed to remove friend' };
+      batch.update(currentUserRef, { Friends: updatedFriends });
+      console.log('Removed from current user Friends array');
     }
-  },
+    
+    // 2. Remove from friend's Friends array
+    const friendUserRef = doc(db, 'users', friendUserId);
+    const friendUserDoc = await getDoc(friendUserRef);
+    
+    if (friendUserDoc.exists()) {
+      const friendUserData = friendUserDoc.data();
+      const updatedFriends = (friendUserData.Friends || []).filter(
+        friend => friend.uid !== currentUserId
+      );
+      batch.update(friendUserRef, { Friends: updatedFriends });
+      console.log('Removed from friend Friends array');
+    }
+    
+    // 3. Mark friend requests as removed (both directions)
+    const friendRequestsRef = collection(db, 'friendRequests');
+    
+    const q1 = query(
+      friendRequestsRef,
+      where('senderId', '==', currentUserId),
+      where('recipientUserId', '==', friendUserId),
+      where('status', '==', 'accepted')
+    );
+    
+    const q2 = query(
+      friendRequestsRef,
+      where('senderId', '==', friendUserId),
+      where('recipientUserId', '==', currentUserId),
+      where('status', '==', 'accepted')
+    );
+    
+    const [snapshot1, snapshot2] = await Promise.all([
+      getDocs(q1),
+      getDocs(q2)
+    ]);
+    
+    snapshot1.forEach((docSnapshot) => {
+      batch.update(docSnapshot.ref, {
+        status: 'removed',
+        removedAt: serverTimestamp(),
+        removedBy: currentUserId
+      });
+    });
+    
+    snapshot2.forEach((docSnapshot) => {
+      batch.update(docSnapshot.ref, {
+        status: 'removed',
+        removedAt: serverTimestamp(),
+        removedBy: currentUserId
+      });
+    });
+    
+    // Commit all changes
+    await batch.commit();
+    
+    console.log('Friendship completely removed');
+    return { 
+      success: true, 
+      message: 'Friend removed successfully' 
+    };
+    
+  } catch (error) {
+    console.error('Error removing friend:', error);
+    return { 
+      success: false, 
+      error: 'Failed to remove friend',
+      message: error.message 
+    };
+  }
+},
 
   
   getFriendsDetails: async (friendIds, currentUserLocation = null) => {

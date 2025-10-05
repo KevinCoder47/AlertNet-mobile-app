@@ -21,6 +21,8 @@ import { Ionicons, MaterialIcons, MaterialCommunityIcons, Feather } from '@expo/
 import ViewShot from 'react-native-view-shot';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { FirebaseService } from '../../../backend/Firebase/FirebaseService';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -128,6 +130,167 @@ export default function Profile(props) {
     );
   };
 
+  const handlePhoneCall = () => {
+    const phoneNumber = person.phone || person.phoneNumber;
+    
+    if (!phoneNumber) {
+      Alert.alert('No Phone Number', 'This contact does not have a phone number saved.');
+      return;
+    }
+
+    const cleanedNumber = phoneNumber.replace(/[^\d+]/g, '');
+    const phoneUrl = `tel:${cleanedNumber}`;
+
+    Linking.canOpenURL(phoneUrl)
+      .then((supported) => {
+        if (supported) {
+          return Linking.openURL(phoneUrl);
+        } else {
+          Alert.alert('Error', 'Phone calls are not supported on this device');
+        }
+      })
+      .catch((err) => {
+        console.error('Error making phone call:', err);
+        Alert.alert('Error', 'Failed to initiate phone call');
+      });
+  };
+
+  const handleVideoCall = () => {
+    const phoneNumber = person.phone || person.phoneNumber;
+    const email = person.email;
+    
+    if (!phoneNumber && !email) {
+      Alert.alert('No Contact Info', 'This contact does not have phone number or email saved.');
+      return;
+    }
+
+    Alert.alert(
+      'Video Call',
+      'Choose video calling app:',
+      [
+        {
+          text: 'FaceTime (iOS)',
+          onPress: () => {
+            if (Platform.OS === 'ios') {
+              const facetimeUrl = `facetime:${phoneNumber || email}`;
+              Linking.canOpenURL(facetimeUrl)
+                .then((supported) => {
+                  if (supported) {
+                    return Linking.openURL(facetimeUrl);
+                  } else {
+                    Alert.alert('Error', 'FaceTime is not available');
+                  }
+                })
+                .catch((err) => console.error('FaceTime error:', err));
+            } else {
+              Alert.alert('Not Available', 'FaceTime is only available on iOS devices');
+            }
+          },
+        },
+        {
+          text: 'WhatsApp',
+          onPress: () => {
+            if (phoneNumber) {
+              const cleanedNumber = phoneNumber.replace(/[^\d+]/g, '');
+              const whatsappUrl = `https://wa.me/${cleanedNumber}?text=Hi, let's video call!`;
+              Linking.openURL(whatsappUrl).catch((err) => {
+                console.error('WhatsApp error:', err);
+                Alert.alert('Error', 'WhatsApp is not installed or failed to open');
+              });
+            } else {
+              Alert.alert('No Phone Number', 'WhatsApp requires a phone number');
+            }
+          },
+        },
+        {
+          text: 'Google Meet',
+          onPress: () => {
+            const meetUrl = 'https://meet.google.com/new';
+            Linking.openURL(meetUrl).catch((err) => {
+              console.error('Google Meet error:', err);
+              Alert.alert('Error', 'Failed to open Google Meet');
+            });
+          },
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
+  const handleRemoveFriend = () => {
+    Alert.alert(
+      'Remove Friend',
+      `Are you sure you want to remove ${person.name || 'this person'} from your friends list? This action cannot be undone.`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const jsonValue = await AsyncStorage.getItem('userData');
+              if (!jsonValue) {
+                Alert.alert('Error', 'User data not found. Please log in again.');
+                return;
+              }
+              
+              const currentUserData = JSON.parse(jsonValue);
+              const currentUserId = currentUserData.userId || currentUserData.id;
+              const currentUserPhone = currentUserData.phone || currentUserData.phoneNumber;
+              
+              const friendUserId = person.friendId || person.id || person.uid;
+              const friendPhone = person.phone || person.phoneNumber;
+              
+              if (!currentUserId || !friendUserId) {
+                Alert.alert('Error', 'Invalid user information');
+                return;
+              }
+              
+              console.log('Removing friend:', {
+                currentUserId,
+                friendUserId,
+                currentUserPhone,
+                friendPhone
+              });
+              
+              const result = await FirebaseService.removeFriend(
+                currentUserId,
+                friendUserId,
+                currentUserPhone,
+                friendPhone
+              );
+              
+              if (result.success) {
+                Alert.alert(
+                  'Success',
+                  `${person.name || 'Friend'} has been removed from your friends list.`,
+                  [
+                    {
+                      text: 'OK',
+                      onPress: () => navigation.goBack()
+                    }
+                  ]
+                );
+              } else {
+                Alert.alert('Error', result.error || 'Failed to remove friend');
+              }
+            } catch (error) {
+              console.error('Error removing friend:', error);
+              Alert.alert('Error', 'Something went wrong. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
 
@@ -145,7 +308,6 @@ export default function Profile(props) {
     mapOverlay: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.1)',
   };
 
-  // Format last seen time
   const formatLastSeen = () => {
     if (statusOnline) return 'Online now';
     
@@ -294,10 +456,16 @@ export default function Profile(props) {
           </TouchableOpacity>
 
           <View style={styles.callVideoRow}>
-            <TouchableOpacity style={[styles.circleIcon, { backgroundColor: colors.card, marginRight: 6 }]}>
+            <TouchableOpacity 
+              style={[styles.circleIcon, { backgroundColor: colors.card, marginRight: 6 }]}
+              onPress={() => handlePhoneCall()}
+            >
               <Ionicons name="call" size={20} color={colors.iconColor} />
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.circleIcon, { backgroundColor: colors.card }]}>
+            <TouchableOpacity 
+              style={[styles.circleIcon, { backgroundColor: colors.card }]}
+              onPress={() => handleVideoCall()}
+            >
               <Feather name="video" size={20} color={colors.iconColor} />
             </TouchableOpacity>
           </View>
@@ -381,7 +549,10 @@ export default function Profile(props) {
         <View style={[styles.sectionDivider, { backgroundColor: colors.divider }]} />
 
         {/* REMOVE CONTACT */}
-        <TouchableOpacity style={styles.removeRow} onPress={() => Alert.alert('Removed', 'Contact removed')}>
+        <TouchableOpacity 
+          style={styles.removeRow} 
+          onPress={handleRemoveFriend}
+        >
           <MaterialCommunityIcons
             name="trash-can-outline"
             size={20}
