@@ -95,6 +95,12 @@ export default {
           },
         },
       ],
+              "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#C84022",
+          "sounds": ["./assets/notification-sounds/WalkRequest.mp3"]
+        }
     ],
     extra: {
       eas: {

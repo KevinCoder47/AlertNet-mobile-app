@@ -16,6 +16,9 @@ import {
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from '../backend/Firebase/FirebaseConfig';
 import { app } from '../backend/Firebase/FirebaseConfig';
+import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 
 /**
  * Creates a new user document in Firestore matching your schema
@@ -123,7 +126,10 @@ const firestoreData = {
   },
   Surname: safeUserData.surname,
   Walks: safeUserData.walks,
-  userID: userId
+  userID: userId,
+  PushToken: null, // Will be updated after user grants permission
+  PushTokenUpdatedAt: null,
+  DevicePlatform: Platform.OS
 };
 
     console.log("Creating user document with data:", firestoreData);
@@ -764,6 +770,134 @@ export const syncAddressesFromFirebase = async (userId) => {
 };
 
 // Export all functions
+
+/**
+ * Get Expo Push Token
+ * @returns {Promise<string>} - Expo push token
+ */
+export const getExpoPushToken = async () => {
+  try {
+    // Request permissions
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+    
+    if (existingStatus !== 'granted') {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+    
+    if (finalStatus !== 'granted') {
+      console.log('Failed to get push token - permission denied');
+      return null;
+    }
+
+    // Get the token
+    const tokenData = await Notifications.getExpoPushTokenAsync({
+      projectId: Constants.expoConfig?.extra?.eas?.projectId || Constants.easConfig?.projectId
+    });
+    
+    return tokenData.data;
+  } catch (error) {
+    console.error('Error getting push token:', error);
+    return null;
+  }
+};
+
+/**
+ * Save push token to user document
+ * @param {string} userId - Firebase Auth UID
+ * @param {string} pushToken - Expo push token
+ * @returns {Promise<boolean>} - True if successful
+ */
+export const savePushToken = async (userId, pushToken) => {
+  try {
+    if (!pushToken) {
+      console.log('No push token to save');
+      return false;
+    }
+
+    await updateDoc(doc(db, "users", userId), {
+      PushToken: pushToken,
+      PushTokenUpdatedAt: new Date(),
+      DevicePlatform: Platform.OS,
+      LastLogin: new Date()
+    });
+    
+    console.log('Push token saved successfully');
+    return true;
+  } catch (error) {
+    const handledError = handleFirestoreError(error);
+    console.error("Error saving push token:", handledError);
+    throw handledError;
+  }
+};
+
+/**
+ * Get push tokens for specific users (for sending notifications)
+ * @param {Array<string>} userIds - Array of user IDs
+ * @returns {Promise<Array>} - Array of { userId, pushToken }
+ */
+export const getPushTokensForUsers = async (userIds) => {
+  try {
+    if (!Array.isArray(userIds) || userIds.length === 0) {
+      return [];
+    }
+    
+    const tokens = [];
+    const batchSize = 10;
+    
+    for (let i = 0; i < userIds.length; i += batchSize) {
+      const batch = userIds.slice(i, i + batchSize);
+      
+      const q = query(
+        collection(db, "users"),
+        where("userID", "in", batch)
+      );
+      
+      const querySnapshot = await getDocs(q);
+      
+      querySnapshot.forEach(doc => {
+        const data = doc.data();
+        if (data.PushToken) {
+          tokens.push({
+            userId: data.userID,
+            pushToken: data.PushToken,
+            name: data.Name,
+            surname: data.Surname
+          });
+        }
+      });
+    }
+    
+    return tokens;
+  } catch (error) {
+    const handledError = handleFirestoreError(error);
+    console.error("Error getting push tokens:", handledError);
+    throw handledError;
+  }
+};
+
+/**
+ * Remove push token (on logout)
+ * @param {string} userId - Firebase Auth UID
+ * @returns {Promise<boolean>} - True if successful
+ */
+export const removePushToken = async (userId) => {
+  try {
+    await updateDoc(doc(db, "users", userId), {
+      PushToken: null,
+      PushTokenUpdatedAt: new Date()
+    });
+    
+    console.log('Push token removed successfully');
+    return true;
+  } catch (error) {
+    const handledError = handleFirestoreError(error);
+    console.error("Error removing push token:", handledError);
+    throw handledError;
+  }
+};
+
 export default {
   createUserDocument,
   updateUserDocument,
@@ -788,5 +922,9 @@ export default {
   updateCurrentLocation,
   saveUserAddress,
   updateUserAddress,
-  getUserAddresses
+  getUserAddresses,
+  getExpoPushToken,
+  savePushToken,
+  getPushTokensForUsers,
+  removePushToken
 };

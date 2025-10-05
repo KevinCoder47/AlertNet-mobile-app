@@ -11,6 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import GeneralLoader from '../componets/Loaders/GeneralLoarder';
 import { loginUser } from '../../backend/Firebase/authentication';
 import { getUserDocument } from '../../services/firestore';
+import { getExpoPushToken, savePushToken } from '../../services/firestore';
 
 
 const backgroundImage = require('../../assets/images/launch-background.jpg');
@@ -53,13 +54,23 @@ const handleLogin = async () => {
     const email = `${emailPrefix}@student.uj.ac.za`; 
     const user = await loginUser(email, password);
     
-    // Only proceed if authentication was successful
     if (user && user.uid) {
       // Get user document from Firestore
       const userData = await getUserDocument(user.uid);
       console.log(userData);
       
       if (userData) {
+        // Get and save push token
+        console.log('Getting push token on login...');
+        const pushToken = await getExpoPushToken();
+        if (pushToken) {
+          console.log('Push token obtained:', pushToken);
+          await savePushToken(user.uid, pushToken);
+          userData.pushToken = pushToken; // Add to userData object
+        } else {
+          console.log('Push token not obtained - user may have denied permission');
+        }
+
         // Store user data in AsyncStorage
         await AsyncStorage.multiSet([
           ['isLoggedIn', 'true'],
@@ -69,7 +80,6 @@ const handleLogin = async () => {
         
         setIsLoggedIn(true);
         Alert.alert('Success', `Welcome back, ${userData.name || user.email}!`);
-        // navigation.replace('HomeScreen');
       } else {
         throw new Error('User data not found in database');
       }
