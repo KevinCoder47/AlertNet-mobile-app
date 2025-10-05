@@ -21,7 +21,7 @@ export default {
         googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY,
       },
       supportsTablet: true,
-      bundleIdentifier: 'alertnet.co.za',
+      bundleIdentifier: 'com.mpilonhle.alertnet',
       infoPlist: {
         NSLocationWhenInUseUsageDescription:
           'This app uses your location for the SOS feature and to verify functionality during tests.',
