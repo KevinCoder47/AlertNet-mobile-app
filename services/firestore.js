@@ -18,6 +18,7 @@ import { db, storage } from '../backend/Firebase/FirebaseConfig';
 import { app } from '../backend/Firebase/FirebaseConfig';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 
 /**
@@ -777,28 +778,62 @@ export const syncAddressesFromFirebase = async (userId) => {
  */
 export const getExpoPushToken = async () => {
   try {
-    // Request permissions
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    console.log('Starting push token request...');
+    
+    if (!Device.isDevice) {
+      console.log('Push notifications only work on physical devices');
+      return 'ExponentPushToken[SIMULATOR_MOCK_TOKEN]';
+    }
+
+    console.log('Requesting permissions...');
+    const { status: existingStatus } = await Promise.race([
+      Notifications.getPermissionsAsync(),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Permission check timeout')), 5000)
+      )
+    ]);
+    
     let finalStatus = existingStatus;
     
     if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
+      console.log('Requesting new permissions...');
+      const { status } = await Promise.race([
+        Notifications.requestPermissionsAsync(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Permission request timeout')), 10000)
+        )
+      ]);
       finalStatus = status;
     }
     
     if (finalStatus !== 'granted') {
-      console.log('Failed to get push token - permission denied');
+      console.log('Push notification permission denied');
       return null;
     }
 
-    // Get the token
-    const tokenData = await Notifications.getExpoPushTokenAsync({
-      projectId: Constants.expoConfig?.extra?.eas?.projectId || Constants.easConfig?.projectId
-    });
+    console.log('Permission granted, getting token...');
     
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId || Constants.easConfig?.projectId;
+    
+    if (!projectId) {
+      console.error('Project ID not found in app config');
+      return null;
+    }
+
+    console.log('Using project ID:', projectId);
+
+    const tokenData = await Promise.race([
+      Notifications.getExpoPushTokenAsync({ projectId }),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Token fetch timeout')), 10000)
+      )
+    ]);
+    
+    console.log('Token obtained successfully');
     return tokenData.data;
+    
   } catch (error) {
-    console.error('Error getting push token:', error);
+    console.error('Error getting push token:', error.message);
     return null;
   }
 };
