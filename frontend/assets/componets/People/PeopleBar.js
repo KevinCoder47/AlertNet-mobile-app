@@ -26,7 +26,7 @@ import PhoneOverlay from './PhoneOverlay';
 import FriendList from './FriendsList';
 import CommunityList from './CommunityList';
 import FeedList from './Feed/FeedList';
-import NotificationBell from '../NotificationBell';
+
 
 const { width, height } = Dimensions.get('window');
 
@@ -450,9 +450,7 @@ const PeopleBar = ({ onOpenChat, onFriendsUpdate }) => {
         </BlurView>
       </Animated.View>
 
-      <View style={styles.notificationBellContainer}>
-        <NotificationBell />
-      </View>
+
 
       <PhoneOverlay
         visible={phoneOverlayVisible}
@@ -707,12 +705,7 @@ const getStyles = (isDark, colors) => StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary || colors.secondary,
   },
-  notificationBellContainer: {
-    position: 'absolute',
-    top: '-120%',
-    right: 120,
-    zIndex: 25,
-  },
+
 });
 
 export default PeopleBar;
