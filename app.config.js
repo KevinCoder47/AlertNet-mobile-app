@@ -8,7 +8,7 @@ export default {
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'automatic',
-    newArchEnabled: true,
+    newArchEnabled: false,
     splash: {
       image: './assets/splash-icon.png',
       resizeMode: 'contain',
@@ -64,29 +64,35 @@ export default {
     web: {
       favicon: './assets/favicon.png',
     },
-    plugins: [
-      'expo-font',
-      'expo-router',
-      [
-        'expo-location',
-        {
-          locationWhenInUsePermission:
-            'This app uses your location for the SOS feature and to verify functionality during tests.',
-          locationAlwaysAndWhenInUsePermission:
-            'This app needs access to your location in the background for safety monitoring.',
-          locationAlwaysPermission:
-            'This app needs access to your location in the background for safety monitoring.',
-        },
-      ],
-      [
-        'expo-build-properties',
-        {
-          ios: {
-            useFrameworks: 'static',
-          },
-        },
-      ],
-    ],
+plugins: [
+  'expo-font',
+  'expo-router',
+  [
+    'expo-location',
+    {
+      locationWhenInUsePermission:
+        'This app uses your location for the SOS feature and to verify functionality during tests.',
+      locationAlwaysAndWhenInUsePermission:
+        'This app needs access to your location in the background for safety monitoring.',
+      locationAlwaysPermission:
+        'This app needs access to your location in the background for safety monitoring.',
+    },
+  ],
+  [
+    'expo-build-properties',
+    {
+      ios: {
+        useFrameworks: 'static',
+      },
+    },
+  ],
+  [
+    'react-native-maps', 
+    {
+      useGoogleMaps: true,
+    }
+  ],
+],
     extra: {
       eas: {
         projectId: '88c49cde-fb05-4f7a-b0b6-91528eceac23',

@@ -325,33 +325,14 @@ PODS:
     - nanopb (~> 3.30910.0)
   - fmt (11.0.2)
   - glog (0.3.5)
-  - Google-Maps-iOS-Utils (4.2.2):
-    - Google-Maps-iOS-Utils/Clustering (= 4.2.2)
-    - Google-Maps-iOS-Utils/Geometry (= 4.2.2)
-    - Google-Maps-iOS-Utils/GeometryUtils (= 4.2.2)
-    - Google-Maps-iOS-Utils/Heatmap (= 4.2.2)
-    - Google-Maps-iOS-Utils/QuadTree (= 4.2.2)
-    - GoogleMaps (~> 7.3)
-  - Google-Maps-iOS-Utils/Clustering (4.2.2):
-    - Google-Maps-iOS-Utils/QuadTree
-    - GoogleMaps (~> 7.3)
-  - Google-Maps-iOS-Utils/Geometry (4.2.2):
-    - GoogleMaps (~> 7.3)
-  - Google-Maps-iOS-Utils/GeometryUtils (4.2.2):
-    - GoogleMaps (~> 7.3)
-  - Google-Maps-iOS-Utils/Heatmap (4.2.2):
-    - Google-Maps-iOS-Utils/QuadTree
-    - GoogleMaps (~> 7.3)
-  - Google-Maps-iOS-Utils/QuadTree (4.2.2):
-    - GoogleMaps (~> 7.3)
+  - Google-Maps-iOS-Utils (6.1.0):
+    - GoogleMaps (~> 9.0)
   - GoogleDataTransport (10.1.0):
     - nanopb (~> 3.30910.0)
     - PromisesObjC (~> 2.4)
-  - GoogleMaps (7.4.0):
-    - GoogleMaps/Maps (= 7.4.0)
-  - GoogleMaps/Base (7.4.0)
-  - GoogleMaps/Maps (7.4.0):
-    - GoogleMaps/Base
+  - GoogleMaps (9.4.0):
+    - GoogleMaps/Maps (= 9.4.0)
+  - GoogleMaps/Maps (9.4.0)
   - GoogleUtilities/AppDelegateSwizzler (8.1.0):
     - GoogleUtilities/Environment
     - GoogleUtilities/Logger
@@ -1688,12 +1669,74 @@ PODS:
     - Yoga
   - react-native-get-random-values (1.11.0):
     - React-Core
-  - react-native-google-maps (1.18.0):
-    - Google-Maps-iOS-Utils (= 4.2.2)
-    - GoogleMaps (= 7.4.0)
+  - react-native-maps/Generated (1.26.14):
+    - DoubleConversion
+    - glog
+    - hermes-engine
+    - RCT-Folly (= 2024.10.14.00)
+    - RCTRequired
+    - RCTTypeSafety
     - React-Core
-  - react-native-maps (1.18.0):
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - Yoga
+  - react-native-maps/Google (1.26.14):
+    - DoubleConversion
+    - glog
+    - Google-Maps-iOS-Utils (= 6.1.0)
+    - GoogleMaps (= 9.4.0)
+    - hermes-engine
+    - RCT-Folly (= 2024.10.14.00)
+    - RCTRequired
+    - RCTTypeSafety
     - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - react-native-maps/Generated
+    - react-native-maps/Maps
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - Yoga
+  - react-native-maps/Maps (1.26.14):
+    - DoubleConversion
+    - glog
+    - hermes-engine
+    - RCT-Folly (= 2024.10.14.00)
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - react-native-maps/Generated
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - Yoga
   - react-native-safe-area-context (4.12.0):
     - DoubleConversion
     - glog
@@ -2362,8 +2405,7 @@ DEPENDENCIES:
   - React-Mapbuffer (from `../node_modules/react-native/ReactCommon`)
   - React-microtasksnativemodule (from `../node_modules/react-native/ReactCommon/react/nativemodule/microtasks`)
   - react-native-get-random-values (from `../node_modules/react-native-get-random-values`)
-  - react-native-google-maps (from `/Users/mpilonhle/Documents/REACT-NATIVE/AlertNet/node_modules/react-native-maps`)
-  - react-native-maps (from `../node_modules/react-native-maps`)
+  - react-native-maps/Google (from `/Users/mpilonhle/Documents/REACT-NATIVE/AlertNet/node_modules/react-native-maps`)
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
   - "react-native-vector-icons-fontawesome (from `../node_modules/@react-native-vector-icons/fontawesome`)"
   - react-native-view-shot (from `../node_modules/react-native-view-shot`)
@@ -2569,10 +2611,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon/react/nativemodule/microtasks"
   react-native-get-random-values:
     :path: "../node_modules/react-native-get-random-values"
-  react-native-google-maps:
-    :path: "/Users/mpilonhle/Documents/REACT-NATIVE/AlertNet/node_modules/react-native-maps"
   react-native-maps:
-    :path: "../node_modules/react-native-maps"
+    :path: "/Users/mpilonhle/Documents/REACT-NATIVE/AlertNet/node_modules/react-native-maps"
   react-native-safe-area-context:
     :path: "../node_modules/react-native-safe-area-context"
   react-native-vector-icons-fontawesome:
@@ -2701,9 +2741,9 @@ SPEC CHECKSUMS:
   FirebaseMessaging: 919ce76cb353f0c36d463f5461d8ab584e6ed765
   fmt: 01b82d4ca6470831d1cc0852a1af644be019e8f6
   glog: 08b301085f15bcbb6ff8632a8ebaf239aae04e6a
-  Google-Maps-iOS-Utils: f77eab4c4326d7e6a277f8e23a0232402731913a
+  Google-Maps-iOS-Utils: 0a484b05ed21d88c9f9ebbacb007956edd508a96
   GoogleDataTransport: aae35b7ea0c09004c3797d53c8c41f66f219d6a7
-  GoogleMaps: 032f676450ba0779bd8ce16840690915f84e57ac
+  GoogleMaps: 0608099d4870cac8754bdba9b6953db543432438
   GoogleUtilities: 00c88b9a86066ef77f0da2fab05f65d7768ed8e1
   hermes-engine: 9e868dc7be781364296d6ee2f56d0c1a9ef0bb11
   lottie-ios: a881093fab623c467d3bce374367755c272bdd59
@@ -2740,8 +2780,7 @@ SPEC CHECKSUMS:
   React-Mapbuffer: 9343a5c14536d4463c80f09a960653d754daae21
   React-microtasksnativemodule: c7cafd8f4470cf8a4578ee605daa4c74d3278bf8
   react-native-get-random-values: d16467cf726c618e9c7a8c3c39c31faa2244bbba
-  react-native-google-maps: a3a01acdc5e15d1b74d600ba270c454bac6239b4
-  react-native-maps: 3b0c8378ff774053bdd8954c820e987fdd7b4d72
+  react-native-maps: 8207efd333545482b2d503557c30a5bdd75cbef7
   react-native-safe-area-context: 3ec0dbf4635e3344cb1303d15fcc4a22876b3e59
   react-native-vector-icons-fontawesome: c41fd08991989b71fe79c68ebb3ee30ac221178e
   react-native-view-shot: 705991886ffa5aa33bc299816a5c2a89193050df
@@ -2785,6 +2824,6 @@ SPEC CHECKSUMS:
   Yoga: 1259c7a8cbaccf7b4c3ddf8ee36ca11be9dee407
   ZXingObjC: 8898711ab495761b2dbbdec76d90164a6d7e14c5
 
-PODFILE CHECKSUM: e54bf521b0b2c03b3f8e79fb6a2ee43aa0ada8a6
+PODFILE CHECKSUM: 90d009caf6a49a8add2f67ca275e57de945e9f36
 
 COCOAPODS: 1.16.2
