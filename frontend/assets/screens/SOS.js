@@ -187,13 +187,7 @@ export default function SOS({ setIsSOS, setIsQrCode, setIsSafetyResources, sosSe
             organisation will see your help
           </Text>
 
-          <TouchableOpacity
-            onPress={() => {
-              setIsSOS(false);
-              setIsQrCode(true);
-            }}
-          >
-            {userData?.userId && sosSessionId ? (
+          {userData?.userId && sosSessionId ? (
               <View style={styles.qrCodeContainer}>
                 <QRCode
                   value={qrCodeData}
@@ -204,8 +198,7 @@ export default function SOS({ setIsSOS, setIsQrCode, setIsSafetyResources, sosSe
               </View>
             ) : (
               <Image source={require('../images/QR_Code_Updated.png')} style={{ width: 200, height: 200, marginTop: 50 }} />
-            )}
-          </TouchableOpacity>
+          )}
 
           {/* Safe Button */}
           <TouchableOpacity

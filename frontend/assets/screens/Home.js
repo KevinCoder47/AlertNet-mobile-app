@@ -139,6 +139,7 @@ const Home = ({ route, handleLogout }) => {
         senderPhone: notification.phone,
         senderId: notification.senderId,
         locationTimestamp: notification.timestamp,
+        senderProfilePicture: notification.profilePicture,
       });
     }
   };
@@ -828,6 +829,7 @@ const Home = ({ route, handleLogout }) => {
             acceptFriendRequest={acceptFriendRequest}
             declineFriendRequest={declineFriendRequest}
             markNotificationAsRead={markNotificationAsRead}
+            markAllNotificationsAsRead={markAllNotificationsAsRead}
             clearAllNotifications={clearAllNotifications}
           />
         )}

@@ -89,71 +89,78 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
   // Get styles with font scaling and theme
   const styles = getStyles(getScaledFontSize, colors);
 
-  // Listen for notifications from Firebase
-  React.useEffect(() => {
-  if (userData && (userData.phone || userData.Phone || userData.phoneNumber)) {
-    const userPhone = userData.phone || userData.Phone || userData.phoneNumber;
-    setLoading(true);
+  const fetchNotifications = React.useCallback(() => {
+    if (userData && (userData.phone || userData.Phone || userData.phoneNumber)) {
+      const userPhone = userData.phone || userData.Phone || userData.phoneNumber;
       
       const unsubscribe = FirebaseService.listenToNotifications(userPhone, ({ notifications, error }) => {
         if (error) {
           console.error("Error fetching notifications:", error);
           setLoading(false);
+          setIsRefreshing(false); // Stop refreshing indicator on error
           return;
         }
         
         const transformedNotifications = notifications.map(n => {
-        const isUrgent = n.priority === 'high' || n.isUrgent === true;
-        const timestamp = n.createdAt?.toDate ? n.createdAt.toDate().getTime() : Date.now();
-        
-        return {
-            id: n.id,
-            type: n.type,
-            category: n.data?.category || 'general',
-            name: n.data?.senderName || n.title,
-            message: n.message, // This is the main message content
-            time: formatTimeAgo(timestamp),
-            timestamp: timestamp,
-            status: n.read ? 'read' : 'new',
-            isUrgent: isUrgent,
-            location: n.data?.location || null,
-            phone: n.data?.senderPhone || null,
-            senderId: n.data?.senderId || null,
-            profilePicture: n.data?.profilePicture || null,
-            data: n.data, // Pass the whole data object for actions
-        };
-      });
+          const isUrgent = n.priority === 'high' || n.isUrgent === true;
+          const timestamp = n.createdAt?.toDate ? n.createdAt.toDate().getTime() : Date.now();
+          
+          return {
+              id: n.id,
+              type: n.type,
+              category: n.data?.category || 'general',
+              name: n.data?.senderName || n.title,
+              message: n.message, // This is the main message content
+              time: formatTimeAgo(timestamp),
+              timestamp: timestamp,
+              status: n.read ? 'read' : 'new',
+              isUrgent: isUrgent,
+              location: n.data?.location || null,
+              phone: n.data?.senderPhone || null,
+              senderId: n.data?.senderId || null,
+              profilePicture: n.data?.profilePicture || null,
+              data: n.data, // Pass the whole data object for actions
+          };
+        });
 
         const friends = [];
         const feed = [];
         const system = [];
 
         transformedNotifications.forEach(n => {
-        if (tabCategories.feed.includes(n.type)) {
-          feed.push(n);
-        } else if (tabCategories.system.includes(n.type)) {
-          system.push(n);
-        } else {
-          friends.push(n);
-        }
-      });
+          if (tabCategories.feed.includes(n.type)) {
+            feed.push(n);
+          } else if (tabCategories.system.includes(n.type)) {
+            system.push(n);
+          } else {
+            friends.push(n);
+          }
+        });
         
         setAllNotifications(transformedNotifications);
         setCloseFriendsNotifications(friends);
         setFeedNotifications(feed);
         setSystemNotifications(system);
         setLoading(false);
-    });
+        setIsRefreshing(false); // Stop refreshing indicator on success
+      });
 
-      return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
-      };
+      return unsubscribe;
     } else {
       setLoading(false);
+      setIsRefreshing(false);
+      return () => {}; // Return an empty function if no user data
     }
-  }, [userData]);
+  }, [userData]); // Dependency on userData
+
+  // Listen for notifications from Firebase
+  React.useEffect(() => {
+    setLoading(true);
+    const unsubscribe = fetchNotifications();
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [fetchNotifications]);
   
   const isSameDay = (d1, d2) => {
     if (!d1 || !d2) return false;
@@ -227,14 +234,11 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
   };
 
   // Pull to refresh functionality
-  const handleRefresh = () => {
+  const handleRefresh = React.useCallback(() => {
     setIsRefreshing(true);
     Vibration.vibrate(50);
-    
-    setTimeout(() => {
-      setIsRefreshing(false);
-    }, 2000);
-  };
+    fetchNotifications(); // This will now re-fetch the data
+  }, [fetchNotifications]);
 
   // Mark notification as read
   const handleMarkAsRead = (notificationId) => {
@@ -996,7 +1000,6 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
           <ScrollView 
             style={styles.notificationsList} 
             showsVerticalScrollIndicator={false}
-            onScrollBeginDrag={handleRefresh}
             refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor="#FF6B35" />}
           >
             {loading ? (
