@@ -29,7 +29,7 @@ export default {
           'This app needs access to your location in the background for safety monitoring.',
         NSLocationAlwaysUsageDescription:
           'This app needs access to your location in the background for safety monitoring.',
-        UIBackgroundModes: ['location'],
+        // UIBackgroundModes: ['location'],
         LSApplicationQueriesSchemes: ['youtube', 'https'],
       },
     },
@@ -43,7 +43,7 @@ export default {
         foregroundImage: './assets/adaptive-icon.png',
         backgroundColor: '#ffffff',
       },
-      package: 'alertnet.co.za',
+      package: 'com.mpilonhle.alertnet',
       queries: {
         intent: [
           {
