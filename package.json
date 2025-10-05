@@ -55,7 +55,7 @@
     "react-native": "^0.76.8",
     "react-native-gesture-handler": "~2.20.2",
     "react-native-get-random-values": "^1.11.0",
-    "react-native-maps": "^1.26.14",
+    "react-native-maps": "^1.10.0",
     "react-native-maps-directions": "^1.9.0",
     "react-native-qr-svg": "^1.5.0",
     "react-native-qrcode-svg": "^6.3.11",
