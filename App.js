@@ -37,7 +37,7 @@ export default function App() {
             <FontSizeProvider>
               <View style={styles.container}>
                 <AppNavigator />
-                {/* <WalkRequest /> */}
+                <WalkRequest />
                 <NotificationHandler /> 
                 <StatusBar style="auto" />
               </View>
