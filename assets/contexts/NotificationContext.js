@@ -8,6 +8,8 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { FirebaseService } from '../../backend/Firebase/FirebaseService';
+import { Audio } from 'expo-av';
+import * as FileSystem from 'expo-file-system';
 
 const NotificationContext = createContext();
 
@@ -44,10 +46,83 @@ export const NotificationProvider = ({ children }) => {
   const [currentWalkRequest, setCurrentWalkRequest] = useState(null);
   const [isNotificationVisible, setIsNotificationVisible] = useState(false);
 
+  // Sound state for notification sounds
+  const [sound, setSound] = useState(null);
+  const [isSoundLoaded, setIsSoundLoaded] = useState(false);
+
   const unsubscribeNotifications = useRef(null);
   const notificationListener = useRef();
   const responseListener = useRef();
   const appStateRef = useRef(AppState.currentState);
+  // Playback status update callback for notification sound
+  const onPlaybackStatusUpdate = (status) => {
+    if (status.didJustFinish) {
+      if (sound) {
+        sound.unloadAsync();
+        setSound(null);
+        setIsSoundLoaded(false);
+      }
+    }
+  };
+
+  // Function to play notification sound based on type
+  const playNotificationSound = async (type = 'walk_request') => {
+    try {
+      console.log('🔊 Playing notification sound for:', type);
+      
+      if (sound) {
+        await sound.stopAsync();
+        await sound.unloadAsync();
+      }
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        staysActiveInBackground: false,
+        playsInSilentModeIOS: true,
+        shouldDuckAndroid: true,
+        playThroughEarpieceAndroid: false,
+      });
+
+      let soundFile;
+      switch (type) {
+        case 'walk_request':
+          soundFile = require('../notification-sounds/walk_request.mp3');
+          break;
+        case 'walk_accepted':
+          soundFile = require('../notification-sounds/walk_request.mp3');
+          break;
+        default:
+          soundFile = require('../notification-sounds/walk_request.mp3');
+      }
+
+      console.log('🔊 Loading sound file:', soundFile);
+      
+      const { sound: newSound } = await Audio.Sound.createAsync(
+        soundFile,
+        { shouldPlay: true, volume: 0.8 },
+        onPlaybackStatusUpdate
+      );
+
+      setSound(newSound);
+      setIsSoundLoaded(true);
+      
+      console.log('🔊 Sound played successfully');
+
+    } catch (error) {
+      console.error('🔊 Error playing notification sound:', error);
+    }
+  };
+
+  // Cleanup sound when component unmounts
+  useEffect(() => {
+    return () => {
+      if (sound) {
+        console.log('🔊 Cleaning up sound');
+        sound.stopAsync();
+        sound.unloadAsync();
+      }
+    };
+  }, [sound]);
 
   // Optimized Firestore walk request listener
   useEffect(() => {
@@ -100,6 +175,8 @@ export const NotificationProvider = ({ children }) => {
                 preferredGender: walkRequest.preferredGender,
               };
               console.log('🎯 Processed walk data for modal:', walkData);
+              // Play notification sound for new walk request
+              playNotificationSound('walk_request');
               setCurrentWalkRequest(walkData);
               setIsNotificationVisible(true);
             }
@@ -463,33 +540,35 @@ const sendExpoPushNotification = async (pushToken, title, body, data) => {
     setIsNotificationVisible(true);
   };
 
-  const acceptWalkRequest = async () => {
-    if (!currentWalkRequest) return;
+const acceptWalkRequest = async () => {
+  if (!currentWalkRequest) return;
 
-    console.log('✅ Walk request accepted:', currentWalkRequest);
+  console.log('✅ Walk request accepted:', currentWalkRequest);
+  
+  try {
+    // Play acceptance sound
+    await playNotificationSound('walk_accepted');
     
-    try {
-      // Notify the sender that request was accepted
-      // You can implement this in FirebaseService
-      await FirebaseService.acceptWalkRequest(
-        currentWalkRequest.requestId,
-        userData?.phone || userData?.phoneNumber,
-        currentWalkRequest.senderPhone
-      );
+    // Notify the sender that request was accepted
+    await FirebaseService.acceptWalkRequest(
+      currentWalkRequest.requestId,
+      userData?.phone || userData?.phoneNumber,
+      currentWalkRequest.senderPhone
+    );
 
-      Alert.alert(
-        'Request Accepted! 🎉',
-        `You've accepted the walk request from ${currentWalkRequest.partnerName}. They will be notified.`
-      );
+    Alert.alert(
+      'Request Accepted! 🎉',
+      `You've accepted the walk request from ${currentWalkRequest.partnerName}. They will be notified.`
+    );
 
-      setIsNotificationVisible(false);
-      setCurrentWalkRequest(null);
+    setIsNotificationVisible(false);
+    setCurrentWalkRequest(null);
 
-    } catch (error) {
-      console.error('Error accepting walk request:', error);
-      Alert.alert('Error', 'Failed to accept walk request. Please try again.');
-    }
-  };
+  } catch (error) {
+    console.error('Error accepting walk request:', error);
+    Alert.alert('Error', 'Failed to accept walk request. Please try again.');
+  }
+};
 
   const declineWalkRequest = async () => {
     if (!currentWalkRequest) return;
@@ -728,7 +807,7 @@ const sendExpoPushNotification = async (pushToken, title, body, data) => {
         console.log('iOS Simulator - vibration not supported');
         return;
       }
-      
+      // Play vibration pattern
       switch (type) {
         case 'walk_request':
           // Attention-grabbing pattern
@@ -763,6 +842,10 @@ const sendExpoPushNotification = async (pushToken, title, body, data) => {
           break;
         default:
           Vibration.vibrate(200);
+      }
+      // Play notification sound for supported types
+      if (['walk_request', 'walk_accepted'].includes(type)) {
+        await playNotificationSound(type);
       }
     } catch (error) {
       console.log('Error playing notification pattern:', error);
