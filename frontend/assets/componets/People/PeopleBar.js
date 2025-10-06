@@ -317,16 +317,21 @@ const PeopleBar = ({ onOpenChat, onFriendsUpdate }) => {
   );
 };
 
-  const renderTabContent = () => {
-    const TabComponents = { friends: FriendList, community: CommunityList, feed: FeedList };
-    const Component = TabComponents[activeTab] || FriendList;
-    
-    if (activeTab === 'friends') {
-      return <Component friendsData={friendsData} onOpenChat={onOpenChat} />;
-    }
-    
-    return <Component />;
-  };
+const renderTabContent = () => {
+  const TabComponents = { friends: FriendList, community: CommunityList, feed: FeedList };
+  const Component = TabComponents[activeTab] || FriendList;
+  
+  // Wrap all components in a consistent container
+  return (
+    <View style={styles.tabContentWrapper}>
+      {activeTab === 'friends' ? (
+        <Component friendsData={friendsData} onOpenChat={onOpenChat} />
+      ) : (
+        <Component />
+      )}
+    </View>
+  );
+};
 
   const renderTabs = () => {
     if (!isExpanded) return null;
@@ -415,10 +420,12 @@ const PeopleBar = ({ onOpenChat, onFriendsUpdate }) => {
 
           {renderTabs()}
 
-          <View style={styles.contentContainer}>
-            {isExpanded ? (
-              renderTabContent()
-            ) : (
+            <View style={styles.contentContainer}>
+              {isExpanded ? (
+                <View style={styles.expandedContentWrapper}>
+                  {renderTabContent()}
+                </View>
+              ) : (
               <ScrollView
                 showsVerticalScrollIndicator={false}
                 style={styles.list}
@@ -704,6 +711,15 @@ const getStyles = (isDark, colors) => StyleSheet.create({
   loadingText: {
     fontSize: 14,
     color: colors.textSecondary || colors.secondary,
+  },
+
+  tabContentWrapper: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  expandedContentWrapper: {
+    flex: 1,
+    backgroundColor: 'transparent',
   },
 
 });

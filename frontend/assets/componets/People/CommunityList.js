@@ -477,7 +477,7 @@ export default function AlertNetEMSChannels() {
 
   // Main render based on current screen
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: 'transparent' }]}>
       {currentScreen === 'channels' && <ChannelsListScreen />}
       {currentScreen === 'detail' && <ChannelDetailScreen />}
       {currentScreen === 'chat' && <PrivateChatScreen />}
@@ -489,11 +489,11 @@ const getStyles = (isDark, colors) =>
   StyleSheet.create({
     safeArea: {
       flex: 1,
-      backgroundColor: colors.surface || colors.background,
+      backgroundColor: 'transparent', 
     },
     container: {
       flex: 1,
-      backgroundColor: colors.surface || colors.background,
+      backgroundColor: 'transparent', // Change from any solid color to transparent
     },
     header: {
       flexDirection: 'row',

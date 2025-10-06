@@ -1,5 +1,5 @@
 // components/AddAlertModal.js
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Modal,
   View,
@@ -9,9 +9,12 @@ import {
   ScrollView,
   SafeAreaView,
   TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../../../contexts/ColorContext'; // Add this import
+import { useTheme } from '../../../contexts/ColorContext';
 import CategorySelection, { categories } from './CategorySelection';
 import LocationSelector from './LocationSelector';
 import MediaSelector from './MediaSelector';
@@ -25,8 +28,14 @@ const AddAlertModal = ({ visible, onClose, onAddPost, userLocation }) => {
   const [postAnonymously, setPostAnonymously] = useState(false);
   const [selectedMedia, setSelectedMedia] = useState(null);
   const [loadingLocation, setLoadingLocation] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
 
-  // Add theme context
+  const scrollViewRef = useRef(null);
+  const descriptionRef = useRef(null);
+  const searchTimeoutRef = useRef(null);
+
   const { colors, isDark } = useTheme();
   const styles = getStyles(isDark, colors);
 
@@ -38,11 +47,69 @@ const AddAlertModal = ({ visible, onClose, onAddPost, userLocation }) => {
     setPostAnonymously(false);
     setSelectedMedia(null);
     setLoadingLocation(false);
+    setSearchQuery('');
+    setSearchResults([]);
+    setIsSearching(false);
   };
 
   const handleLocationSet = (coords, locationString) => {
     setCoordinates(coords);
     setLocation(locationString);
+    setSearchQuery(locationString);
+    setSearchResults([]);
+  };
+
+  const searchLocation = async (query) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      // Using Nominatim (OpenStreetMap) geocoding API
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`
+      );
+      const data = await response.json();
+      
+      const results = data.map(item => ({
+        name: item.display_name,
+        lat: parseFloat(item.lat),
+        lon: parseFloat(item.lon),
+      }));
+      
+      setSearchResults(results);
+    } catch (error) {
+      console.error('Error searching location:', error);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleSearchChange = (text) => {
+    setSearchQuery(text);
+    
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    // Debounce search
+    searchTimeoutRef.current = setTimeout(() => {
+      searchLocation(text);
+    }, 500);
+  };
+
+  const handleSelectSearchResult = (result) => {
+    setLocation(result.name);
+    setCoordinates({
+      latitude: result.lat,
+      longitude: result.lon,
+    });
+    setSearchQuery(result.name);
+    setSearchResults([]);
   };
 
   const handleMediaSelect = (media) => {
@@ -51,6 +118,19 @@ const AddAlertModal = ({ visible, onClose, onAddPost, userLocation }) => {
 
   const handleMediaRemove = () => {
     setSelectedMedia(null);
+  };
+
+  const handleDescriptionFocus = () => {
+    setTimeout(() => {
+      if (descriptionRef.current) {
+        descriptionRef.current.measure((fx, fy, width, height, px, py) => {
+          scrollViewRef.current?.scrollTo({
+            y: py - 100,
+            animated: true,
+          });
+        });
+      }
+    }, 300);
   };
 
   const handlePost = () => {
@@ -112,67 +192,138 @@ const AddAlertModal = ({ visible, onClose, onAddPost, userLocation }) => {
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
-          <LocationSelector
-            location={location}
-            coordinates={coordinates}
-            onLocationSet={handleLocationSet}
-            loadingLocation={loadingLocation}
-            setLoadingLocation={setLoadingLocation}
-          />
-
-          <CategorySelection
-            selectedCategory={selectedCategory}
-            onCategorySelect={setSelectedCategory}
-          />
-
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Add a description</Text>
-            <TextInput
-              style={styles.descriptionInput}
-              placeholder="Describe what's happening, when it started, and any important details."
-              placeholderTextColor={colors.placeholder || colors.secondary}
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-              value={description}
-              onChangeText={setDescription}
-              autoCapitalize="sentences"
-              returnKeyType="default"
-              maxLength={500}
-            />
-            <Text style={styles.characterCount}>
-              {description.length}/500
-            </Text>
-          </View>
-
-          <MediaSelector
-            selectedMedia={selectedMedia}
-            onMediaSelect={handleMediaSelect}
-            onMediaRemove={handleMediaRemove}
-          />
-
-          <View style={styles.section}>
-            <TouchableOpacity
-              style={styles.checkboxContainer}
-              onPress={() => setPostAnonymously(!postAnonymously)}
-            >
-              <View style={[styles.checkbox, postAnonymously && styles.checkedBox]}>
-                {postAnonymously && <Ionicons name="checkmark" size={16} color="#fff" />}
+        <KeyboardAvoidingView
+          style={styles.keyboardAvoidingView}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        >
+          <ScrollView 
+            ref={scrollViewRef}
+            style={styles.modalContent} 
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={styles.scrollContent}
+          >
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Location</Text>
+              <View style={styles.searchContainer}>
+                <Ionicons name="search" size={20} color={colors.textSecondary || colors.secondary} style={styles.searchIcon} />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search for a location..."
+                  placeholderTextColor={colors.placeholder || colors.secondary}
+                  value={searchQuery}
+                  onChangeText={handleSearchChange}
+                  autoCapitalize="words"
+                  returnKeyType="search"
+                />
+                {isSearching && (
+                  <ActivityIndicator size="small" color="#ff5621" style={styles.searchLoader} />
+                )}
               </View>
-              <Text style={styles.checkboxLabel}>Post anonymously</Text>
-            </TouchableOpacity>
-            <Text style={styles.checkboxDescription}>
-              Your identity will be hidden from other users
-            </Text>
-          </View>
-        </ScrollView>
+              
+              {searchResults.length > 0 && (
+                <View style={styles.searchResultsContainer}>
+                  {searchResults.map((result, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={[
+                        styles.searchResultItem,
+                        index === searchResults.length - 1 && styles.searchResultItemLast
+                      ]}
+                      onPress={() => handleSelectSearchResult(result)}
+                    >
+                      <Ionicons name="location-outline" size={20} color="#ff5621" />
+                      <Text style={styles.searchResultText} numberOfLines={2}>
+                        {result.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+
+              {location && coordinates && (
+                <View style={styles.selectedLocationContainer}>
+                  <View style={styles.selectedLocationContent}>
+                    <Ionicons name="location" size={20} color="#ff5621" />
+                    <Text style={styles.selectedLocationText} numberOfLines={2}>
+                      {location}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setLocation('');
+                      setCoordinates(null);
+                      setSearchQuery('');
+                    }}
+                  >
+                    <Ionicons name="close-circle" size={20} color={colors.textSecondary || colors.secondary} />
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+
+            <LocationSelector
+              location={location}
+              coordinates={coordinates}
+              onLocationSet={handleLocationSet}
+              loadingLocation={loadingLocation}
+              setLoadingLocation={setLoadingLocation}
+            />
+
+            <CategorySelection
+              selectedCategory={selectedCategory}
+              onCategorySelect={setSelectedCategory}
+            />
+
+            <View style={styles.section} ref={descriptionRef}>
+              <Text style={styles.sectionTitle}>Add a description</Text>
+              <TextInput
+                style={styles.descriptionInput}
+                placeholder="Describe what's happening, when it started, and any important details."
+                placeholderTextColor={colors.placeholder || colors.secondary}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+                value={description}
+                onChangeText={setDescription}
+                onFocus={handleDescriptionFocus}
+                autoCapitalize="sentences"
+                returnKeyType="default"
+                maxLength={500}
+              />
+              <Text style={styles.characterCount}>
+                {description.length}/500
+              </Text>
+            </View>
+
+            <MediaSelector
+              selectedMedia={selectedMedia}
+              onMediaSelect={handleMediaSelect}
+              onMediaRemove={handleMediaRemove}
+            />
+
+            <View style={styles.section}>
+              <TouchableOpacity
+                style={styles.checkboxContainer}
+                onPress={() => setPostAnonymously(!postAnonymously)}
+              >
+                <View style={[styles.checkbox, postAnonymously && styles.checkedBox]}>
+                  {postAnonymously && <Ionicons name="checkmark" size={16} color="#fff" />}
+                </View>
+                <Text style={styles.checkboxLabel}>Post anonymously</Text>
+              </TouchableOpacity>
+              <Text style={styles.checkboxDescription}>
+                Your identity will be hidden from other users
+              </Text>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </Modal>
   );
 };
 
-// Updated styles function to use theme colors
 const getStyles = (isDark, colors) => StyleSheet.create({
   modalContainer: {
     flex: 1,
@@ -216,9 +367,15 @@ const getStyles = (isDark, colors) => StyleSheet.create({
   postButtonTextDisabled: {
     color: colors.textSecondary || colors.secondary,
   },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
   modalContent: {
     flex: 1,
     paddingHorizontal: 16,
+  },
+  scrollContent: {
+    paddingBottom: 40,
   },
   section: {
     marginVertical: 16,
@@ -228,6 +385,74 @@ const getStyles = (isDark, colors) => StyleSheet.create({
     fontWeight: '600',
     color: colors.text,
     marginBottom: 12,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.inputBackground || (isDark ? '#2a2a2a' : '#f5f5f5'),
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: colors.inputBorder || colors.border,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 12,
+    fontSize: 14,
+    color: colors.text,
+  },
+  searchLoader: {
+    marginLeft: 8,
+  },
+  searchResultsContainer: {
+    marginTop: 8,
+    backgroundColor: colors.card || colors.background,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.inputBorder || colors.border,
+    overflow: 'hidden',
+  },
+  searchResultItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.separator || colors.border,
+  },
+  searchResultItemLast: {
+    borderBottomWidth: 0,
+  },
+  searchResultText: {
+    flex: 1,
+    marginLeft: 10,
+    fontSize: 14,
+    color: colors.text,
+  },
+  selectedLocationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    padding: 12,
+    backgroundColor: colors.inputBackground || (isDark ? '#2a2a2a' : '#f5f5f5'),
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#ff5621',
+  },
+  selectedLocationContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  selectedLocationText: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 14,
+    color: colors.text,
+    fontWeight: '500',
   },
   descriptionInput: {
     backgroundColor: colors.inputBackground || (isDark ? '#2a2a2a' : '#f5f5f5'),
