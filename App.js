@@ -10,7 +10,8 @@ import { FontSizeProvider } from './assets/contexts/FontSizeContext';
 import { SOSService } from './assets/services/SOSService';
 import './backend/Firebase/FirebaseConfig';
 import NotificationHandler from './assets/componets/NotificationHandler';
-import WalkRequest from './assets/componets/notifications/WalkRequest';
+import NotificationModal from './assets/componets/notifications/NotificationModal';
+import DeepLinkHandler from './assets/componets/DeepLinkHandler';
 
 export default function App() {
   useEffect(() => {
@@ -37,8 +38,9 @@ export default function App() {
             <FontSizeProvider>
               <View style={styles.container}>
                 <AppNavigator />
-                {/* <WalkRequest /> */}
+                <NotificationModal /> 
                 <NotificationHandler /> 
+                <DeepLinkHandler /> 
                 <StatusBar style="auto" />
               </View>
             </FontSizeProvider>

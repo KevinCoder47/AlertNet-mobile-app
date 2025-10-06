@@ -1849,23 +1849,25 @@ getAllUsersWithPushTokens: async () => {
   /**
    * Create a walk request document in Firestore
    * @param {Object} walkRequestData - Walk request details
-   * @returns {Promise<Object>} - { success: boolean, requestId?: string, error?: string }
+   * @returns {Promise<string>} - The document ID of the created walk request
    */
   createWalkRequest: async (walkRequestData) => {
     try {
-      console.log('Creating walk request document...');
+      console.log('Creating walk request document...', walkRequestData);
+      
       const walkRequestsRef = collection(db, 'walkRequests');
       const docRef = await addDoc(walkRequestsRef, {
         ...walkRequestData,
         status: 'pending',
         createdAt: serverTimestamp(),
-        expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+        expiresAt: new Date(Date.now() + 15 * 60 * 1000),
       });
+      
       console.log('Walk request created with ID:', docRef.id);
-      return { success: true, requestId: docRef.id };
+      return docRef.id; // This should return just the string ID
     } catch (error) {
       console.error('Error creating walk request:', error);
-      return { success: false, error: error.message };
+      throw error;
     }
   },
 
@@ -1891,7 +1893,7 @@ getAllUsersWithPushTokens: async () => {
         userId: accepterData.id,
         recipientPhone: formattedSenderPhone,
         type: 'walk_accepted',
-        title: 'Walk Request Accepted! 🎉',
+        title: 'Walk Request Accepted! ',
         message: `${accepterName} accepted your walk request!`,
         priority: 'high',
         data: { requestId, accepterPhone: formattedAccepterPhone, accepterName, action: 'view_walk_details' }
@@ -1954,27 +1956,28 @@ getAllUsersWithPushTokens: async () => {
   },
 
   /**
-   * Clean up expired walk requests
+   * Clean up expired walk requests (improved with console.log and batch.update)
    */
   cleanupExpiredWalkRequests: async () => {
     try {
-      console.log('Cleaning up expired walk requests...');
       const walkRequestsRef = collection(db, 'walkRequests');
       const q = query(
         walkRequestsRef,
-        where('expiresAt', '<', new Date()),
-        where('status', '==', 'pending')
+        where('status', '==', 'pending'),
+        where('expiresAt', '<', new Date())
       );
+      
       const querySnapshot = await getDocs(q);
-      if (querySnapshot.empty) return { success: true, deletedCount: 0 };
       const batch = writeBatch(db);
-      querySnapshot.forEach((doc) => batch.update(doc.ref, { status: 'expired', expiredAt: serverTimestamp() }));
+      
+      querySnapshot.forEach((doc) => {
+        batch.update(doc.ref, { status: 'expired' });
+      });
+      
       await batch.commit();
-      console.log(`Marked ${querySnapshot.size} walk requests as expired`);
-      return { success: true, deletedCount: querySnapshot.size };
+      console.log(`Cleaned up ${querySnapshot.size} expired walk requests`);
     } catch (error) {
       console.error('Error cleaning up expired walk requests:', error);
-      return { success: false, error: error.message };
     }
   },
 };

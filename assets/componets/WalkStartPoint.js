@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, View, Dimensions, Image, TouchableOpacity, Modal, FlatList, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
-import { createWalkRequest } from '../../services/firestore';
+import { FirebaseService } from '../../backend/Firebase/FirebaseService';
 import { useNotifications } from '../contexts/NotificationContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -22,10 +22,10 @@ const WalkStartPoint = ({ setIsDestinationDone, setIsSearchPartner, setIsStartPo
   const [showStreetViewModal, setShowStreetViewModal] = useState(false);
   const { sendWalkRequest } = useNotifications();
 
-  // Option 1: Create walk request document in Firestore
+// In your WalkStartPoint component - update handleSearch
 const handleSearch = async () => {
-  console.log("Search button pressed");
-  
+  console.log("Search button pressed (latest version, FirebaseService)");
+
   if (isSending) {
     console.log("Already sending a request, please wait...");
     return;
@@ -34,7 +34,7 @@ const handleSearch = async () => {
   setIsSending(true);
 
   try {
-    // Get current user data from AsyncStorage or context
+    // Get current user data
     const userId = await AsyncStorage.getItem('userId');
     const userDataString = await AsyncStorage.getItem('userData');
     const userData = JSON.parse(userDataString);
@@ -44,54 +44,36 @@ const handleSearch = async () => {
       return;
     }
 
-    // Create walk request data with ALL required fields
+    console.log('👤 Current user data:', { userId, name: userData.name, surname: userData.surname, phone: userData.phone });
+
+    // Create walk request data
     const walkRequestData = {
       requesterId: userId,
       requesterName: `${userData.name} ${userData.surname}`,
+      requesterPhone: userData.phone,
       pickup: selectedMeetUpPoint,
-      destination: 'UJ Campus', // You can make this dynamic if needed
+      destination: 'UJ Campus',
       meetupPoint: selectedMeetUpPoint,
       preferredGender: selectedGender,
       status: 'pending',
       createdAt: new Date(),
-      expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000),
     };
 
-    console.log('Creating walk request:', walkRequestData);
+    console.log('📝 Creating walk request with data:', walkRequestData);
 
-    // Create walk request document which will trigger Cloud Function
-    const requestId = await createWalkRequest(userId, walkRequestData);
-    
-    // Also send direct notification for immediate testing
-    const directWalkData = {
-      requestId: requestId,
-      walkFrom: selectedMeetUpPoint,
-      walkTo: 'UJ Campus',
-      time: '5 mins',
-      partnerName: `${userData.name} ${userData.surname}`,
-      partnerInitials: `${userData.name?.[0] || ''}${userData.surname?.[0] || ''}`.toUpperCase(),
-      currentTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      meetupPoint: selectedMeetUpPoint,
-      preferredGender: selectedGender,
-      requestedAt: new Date().toISOString()
-    };
+    // Call FirebaseService.createWalkRequest - it should return a string ID
+    const requestId = await FirebaseService.createWalkRequest(walkRequestData);
 
-    console.log('Sending direct notification:', directWalkData);
-    const result = await sendWalkRequest(directWalkData);
-    
-    if (result.success) {
-      Alert.alert('Success', `Walk request sent! ${result.sentCount} users notified.`);
-      setIsSearchPartner(true);
-      setIsStartPoint(false);
-    } else {
-      Alert.alert('Partial Success', 'Walk request created but notifications failed. Friends will still be notified via Cloud Function.');
-      setIsSearchPartner(true);
-      setIsStartPoint(false);
-    }
-    
+    console.log('✅ Walk request created successfully with ID:', requestId);
+
+    Alert.alert('Success', 'Walk request sent! Nearby users will be notified.');
+    setIsSearchPartner(true);
+    setIsStartPoint(false);
   } catch (error) {
     console.error("💥 Error in handleSearch:", error);
-    Alert.alert('Error', 'Failed to send walk request. Please try again.');
+    console.error("💥 Error details:", error.message, error.stack);
+    Alert.alert('Error', `Failed to send walk request: ${error.message}`);
   } finally {
     setIsSending(false);
   }

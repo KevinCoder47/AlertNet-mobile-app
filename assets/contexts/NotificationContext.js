@@ -1,3 +1,6 @@
+// Firestore imports for walk request listener
+import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { db } from '../../backend/Firebase/FirebaseConfig';
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Vibration, Platform, AppState, Alert } from 'react-native';
@@ -45,6 +48,81 @@ export const NotificationProvider = ({ children }) => {
   const notificationListener = useRef();
   const responseListener = useRef();
   const appStateRef = useRef(AppState.currentState);
+
+  // Optimized Firestore walk request listener
+  useEffect(() => {
+    if (!userData) {
+      console.log('⏳ No user data yet, waiting for authentication...');
+      return;
+    }
+
+    // Setup Firestore walk request listener (optimized)
+    function setupWalkRequestListener() {
+      try {
+        const userId = userData?.id || userData?.userId;
+        if (!userId) {
+          console.log('⏳ No user ID available yet');
+          return;
+        }
+        console.log('🔍 Setting up Firestore walk request listener for user:', userId);
+        const walkRequestsRef = collection(db, 'walkRequests');
+        const q = query(
+          walkRequestsRef,
+          where('status', '==', 'pending'),
+          orderBy('createdAt', 'desc'),
+          limit(10)
+        );
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+          console.log(`📡 Firestore snapshot received: ${snapshot.docChanges().length} changes`);
+          snapshot.docChanges().forEach((change) => {
+            if (change.type === 'added') {
+              const walkRequest = change.doc.data();
+              // Skip if this is your own request
+              if (walkRequest.requesterId === userId) {
+                console.log('⏭️ Skipping own walk request');
+                return;
+              }
+              // Convert Firestore timestamp to readable time
+              const requestTime = walkRequest.createdAt?.toDate
+                ? walkRequest.createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              // Convert Firestore data to walk request format
+              const walkData = {
+                requestId: change.doc.id,
+                walkFrom: walkRequest.pickup || walkRequest.walkFrom,
+                walkTo: walkRequest.destination || walkRequest.walkTo,
+                time: '5 mins',
+                partnerName: walkRequest.requesterName,
+                partnerInitials: getInitials(walkRequest.requesterName),
+                senderPhone: walkRequest.requesterPhone,
+                currentTime: requestTime,
+                meetupPoint: walkRequest.meetupPoint,
+                preferredGender: walkRequest.preferredGender,
+              };
+              console.log('🎯 Processed walk data for modal:', walkData);
+              setCurrentWalkRequest(walkData);
+              setIsNotificationVisible(true);
+            }
+          });
+        }, (error) => {
+          console.error('❌ Firestore listener error:', error);
+        });
+        console.log('✅ Firestore walk request listener established');
+        return unsubscribe;
+      } catch (error) {
+        console.error('💥 Error setting up walk request listener:', error);
+      }
+    }
+
+    const unsubscribe = setupWalkRequestListener();
+    return () => {
+      if (unsubscribe) {
+        console.log('🔴 Cleaning up Firestore walk request listener');
+        unsubscribe();
+      }
+    };
+  }, [userData, setCurrentWalkRequest, setIsNotificationVisible]);
+  
 
   // Initialize the notification system
   useEffect(() => {
@@ -156,11 +234,11 @@ export const NotificationProvider = ({ children }) => {
     return token;
   };
 
-  // Handle incoming push notification (when app is open)
+  // In your NotificationContext - update handleIncomingPushNotification
   const handleIncomingPushNotification = (notification) => {
     const data = notification.request.content.data;
     
-    console.log('📨 Processing push notification:', data);
+    console.log('📬 Notification received in foreground:', data);
 
     if (data.type === 'walk_request') {
       const walkData = {
@@ -176,19 +254,50 @@ export const NotificationProvider = ({ children }) => {
         preferredGender: data.preferredGender,
       };
 
+      console.log('Setting current walk request from foreground:', walkData);
       handleIncomingWalkRequest(walkData);
     }
   };
 
-  // Handle when user taps on notification
+  // Handle when user taps on notification - UPDATED WITH DETAILED LOGGING
   const handleNotificationTap = (response) => {
+    console.log('🎯 ========== NOTIFICATION TAPPED ==========');
+    console.log('🎯 Full response:', JSON.stringify(response, null, 2));
+    
     const data = response.notification.request.content.data;
+    console.log('🎯 Notification data:', data);
+    console.log('🎯 Notification type:', data.type);
     
     if (data.type === 'walk_request') {
-      console.log('User tapped walk request notification');
-      // Navigate to walk request screen or show popup
-      // You can add navigation logic here
+      console.log('🎯 Processing walk request notification...');
+      
+      const walkData = {
+        requestId: data.requestId,
+        walkFrom: data.walkFrom,
+        walkTo: data.walkTo,
+        time: data.time,
+        partnerName: data.senderName,
+        partnerInitials: data.senderInitials,
+        senderPhone: data.senderPhone,
+        currentTime: data.currentTime,
+        meetupPoint: data.meetupPoint,
+        preferredGender: data.preferredGender,
+      };
+
+      console.log('🎯 Walk data prepared:', walkData);
+      console.log('🎯 Setting currentWalkRequest and showing modal...');
+      
+      setCurrentWalkRequest(walkData);
+      setIsNotificationVisible(true);
+      
+      console.log('🎯 State updated - modal should be visible now');
+      console.log('🎯 currentWalkRequest set to:', walkData);
+      console.log('🎯 isNotificationVisible set to: true');
+      
+    } else {
+      console.log('🎯 Unknown notification type:', data.type);
     }
+    console.log('🎯 ========== END NOTIFICATION TAPPED ==========');
   };
 
   // Send walk request to ALL users (for testing)
@@ -278,14 +387,19 @@ const notificationData = {
     }
   };
 
-// Send actual Expo push notification (updated with better logging)
+// In your sendExpoPushNotification function in NotificationContext.js
 const sendExpoPushNotification = async (pushToken, title, body, data) => {
   const message = {
     to: pushToken,
     sound: 'default',
     title: title,
     body: body,
-    data: data,
+    data: {
+      ...data,
+      // Add deep link URL
+      url: 'alertnet://walk-request', // Your custom URL scheme
+      _displayInForeground: true,
+    },
     priority: 'high',
     channelId: 'walk-requests',
   };
@@ -295,7 +409,7 @@ const sendExpoPushNotification = async (pushToken, title, body, data) => {
       title: title,
       body: body,
       token: pushToken.substring(0, 20) + '...',
-      data: data
+      data: message.data // Log the updated data
     });
     
     const response = await fetch('https://exp.host/--/api/v2/push/send', {
@@ -409,6 +523,17 @@ const sendExpoPushNotification = async (pushToken, title, body, data) => {
       cleanupShownNotifications();
     }
   }, [notifications]);
+
+
+  // Helper function to get initials from a name string
+  function getInitials(name) {
+    if (!name || typeof name !== 'string') return '';
+    const parts = name.trim().split(' ');
+    if (parts.length === 1) {
+      return parts[0][0]?.toUpperCase() || '';
+    }
+    return (parts[0][0] || '') + (parts[1][0] || '');
+  }
 
   const loadShownNotifications = async () => {
     try {
