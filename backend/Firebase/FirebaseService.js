@@ -35,6 +35,48 @@ export const FirebaseService = {
   // USER PRESENCE
   // ========================
 
+/**
+ * Get ALL users with push tokens (for testing - sends to everyone)
+ * @returns {Promise<Array>} - Array of all users with push tokens
+ */
+getAllUsersWithPushTokens: async () => {
+  try {
+    console.log('Getting ALL users with push tokens...');
+    
+    const usersRef = collection(db, 'users');
+    const querySnapshot = await getDocs(usersRef);
+    
+    const users = [];
+    querySnapshot.forEach((doc) => {
+      const userData = doc.data();
+      
+      // Check for both field names since you have different field names in different user documents
+      const pushToken = userData.ExpoPushToken || userData.PushToken;
+      const phone = userData.Phone;
+      
+      if (pushToken && phone) {
+        users.push({
+          id: doc.id,
+          userId: userData.userID,
+          phone: phone,
+          pushToken: pushToken,
+          name: userData.Name || 'User',
+          surname: userData.Surname || '',
+        });
+        
+        console.log(`✅ Found user: ${userData.Name} with token: ${pushToken.substring(0, 20)}...`);
+      } else {
+        console.log(`❌ User ${userData.Name || doc.id} missing push token or phone`);
+      }
+    });
+    
+    console.log(`Found ${users.length} total users with push tokens`);
+    return users;
+  } catch (error) {
+    console.error('Error getting all users with push tokens:', error);
+    return [];
+  }
+},
   /**
    * Updates the status of a user in Firestore.
    * @param {string} userId - The ID of the user to update.

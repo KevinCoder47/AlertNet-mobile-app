@@ -1,3 +1,37 @@
+/**
+ * Create a walk request document
+ * @param {string} userId - User ID
+ * @param {Object} requestData - Walk request data
+ * @returns {Promise<string>} - Request ID
+ */
+export const createWalkRequest = async (userId, requestData) => {  
+  try {  
+    const requestRef = doc(collection(db, "walkRequests"));  
+
+    // Ensure all required fields are present
+    const walkRequestData = {
+      requesterId: userId,  
+      requesterName: requestData.requesterName || 'Unknown User',  
+      pickup: requestData.pickup || 'Unknown Location',  
+      destination: requestData.destination || 'Unknown Destination',  
+      meetupPoint: requestData.meetupPoint || requestData.pickup,
+      preferredGender: requestData.preferredGender || 'Any',
+      status: 'pending',  
+      createdAt: new Date(),  
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes
+    };
+
+    console.log('Creating walk request with data:', walkRequestData);
+
+    await setDoc(requestRef, walkRequestData);  
+
+    console.log('Walk request created with ID:', requestRef.id);
+    return requestRef.id;  
+  } catch (error) {  
+    console.error('Error creating walk request', error);  
+    throw error;  
+  }  
+};
 import { 
   getFirestore, 
   doc, 
@@ -961,5 +995,6 @@ export default {
   getExpoPushToken,
   savePushToken,
   getPushTokensForUsers,
-  removePushToken
+  removePushToken,
+  createWalkRequest
 };

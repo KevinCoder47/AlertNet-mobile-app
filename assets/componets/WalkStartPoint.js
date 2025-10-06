@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, Dimensions, Image, TouchableOpacity, Modal, FlatList, Linking } from 'react-native';
+import { StyleSheet, Text, View, Dimensions, Image, TouchableOpacity, Modal, FlatList, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
-import { FirebaseService } from '../../backend/Firebase/FirebaseService';
+import { createWalkRequest } from '../../services/firestore';
 import { useNotifications } from '../contexts/NotificationContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 
 const { width, height } = Dimensions.get('window');
@@ -12,8 +13,7 @@ const { width, height } = Dimensions.get('window');
 const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 
 const WalkStartPoint = ({ setIsDestinationDone, setIsSearchPartner, setIsStartPoint, onStartPointSelect }) => {
-  console.log("WalkStartPoint component rendered");
-  const [isSending, setIsSending] = useState(false); // Add loading state
+  const [isSending, setIsSending] = useState(false);
   const [isDark] = useState(false);
   const [showMeetUpDropdown, setShowMeetUpDropdown] = useState(false);
   const [showGenderDropdown, setShowGenderDropdown] = useState(false);
@@ -21,42 +21,81 @@ const WalkStartPoint = ({ setIsDestinationDone, setIsSearchPartner, setIsStartPo
   const [selectedGender, setSelectedGender] = useState('Any');
   const [showStreetViewModal, setShowStreetViewModal] = useState(false);
   const { sendWalkRequest } = useNotifications();
-  const handleSearch = async () => {
-    console.log("Search button pressed");
-    
-    if (isSending) {
-      console.log("Already sending a request, please wait...");
+
+  // Option 1: Create walk request document in Firestore
+const handleSearch = async () => {
+  console.log("Search button pressed");
+  
+  if (isSending) {
+    console.log("Already sending a request, please wait...");
+    return;
+  }
+
+  setIsSending(true);
+
+  try {
+    // Get current user data from AsyncStorage or context
+    const userId = await AsyncStorage.getItem('userId');
+    const userDataString = await AsyncStorage.getItem('userData');
+    const userData = JSON.parse(userDataString);
+
+    if (!userId || !userData) {
+      Alert.alert('Error', 'User data not found. Please log in again.');
       return;
     }
-    setIsSearchPartner(true);
-    setIsStartPoint(false);
-    setIsSending(true);
 
-    const walkData = {
-      walkFrom: 'UJ APB Campus',
-      walkTo: 'Res - Richmond 50 Rd',
-      time: '5 mins',
-      partnerName: 'Kevin Serakalala',
-      partnerInitials: 'KS',
-      currentTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      requestId: Math.random().toString(36).substring(7),
+    // Create walk request data with ALL required fields
+    const walkRequestData = {
+      requesterId: userId,
+      requesterName: `${userData.name} ${userData.surname}`,
+      pickup: selectedMeetUpPoint,
+      destination: 'UJ Campus', // You can make this dynamic if needed
+      meetupPoint: selectedMeetUpPoint,
+      preferredGender: selectedGender,
+      status: 'pending',
+      createdAt: new Date(),
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes
     };
 
-    try {
-      // Send the walk request via FCM
-      await sendWalkRequest(walkData);
-      
-      // Show searching UI
+    console.log('Creating walk request:', walkRequestData);
+
+    // Create walk request document which will trigger Cloud Function
+    const requestId = await createWalkRequest(userId, walkRequestData);
+    
+    // Also send direct notification for immediate testing
+    const directWalkData = {
+      requestId: requestId,
+      walkFrom: selectedMeetUpPoint,
+      walkTo: 'UJ Campus',
+      time: '5 mins',
+      partnerName: `${userData.name} ${userData.surname}`,
+      partnerInitials: `${userData.name?.[0] || ''}${userData.surname?.[0] || ''}`.toUpperCase(),
+      currentTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      meetupPoint: selectedMeetUpPoint,
+      preferredGender: selectedGender,
+      requestedAt: new Date().toISOString()
+    };
+
+    console.log('Sending direct notification:', directWalkData);
+    const result = await sendWalkRequest(directWalkData);
+    
+    if (result.success) {
+      Alert.alert('Success', `Walk request sent! ${result.sentCount} users notified.`);
       setIsSearchPartner(true);
       setIsStartPoint(false);
-      
-    } catch (error) {
-      console.error("💥 Error in handleSearch:", error);
-      alert("Failed to send walk request. Please try again.");
-    } finally {
-      setIsSending(false);
+    } else {
+      Alert.alert('Partial Success', 'Walk request created but notifications failed. Friends will still be notified via Cloud Function.');
+      setIsSearchPartner(true);
+      setIsStartPoint(false);
     }
-  };
+    
+  } catch (error) {
+    console.error("💥 Error in handleSearch:", error);
+    Alert.alert('Error', 'Failed to send walk request. Please try again.');
+  } finally {
+    setIsSending(false);
+  }
+};
 
   const colors = {
     background: isDark ? '#121212' : '#FFFFFF',
@@ -77,10 +116,10 @@ const WalkStartPoint = ({ setIsDestinationDone, setIsSearchPartner, setIsStartPo
   ];
 
   const genderOptions = [
-    'Other',
+    'Any',
     'Male',
     'Female',
-    // 'Non-binary'
+    'Other',
   ];
 
   // Coordinates for each meet-up point (example coordinates for Johannesburg universities)
@@ -342,7 +381,7 @@ const InteractiveStreetView = ({ point }) => {
               }}
             >
               <Text style={styles.buttonText}>
-                {selectedGender === 'Other' ? 'Preferred Gender' : selectedGender}
+                {selectedGender === 'Any' ? 'Preferred Gender' : selectedGender}
               </Text>
             </TouchableOpacity>
 

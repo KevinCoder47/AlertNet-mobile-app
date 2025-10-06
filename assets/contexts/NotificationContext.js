@@ -191,10 +191,10 @@ export const NotificationProvider = ({ children }) => {
     }
   };
 
-  // Send walk request to nearby users
+  // Send walk request to ALL users (for testing)
   const sendWalkRequest = async (walkData) => {
     try {
-      console.log('🚀 Sending walk request:', walkData);
+      console.log('🚀 Sending walk request to ALL users:', walkData);
       
       const userPhone = userData?.phone || userData?.phoneNumber;
       if (!userPhone) {
@@ -207,56 +207,69 @@ export const NotificationProvider = ({ children }) => {
         throw new Error('User data not found');
       }
 
-      // Find nearby users (you'll need to implement this in FirebaseService)
-      // For now, we'll get all users with push tokens
-      const nearbyUsers = await FirebaseService.getNearbyUsersWithTokens(walkData.meetupPoint);
+      // Get ALL users with push tokens (not just nearby/friends)
+      const allUsers = await FirebaseService.getAllUsersWithPushTokens();
       
-      console.log(`📍 Found ${nearbyUsers.length} nearby users`);
+      console.log(`📍 Found ${allUsers.length} total users with push tokens`);
 
-      if (nearbyUsers.length === 0) {
-        Alert.alert('No Users Nearby', 'No users found nearby to send walk request.');
-        return { success: false, error: 'No users nearby' };
+      if (allUsers.length === 0) {
+        Alert.alert('No Users Available', 'No users found with push tokens.');
+        return { success: false, error: 'No users with push tokens' };
       }
 
-      // Prepare notification data
-      const notificationData = {
-        requestId: walkData.requestId || Math.random().toString(36).substring(7),
-        type: 'walk_request',
-        walkFrom: walkData.walkFrom,
-        walkTo: walkData.walkTo,
-        time: walkData.time,
-        senderName: currentUserData.firstName + ' ' + currentUserData.lastName,
-        senderInitials: (currentUserData.firstName[0] + currentUserData.lastName[0]).toUpperCase(),
-        senderPhone: userPhone,
-        currentTime: walkData.currentTime || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        meetupPoint: walkData.meetupPoint || 'APB Campus',
-        preferredGender: walkData.preferredGender || 'Any',
-      };
+// Prepare notification data
+const notificationData = {
+  requestId: walkData.requestId || Math.random().toString(36).substring(7),
+  type: 'walk_request',
+  walkFrom: walkData.walkFrom,
+  walkTo: walkData.walkTo,
+  time: walkData.time,
+  // Fix: Access the user data correctly
+  senderName: currentUserData.userData?.Name + ' ' + currentUserData.userData?.Surname,
+  senderInitials: (currentUserData.userData?.Name?.[0] || '') + (currentUserData.userData?.Surname?.[0] || ''),
+  senderPhone: userPhone,
+  currentTime: walkData.currentTime || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+  meetupPoint: walkData.meetupPoint || 'APB Campus',
+  preferredGender: walkData.preferredGender || 'Any',
+};
 
-      // Send push notification to each nearby user
-      const sendPromises = nearbyUsers.map(async (user) => {
+      console.log('📨 Sending notifications to all users:', allUsers.length);
+
+      // Send push notification to each user
+      const sendPromises = allUsers.map(async (user) => {
         if (!user.pushToken) {
-          console.log(`⚠️ User ${user.phone} has no push token`);
+          console.log(`⚠️ User ${user.userId} has no push token`);
+          return null;
+        }
+
+        // Skip sending to current user
+        if (user.phone === userPhone) {
+          console.log(`⏭️ Skipping notification to current user: ${user.phone}`);
           return null;
         }
 
         return await sendExpoPushNotification(
           user.pushToken,
           '🚶‍♂️ New Walk Request!',
-          `${notificationData.senderName} wants to walk from ${walkData.walkFrom}`,
+          `${notificationData.senderName} wants to walk from ${walkData.walkFrom} to ${walkData.walkTo}`,
           notificationData
         );
       });
 
       const results = await Promise.all(sendPromises);
       const successCount = results.filter(r => r?.success).length;
+      const failedCount = results.filter(r => r?.success === false).length;
+      const skippedCount = results.filter(r => r === null).length;
 
-      console.log(`✅ Sent ${successCount}/${nearbyUsers.length} walk requests successfully`);
+      console.log(`✅ Sent ${successCount}/${allUsers.length} walk requests successfully`);
+      console.log(`❌ Failed: ${failedCount}, Skipped: ${skippedCount}`);
 
       return { 
         success: true, 
         sentCount: successCount,
-        totalUsers: nearbyUsers.length 
+        totalUsers: allUsers.length,
+        failedCount,
+        skippedCount
       };
 
     } catch (error) {
@@ -265,42 +278,63 @@ export const NotificationProvider = ({ children }) => {
     }
   };
 
-  // Send actual Expo push notification
-  const sendExpoPushNotification = async (pushToken, title, body, data) => {
-    const message = {
-      to: pushToken,
-      sound: 'default',
+// Send actual Expo push notification (updated with better logging)
+const sendExpoPushNotification = async (pushToken, title, body, data) => {
+  const message = {
+    to: pushToken,
+    sound: 'default',
+    title: title,
+    body: body,
+    data: data,
+    priority: 'high',
+    channelId: 'walk-requests',
+  };
+
+  try {
+    console.log(`📤 Sending notification:`, {
       title: title,
       body: body,
-      data: data,
-      priority: 'high',
-      channelId: 'default',
-    };
+      token: pushToken.substring(0, 20) + '...',
+      data: data
+    });
+    
+    const response = await fetch('https://exp.host/--/api/v2/push/send', {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Accept-Encoding': 'gzip, deflate',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(message),
+    });
 
-    try {
-      const response = await fetch('https://exp.host/--/api/v2/push/send', {
-        method: 'POST',
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(message),
-      });
-
-      const result = await response.json();
-      
-      if (result.data && result.data.status === 'ok') {
-        console.log('✅ Push notification sent successfully');
-        return { success: true, result };
-      } else {
-        console.error('❌ Push notification failed:', result);
-        return { success: false, error: result };
-      }
-    } catch (error) {
-      console.error('💥 Error sending push notification:', error);
-      return { success: false, error: error.message };
+    console.log(`📨 Response status: ${response.status}`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
-  };
+
+    const result = await response.json();
+    console.log(`📨 Expo API response:`, result);
+    
+    if (result.data && result.data.status === 'ok') {
+      console.log('✅ Push notification sent successfully');
+      return { success: true, result };
+    } else {
+      console.error('❌ Push notification failed:', result);
+      return { 
+        success: false, 
+        error: result.errors ? result.errors[0] : 'Unknown error' 
+      };
+    }
+  } catch (error) {
+    console.error('💥 Error sending push notification:', error.message);
+    return { 
+      success: false, 
+      error: error.message 
+    };
+  }
+};
 
   const handleIncomingWalkRequest = (walkData) => {
     console.log('📬 Received walk request:', walkData);
