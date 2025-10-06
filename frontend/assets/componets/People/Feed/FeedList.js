@@ -20,7 +20,7 @@ import CommentModal from './CommentModal';
 import MenuModal from './MenuModal';
 import AddAlertModal from './AddAlertModal';
 
-// Import data service - updated to match your actual file
+// Import data service
 import { feedDataService } from '../../../services/feedDataService';
 
 const FeedList = () => {
@@ -182,7 +182,6 @@ const FeedList = () => {
           text: 'Report', 
           style: 'destructive', 
           onPress: () => {
-            // In production, you would send this to your moderation system
             Alert.alert('Reported', 'Thank you for your report. We will review it shortly.');
             if (feedDataService) {
               feedDataService.reportPost(postId);
@@ -195,15 +194,17 @@ const FeedList = () => {
 
   // Render functions
   const renderItem = ({ item }) => (
-    <FeedCard
-      item={item}
-      userLocation={userLocation}
-      onLike={handleLike}
-      onComment={openCommentModal}
-      onMenuPress={openMenuModal}
-      showLikeAnimation={showLikeAnimation[item.id]}
-      onLikeAnimationEnd={() => handleLikeAnimationEnd(item.id)}
-    />
+    <View style={styles.cardWrapper}>
+      <FeedCard
+        item={item}
+        userLocation={userLocation}
+        onLike={handleLike}
+        onComment={openCommentModal}
+        onMenuPress={openMenuModal}
+        showLikeAnimation={showLikeAnimation[item.id]}
+        onLikeAnimationEnd={() => handleLikeAnimationEnd(item.id)}
+      />
+    </View>
   );
 
   const AddButton = () => (
@@ -233,7 +234,7 @@ const FeedList = () => {
   // Show loading state if service isn't available
   if (!feedDataService) {
     return (
-      <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
+      <View style={[styles.container, styles.centered, { backgroundColor: 'transparent' }]}>
         <Text style={[styles.errorText, { color: colors.text }]}>Feed service is not available</Text>
         <Text style={[styles.errorSubtext, { color: colors.secondary }]}>Please check your internet connection and try again</Text>
       </View>
@@ -241,7 +242,7 @@ const FeedList = () => {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={styles.container}>
       <FlatList
         data={feedData}
         keyExtractor={(item) => item.id}
@@ -256,6 +257,7 @@ const FeedList = () => {
         }
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
       />
 
       <AddButton />
@@ -290,6 +292,7 @@ const FeedList = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: 'transparent', 
   },
   centered: {
     justifyContent: 'center',
@@ -307,7 +310,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   listContent: {
-    paddingBottom: 100, // Space for floating add button
+    paddingBottom: 100,
+    paddingTop: 12,
+    paddingHorizontal: 0,
+  },
+  cardWrapper: {
+    marginHorizontal: 0,
+    marginVertical: 1,
+    borderRadius: 0,
+    backgroundColor: 'transparent',
+    // iOS shadow - drop shadow effect (only below the card)
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.6,
+    shadowRadius: 7,
+    // Android shadow - drop shadow effect
+    elevation: 16,
+  },
+  separator: {
+    height: 8,
   },
   addButtonContainer: {
     position: 'absolute',
