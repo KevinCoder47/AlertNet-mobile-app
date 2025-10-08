@@ -294,8 +294,8 @@ const LocationViewer = ({
       <MapView
         ref={mapRef}
         style={styles.map}
-        provider={PROVIDER_GOOGLE}
-        showsUserLocation={!!userLocation}
+        provider={PROVIDER_GOOGLE} // The user's location is shown with a custom marker below
+        showsUserLocation={false}
         showsMyLocationButton={false}
         showsCompass={false}
         showsScale={false}

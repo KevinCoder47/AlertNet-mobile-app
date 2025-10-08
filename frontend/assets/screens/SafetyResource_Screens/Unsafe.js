@@ -8,7 +8,6 @@ import { useTheme } from '../../contexts/ColorContext';
 export default function Unsafe({ setIsUnsafePage, setIsSafetyResources, setIsHelplinePage = null }) {
   const { getScaledFontSize } = useFontSize();
   const { colors } = useTheme();
-  const [panicWordActive, setPanicWordActive] = useState(false);
 
   const handleHelplinePress = () => {
     if (setIsHelplinePage && typeof setIsHelplinePage === 'function') {
@@ -25,15 +24,6 @@ export default function Unsafe({ setIsUnsafePage, setIsSafetyResources, setIsHel
   };
 
   const quickActions = [
-    {
-      id: 'panic',
-      icon: 'mic',
-      title: 'Panic Word',
-      description: 'Say your emergency word to alert contacts',
-      color: '#EF4444',
-      bgColor: '#FEE2E2',
-      action: () => setPanicWordActive(!panicWordActive),
-    },
     {
       id: 'sos',
       icon: 'alert-circle',
@@ -154,22 +144,6 @@ export default function Unsafe({ setIsUnsafePage, setIsSafetyResources, setIsHel
               <Text style={[styles.actionDescription, { fontSize: getScaledFontSize(12), color: colors.textSecondary || colors.text }]}>
                 {action.description}
               </Text>
-              
-              {action.id === 'panic' && (
-                <View style={[styles.statusBadge, { 
-                  backgroundColor: panicWordActive ? '#D1FAE5' : '#FEE2E2' 
-                }]}>
-                  <View style={[styles.statusDot, { 
-                    backgroundColor: panicWordActive ? '#10B981' : '#EF4444' 
-                  }]} />
-                  <Text style={[styles.statusText, { 
-                    fontSize: getScaledFontSize(11),
-                    color: panicWordActive ? '#065F46' : '#991B1B'
-                  }]}>
-                    {panicWordActive ? 'Active' : 'Inactive'}
-                  </Text>
-                </View>
-              )}
             </TouchableOpacity>
           ))}
         </View>

@@ -10,6 +10,7 @@ import {
   Modal,
   Dimensions,
   PanResponder,
+  TextInput,
   StatusBar,
   Platform,
   BackHandler,
@@ -38,6 +39,11 @@ const OfflineMap = ({ setIsOfflineMap, setIsSafetyResources, setIsDownloadedMaps
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [showProgress, setShowProgress] = useState(false);
+
+  // State for naming the map after download
+  const [showNameModal, setShowNameModal] = useState(false);
+  const [newMapName, setNewMapName] = useState('');
+  const [downloadedMapData, setDownloadedMapData] = useState(null);
   
   // Selection box state
   const [selectionBox, setSelectionBox] = useState({
@@ -163,6 +169,56 @@ const OfflineMap = ({ setIsOfflineMap, setIsSafetyResources, setIsDownloadedMaps
     );
   };
 
+  const handleSaveNewMap = async () => {
+    if (!newMapName.trim()) {
+      Alert.alert('Invalid Name', 'Please enter a name for your map.');
+      return;
+    }
+
+    if (!downloadedMapData) {
+      Alert.alert('Error', 'No map data to save.');
+      setShowNameModal(false);
+      return;
+    }
+
+    const { result, region, size } = downloadedMapData;
+
+    // Create new map entry
+    const mapId = result.mapId;
+    const newMap = {
+      id: mapId,
+      name: newMapName.trim(),
+      size: `${size} MB`,
+      expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+      region: region,
+      downloadDate: new Date().toISOString(),
+      tileCount: result.tilesDownloaded,
+      failedTiles: result.tilesFailed || 0,
+      successRate: result.successRate || 100,
+    };
+
+    // Update downloaded maps
+    const updatedMaps = [...downloadedMaps, newMap];
+    setDownloadedMaps(updatedMaps);
+
+    // Save to AsyncStorage
+    try {
+      await AsyncStorage.setItem('downloadedMaps', JSON.stringify(updatedMaps));
+    } catch (error) {
+      console.error('Failed to save downloaded map', error);
+    }
+
+    // Record the download in Firebase if user is authenticated
+    if (auth.currentUser) {
+      await OfflineMapFirebaseService.addMapUpdateHistory(mapId, 'downloaded', `Downloaded ${result.tilesDownloaded} tiles (${result.successRate}% success rate)`);
+    }
+
+    setShowNameModal(false);
+    setDownloadedMapData(null);
+    setNewMapName('');
+    Alert.alert('Map Saved!', `"${newMap.name}" is now available offline.`, [{ text: 'OK', onPress: () => { setIsOfflineMap(false); setIsDownloadedMaps(true); } }]);
+  };
+
   const startDownload = async () => {
     setIsDownloading(true);
     setShowProgress(true);
@@ -179,45 +235,14 @@ const OfflineMap = ({ setIsOfflineMap, setIsSafetyResources, setIsDownloadedMaps
     setShowProgress(false);
 
     if (result.success) {
-      // Create new map entry
-      const mapId = result.mapId;
-      const newMap = {
-        id: mapId,
-        name: `Map ${downloadedMaps.length + 1}`,
-        size: `${downloadSize} MB`,
-        expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+      // Store temporary data and show naming modal
+      setDownloadedMapData({
+        result: result,
         region: mapRegion,
-        downloadDate: new Date().toISOString(),
-        tileCount: result.tilesDownloaded,
-        failedTiles: result.tilesFailed || 0,
-        successRate: result.successRate || 100
-      };
-
-      // Update downloaded maps
-      const updatedMaps = [...downloadedMaps, newMap];
-      setDownloadedMaps(updatedMaps);
-
-      // Save to AsyncStorage
-      try {
-        await AsyncStorage.setItem('downloadedMaps', JSON.stringify(updatedMaps));
-      } catch (error) {
-        console.error('Failed to save downloaded map', error);
-      }
-
-      // Record the download in Firebase if user is authenticated
-      if (auth.currentUser) {
-        await OfflineMapFirebaseService.addMapUpdateHistory(mapId, 'downloaded', `Downloaded ${result.tilesDownloaded} tiles (${result.successRate}% success rate)`);
-      }
-
-      const message = result.tilesFailed > 0 
-        ? `Downloaded ${result.tilesDownloaded} tiles successfully (${result.successRate}% success rate). ${result.tilesFailed} tiles failed but the map is still usable.`
-        : `Successfully downloaded ${result.tilesDownloaded} map tiles. The map is now available offline.`;
-
-      Alert.alert(
-        'Download Complete',
-        message,
-        [{ text: 'OK', onPress: () => { setIsOfflineMap(false); setIsDownloadedMaps(true); } }]
-      );
+        size: downloadSize,
+      });
+      setNewMapName(`Map ${downloadedMaps.length + 1}`); // Pre-fill with default name
+      setShowNameModal(true);
     } else {
       Alert.alert('Download Failed', result.error || 'Failed to download map tiles. Please check your internet connection and try again.');
     }
@@ -329,6 +354,34 @@ const OfflineMap = ({ setIsOfflineMap, setIsSafetyResources, setIsDownloadedMaps
               <Text style={[styles.progressSubText, { fontSize: getScaledFontSize(12) }]}>
                 Downloading map tiles...
               </Text>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Name Map Modal */}
+        <Modal visible={showNameModal} transparent animationType="fade">
+          <View style={styles.progressOverlay}>
+            <View style={styles.progressContainer}>
+              <Text style={[styles.progressTitle, { fontSize: getScaledFontSize(18) }]}>
+                Download Complete!
+              </Text>
+              <Text style={[styles.progressSubText, { fontSize: getScaledFontSize(14), marginBottom: 20 }]}>
+                Name your new offline map.
+              </Text>
+              <TextInput
+                style={styles.nameInput}
+                value={newMapName}
+                onChangeText={setNewMapName}
+                placeholder="e.g., Home Area"
+                placeholderTextColor="#999"
+                autoFocus={true}
+              />
+              <TouchableOpacity
+                style={styles.arrowButton}
+                onPress={handleSaveNewMap}
+              >
+                <Icon name="arrow-right-circle" size={getScaledFontSize(50)} color="#007AFF" />
+              </TouchableOpacity>
             </View>
           </View>
         </Modal>
@@ -522,6 +575,19 @@ const styles = StyleSheet.create({
   progressSubText: {
     color: '#999',
     marginTop: 5,
+  },
+  nameInput: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 20,
+    fontSize: 16,
+  },
+  arrowButton: {
+    marginTop: 10,
+    alignSelf: 'center',
   },
 });
 
