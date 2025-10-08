@@ -3,7 +3,6 @@ import {
   StyleSheet,
   Text,
   View,
-  SafeAreaView,
   ScrollView,
   TouchableOpacity,
   Dimensions,
@@ -78,7 +77,7 @@ const SubscriptionScreen = ({ setIsSubscriptionScreen, setIsSafetyResources }) =
   const selectedPlanData = plans.find(p => p.id === selectedPlan);
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.card }]}>
         <TouchableOpacity
@@ -290,16 +289,16 @@ const SubscriptionScreen = ({ setIsSubscriptionScreen, setIsSafetyResources }) =
           Subscription renews until cancelled.
         </Text>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
+  container: {
     flex: 1,
+    paddingTop: Constants.statusBarHeight,
   },
   header: {
-    paddingTop: Constants.statusBarHeight + 16,
     paddingBottom: 16,
     paddingHorizontal: 20,
     elevation: 2,
@@ -307,11 +306,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 3,
-  },
-  backButton: {
-    marginBottom: 12,
-    padding: 4,
-    alignSelf: 'flex-start',
   },
   headerContent: {
     alignItems: 'center',
@@ -555,6 +549,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 18,
     opacity: 0.6,
+  },
+  backButton: {
+    position: 'absolute',
+    left: 20,
+    top: 16,
   },
 });
 
