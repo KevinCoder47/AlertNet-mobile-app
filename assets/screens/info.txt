@@ -1,3 +1,0 @@
-# Different screen views, example:
-│   ├── HomeScreen.js
-│   └── SafetyScreen.js
