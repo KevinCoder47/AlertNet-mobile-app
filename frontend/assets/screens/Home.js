@@ -1,4 +1,4 @@
-import { StyleSheet, View, Dimensions, Image } from 'react-native';
+import { StyleSheet, View, Dimensions, Image, TouchableOpacity, Text } from 'react-native';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Map from '../componets/Map';
 import TopBar from '../componets/TopBar';
@@ -42,6 +42,7 @@ import SafetyZones from './SafetyResource_Screens/safetyZones';
 import LocationViewer from './LocationViewer';
 import ChatProfile from './chatProfile';
 import ChatScreen from './ChatScreen';
+import ChatBot from '../componets/ChatBot';
 
 const { width, height } = Dimensions.get('window');
 
@@ -130,6 +131,7 @@ const Home = ({ route, handleLogout }) => {
   const mapRef = useRef(null);
   const [emergencyContacts, setEmergencyContacts] = useState([]);
   const [locationUpdateInterval, setLocationUpdateInterval] = useState(null);
+  const [isChatBotOpen, setIsChatBotOpen] = useState(false);
 
   const handleViewLocation = (notification) => {
     if (notification && notification.location) {
@@ -781,43 +783,75 @@ const Home = ({ route, handleLogout }) => {
   return (
     <MapProvider value={{ mapRef, userLocation, setUserLocation }}>
       <View style={styles.container}>
-        <Map 
-          userImage={getImageSource()} 
-          friendsDetails={friendsDetails}
-          setFriendsDetails={() => {}} // No longer needed - context handles updates
-          userLocation={userLocation}
-          mapRef={mapRef}
-        />
-        <TopBar 
-          setIsUserProfile={setIsUserProfile}
-          isNotHome={isNotHome}
-          isPeopleActive={isPeopleActive}
-          isTopBarManuallyExpanded={isTopBarManuallyExpanded}
-          setIsTopBarManuallyExpanded={setIsTopBarManuallyExpanded}
-          setIsSafetyResources={() => {
-            setPreviousScreen('home');
-            setIsSafetyResources(true);
-          }}
-          userImage={getImageSource()}
-          setIsNotification={setIsNotification}
-          renderProfileImage={renderProfileImage}
-          userLocation={userLocation}
-          unreadCount={unreadCount}
-        />
+        {/* Map Layer */}
+        <View style={styles.mapContainer}>
+          <Map 
+            userImage={getImageSource()} 
+            friendsDetails={friendsDetails}
+            setFriendsDetails={() => {}} // No longer needed - context handles updates
+            userLocation={userLocation}
+            mapRef={mapRef}
+          />
+        </View>
 
-        <BottomNav
-          isNotHome={isNotHome}
-          setIsNotHome={setIsNotHome}
-          isWalkPartner={isWalkPartner}
-          setIsWalkPartner={setIsWalkPartner}
-          setIsSOS={(sessionId) => {
-            setActiveSosSessionId(sessionId);
-            setIsSOS(true); 
-          }}
-          setIsPeopleActive={setIsPeopleActive}
-          setIsTopBarManuallyExpanded={setIsTopBarManuallyExpanded}
-          onOpenChat={handleOpenChat}
-        />
+        {/* TopBar - Fixed at top */}
+        <View style={styles.topBarContainer}>
+          <TopBar 
+            setIsUserProfile={setIsUserProfile}
+            isNotHome={isNotHome}
+            isPeopleActive={isPeopleActive}
+            isTopBarManuallyExpanded={isTopBarManuallyExpanded}
+            setIsTopBarManuallyExpanded={setIsTopBarManuallyExpanded}
+            setIsSafetyResources={() => {
+              setPreviousScreen('home');
+              setIsSafetyResources(true);
+            }}
+            userImage={getImageSource()}
+            setIsNotification={setIsNotification}
+            renderProfileImage={renderProfileImage}
+            userLocation={userLocation}
+            unreadCount={unreadCount}
+          />
+        </View>
+
+        {/* BottomNav - Fixed at bottom */}
+        <View style={styles.bottomNavContainer}>
+          <BottomNav
+            isNotHome={isNotHome}
+            setIsNotHome={setIsNotHome}
+            isWalkPartner={isWalkPartner}
+            setIsWalkPartner={setIsWalkPartner}
+            setIsSOS={(sessionId) => {
+              setActiveSosSessionId(sessionId);
+              setIsSOS(true); 
+            }}
+            setIsPeopleActive={setIsPeopleActive}
+            setIsTopBarManuallyExpanded={setIsTopBarManuallyExpanded}
+            onOpenChat={handleOpenChat}
+          />
+        </View>
+        
+        {/* Floating Chatbot Button - Always visible on map */}
+        {!isChatBotOpen && !IsNotification && (
+          <TouchableOpacity
+            style={styles.chatButton}
+            onPress={() => setIsChatBotOpen(true)}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="chatbubbles" size={26} color="#fff" />
+          </TouchableOpacity>
+        )}
+
+        {/* Floating Chatbot Overlay */}
+        {isChatBotOpen && (
+          <View style={styles.chatBotOverlay}>
+            <View style={styles.chatBotContainer}>
+              <View style={styles.chatBotContent}>
+                <ChatBot setIsChatBot={setIsChatBotOpen} isFloating={true} />
+              </View>
+            </View>
+          </View>
+        )}
         
         {IsNotification && (
           <NotificationsPopup
@@ -863,7 +897,7 @@ export default Home;
 
 const styles = StyleSheet.create({
   container: {
-    // flex: 1,
+    flex: 1,
   },
   profileImage: {
     width: 40,
@@ -881,5 +915,63 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 2,
     borderColor: '#fff',
+  },
+  chatButton: {
+    position: "absolute",
+    bottom: 180,
+    left: 25,
+    width: 60,
+    height: 60,
+    backgroundColor: "#FF6600",
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 10,
+    zIndex: 9999,
+  },
+  chatBotOverlay: {
+    position: 'absolute',
+    bottom: 140,
+    right: 10,
+    left: 10,
+    height: height * 0.55,
+    zIndex: 1001,
+  },
+
+  chatBotContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(26, 26, 26, 0.75)',
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 15,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  chatBotHeader: {
+    backgroundColor: '#FF6600',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 15,
+    paddingVertical: 15,
+  },
+  chatBotTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  chatBotClose: {
+    padding: 5,
+  },
+  chatBotContent: {
+    flex: 1,
   },
 });

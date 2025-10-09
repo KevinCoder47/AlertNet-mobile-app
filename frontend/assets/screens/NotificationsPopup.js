@@ -271,13 +271,37 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
   };
 
   // Mark all as read
-  const handleMarkAllAsRead = () => {
-    if (markAllNotificationsAsRead) {
-      markAllNotificationsAsRead();
+  const handleMarkAllAsRead = async () => {
+    if (!userData || !userData.phone) return;
+    
+    try {
       Vibration.vibrate(50);
+      
+      // Get all unread notifications from the current tab
+      const unreadNotifications = currentNotifications.filter(n => n.status === 'new');
+      
+      if (unreadNotifications.length === 0) {
+        Alert.alert('Info', 'All notifications are already read.');
+        return;
+      }
+      
+      // Mark each notification as read in Firebase
+      const userPhone = userData.phone || userData.Phone || userData.phoneNumber;
+      for (const notification of unreadNotifications) {
+        await FirebaseService.markNotificationAsRead(userPhone, notification.id);
+      }
+      
+      // Also call the prop function if it exists
+      if (markAllNotificationsAsRead) {
+        markAllNotificationsAsRead();
+      }
+      
+      Alert.alert('Success', `${unreadNotifications.length} notification${unreadNotifications.length > 1 ? 's' : ''} marked as read.`);
+    } catch (error) {
+      console.error('Error marking all as read:', error);
+      Alert.alert('Error', 'Could not mark all notifications as read.');
     }
   };
-
   // Clear all notifications
   const handleClearAll = () => {
     Alert.alert(
