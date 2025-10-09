@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { StyleSheet, View, Dimensions, Alert, Platform, Image } from 'react-native';
+import { StyleSheet, View, Dimensions, Alert, Platform, Image, Text } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { useTheme } from '../contexts/ColorContext';
@@ -7,6 +7,7 @@ import UserMapMarker from './UserMapMarker';
 import AndroidMarker from './AndroidMarker';
 import { useMapContext } from '../contexts/MapContext';
 import { getUserDocument } from '../../services/firestore';
+import Constants from 'expo-constants';
 
 const MAP_STYLES = {
   light: [
@@ -116,6 +117,9 @@ export default function SafetyMap({userImage, friendsDetails, setFriendsDetails,
   const [location, setLocation] = useState(null);
   const [mapReady, setMapReady] = useState(false);
   
+  // Check if running in Expo Go
+  const isExpoGo = Constants.appOwnership === 'expo';
+
   // Platform-specific configuration
   const isAndroid = Platform.OS === 'android';
   
@@ -285,6 +289,19 @@ export default function SafetyMap({userImage, friendsDetails, setFriendsDetails,
     };
   }, [userLocation]);
 
+  if (isExpoGo) {
+    return (
+      <View style={styles.expoGoFallback}>
+        <Text style={styles.fallbackText}>
+          Google Maps is not available in Expo Go.
+        </Text>
+        <Text style={styles.fallbackText}>
+          Please use a development build for full functionality.
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       {/* Main Map View */}
@@ -409,5 +426,17 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 20,
     fontWeight: 'bold',
+  },
+  expoGoFallback: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f0f0f0',
+    padding: 20,
+  },
+  fallbackText: {
+    textAlign: 'center',
+    marginBottom: 10,
+    color: '#333',
   },
 });
