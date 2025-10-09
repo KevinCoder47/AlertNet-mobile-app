@@ -5,6 +5,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { handleUserData, createUserDocument } from '../../../services/firestore';
 import { getUsersByPhoneNumbers } from '../../../services/firestore';
+import { getExpoPushToken, savePushToken } from '../../../services/firestore';
 import { getAuth } from 'firebase/auth';
 import * as Location from 'expo-location'
 
@@ -323,7 +324,7 @@ useEffect(() => {
         setSelectedContacts(contacts);
     };
 
-   // Save user data to Firestore - UPDATED TO USE REAL LOCATION
+    // Save user data to Firestore - UPDATED TO USE REAL LOCATION and Expo Push Token
     const saveUserToFirestore = async () => {
         try {
             setIsLoading(true);
@@ -340,20 +341,19 @@ useEffect(() => {
                 throw new Error('User ID not available');
             }
 
-            // Prepare contacts data with FRIEND'S FIREBASE UID
+            // Prepare contacts data
             const alertnetContacts = selectedContacts.map(contact => {
-                // Get the friend's Firebase UID - this is the correct way
                 const friendUid = contact.alertnetUser?.userID || contact.uid;
                 
                 return {
-                    uid: friendUid, // Use the friend's Firebase UID
+                    uid: friendUid,
                     name: contact.name,
                     email: contact.alertnetUser?.Email || contact.email,
                     phoneNumber: contact.phoneNumber
                 };
             });
 
-            // Use real location if available, otherwise use fallback
+            // Get location
             let userCurrentLocation;
             if (userLocation) {
                 userCurrentLocation = {
@@ -361,7 +361,6 @@ useEffect(() => {
                     longitude: userLocation.longitude
                 };
             } else {
-                // Try to get location again if not available
                 try {
                     let location = await Location.getCurrentPositionAsync({});
                     userCurrentLocation = {
@@ -370,7 +369,6 @@ useEffect(() => {
                     };
                 } catch (error) {
                     console.error('Error getting location:', error);
-                    // Use default location as fallback
                     userCurrentLocation = {
                         latitude: -26.2041,
                         longitude: 28.0473
@@ -378,8 +376,8 @@ useEffect(() => {
                 }
             }
 
-            // Create user document with friends
-                await createUserDocument(
+            // Create user document
+            await createUserDocument(
                 userId, 
                 {
                     name: currentUserData.name || '',
@@ -390,25 +388,37 @@ useEffect(() => {
                     campus: currentUserData.campus || "",  
                     currentLocation: userCurrentLocation,
                     residenceAddress: currentUserData.residenceAddress || {  
-                    latitude: 0,
-                    longitude: 0
+                        latitude: 0,
+                        longitude: 0
                     },
                     rating: currentUserData.rating || 0,  
                     walks: currentUserData.walks || 0,
                     friends: alertnetContacts
                 },
                 profileImageUri 
-                );
+            );
+
+            // Get and save push token
+            console.log('Getting push token...');
+            const pushToken = await getExpoPushToken();
+            if (pushToken) {
+                console.log('Push token obtained:', pushToken);
+                await savePushToken(userId, pushToken);
+                
+                // Store in AsyncStorage too
+                currentUserData.pushToken = pushToken;
+            } else {
+                console.log('Push token not obtained - user may have denied permission');
+            }
             
-            // Update AsyncStorage with new contacts format
+            // Update AsyncStorage
             const updatedUserData = {
                 ...currentUserData,
                 friends: alertnetContacts,
-                currentLocation: userCurrentLocation // Save location to AsyncStorage too
+                currentLocation: userCurrentLocation
             };
             await AsyncStorage.setItem('userData', JSON.stringify(updatedUserData));
             
-            // Update local state
             setUserData(updatedUserData);
             
             // Mark user as logged in
@@ -741,3 +751,4 @@ const styles = StyleSheet.create({
         backgroundColor: '#C84022',
     },
 });
+

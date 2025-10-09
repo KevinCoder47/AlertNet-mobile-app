@@ -8,23 +8,29 @@ export default {
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'automatic',
-    newArchEnabled: true,
+    newArchEnabled: false,
+    scheme: 'alertnet', // Add this line for custom URL scheme
     splash: {
       image: './assets/splash-icon.png',
       resizeMode: 'contain',
       backgroundColor: '#ffffff',
     },
     ios: {
-      // MODIFIED: Removed LSApplicationQueriesSchemes from here.
+      useFrameworks: "static",
+      useModularHeaders: true,
       config: {
         googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY,
       },
       supportsTablet: true,
-      bundleIdentifier: 'alertnet.co.za',
-      // MODIFIED: Added LSApplicationQueriesSchemes to the correct location inside infoPlist.
+      bundleIdentifier: 'com.mpilonhle.alertnet',
       infoPlist: {
         NSLocationWhenInUseUsageDescription:
           'This app uses your location for the SOS feature and to verify functionality during tests.',
+        NSLocationAlwaysAndWhenInUseUsageDescription:
+          'This app needs access to your location in the background for safety monitoring.',
+        NSLocationAlwaysUsageDescription:
+          'This app needs access to your location in the background for safety monitoring.',
+        // UIBackgroundModes: ['location'],
         LSApplicationQueriesSchemes: ['youtube', 'https'],
       },
     },
@@ -38,9 +44,7 @@ export default {
         foregroundImage: './assets/adaptive-icon.png',
         backgroundColor: '#ffffff',
       },
-      package: 'alertnet.co.za',
-      // ADDED: This entire 'queries' block is new.
-      // It's required for Android 11+ to open external links.
+      package: 'com.mpilonhle.alertnet',
       queries: {
         intent: [
           {
@@ -69,8 +73,35 @@ export default {
         {
           locationWhenInUsePermission:
             'This app uses your location for the SOS feature and to verify functionality during tests.',
+          locationAlwaysAndWhenInUsePermission:
+            'This app needs access to your location in the background for safety monitoring.',
+          locationAlwaysPermission:
+            'This app needs access to your location in the background for safety monitoring.',
         },
       ],
+      [
+        'expo-build-properties',
+        {
+          ios: {
+            useFrameworks: 'static',
+            enableGoogleMaps: true,
+          },
+          android: {
+            compileSdkVersion: 35,
+            targetSdkVersion: 35,
+            buildToolsVersion: "35.0.0",
+            enableGoogleMaps: true,
+          },
+        },
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/logo-v2.png",
+          "color": "#C84022",
+          "sounds": ["./assets/notification-sounds/walk_request.mp3"]
+        }
+      ]
     ],
     extra: {
       eas: {

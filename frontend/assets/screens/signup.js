@@ -13,7 +13,7 @@ import GeneralLoader from '../componets/Loaders/GeneralLoarder';
 import AddInfo from './AddInfo';
 
 const { width, height } = Dimensions.get('window');
-const backgroundImage = require('../../assets/images/launch-background.jpg'); 
+const backgroundImage = require('../images/launch-background.jpg'); 
 
 const SignupScreen = ({ navigation, setIsLoggedIn }) => {
   const [fullName, setFullName] = useState('');

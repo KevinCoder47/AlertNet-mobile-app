@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { collection, doc, getDoc, getDocs, onSnapshot, query, where, writeBatch } from 'firebase/firestore';
-import { db } from '../../backend/Firebase/FirebaseConfig';
+import { db } from '../../../backend/Firebase/FirebaseConfig';
 
 class FriendsService {
   constructor() {

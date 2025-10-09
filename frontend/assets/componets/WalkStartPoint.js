@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, Dimensions, Image, TouchableOpacity, Modal, FlatList, Linking } from 'react-native';
+import { StyleSheet, Text, View, Dimensions, Image, TouchableOpacity, Modal, FlatList, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
 import { FirebaseService } from '../../backend/Firebase/FirebaseService';
 import { useNotifications } from '../contexts/NotificationContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 
 const { width, height } = Dimensions.get('window');
@@ -12,8 +13,7 @@ const { width, height } = Dimensions.get('window');
 const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 
 const WalkStartPoint = ({ setIsDestinationDone, setIsSearchPartner, setIsStartPoint, onStartPointSelect }) => {
-  console.log("WalkStartPoint component rendered");
-  const [isSending, setIsSending] = useState(false); // Add loading state
+  const [isSending, setIsSending] = useState(false);
   const [isDark] = useState(false);
   const [showMeetUpDropdown, setShowMeetUpDropdown] = useState(false);
   const [showGenderDropdown, setShowGenderDropdown] = useState(false);
@@ -21,42 +21,63 @@ const WalkStartPoint = ({ setIsDestinationDone, setIsSearchPartner, setIsStartPo
   const [selectedGender, setSelectedGender] = useState('Any');
   const [showStreetViewModal, setShowStreetViewModal] = useState(false);
   const { sendWalkRequest } = useNotifications();
-  const handleSearch = async () => {
-    console.log("Search button pressed");
-    
-    if (isSending) {
-      console.log("Already sending a request, please wait...");
+
+// In your WalkStartPoint component - update handleSearch
+const handleSearch = async () => {
+  console.log("Search button pressed (latest version, FirebaseService)");
+
+  if (isSending) {
+    console.log("Already sending a request, please wait...");
+    return;
+  }
+
+  setIsSending(true);
+
+  try {
+    // Get current user data
+    const userId = await AsyncStorage.getItem('userId');
+    const userDataString = await AsyncStorage.getItem('userData');
+    const userData = JSON.parse(userDataString);
+
+    if (!userId || !userData) {
+      Alert.alert('Error', 'User data not found. Please log in again.');
       return;
     }
-    setIsSearchPartner(true);
-    setIsStartPoint(false);
-    setIsSending(true);
 
-    const walkData = {
-      walkFrom: 'UJ APB Campus',
-      walkTo: 'Res - Richmond 50 Rd',
-      time: '5 mins',
-      partnerName: 'Kevin Serakalala',
-      partnerInitials: 'KS',
-      currentTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      requestId: Math.random().toString(36).substring(7),
+    console.log('👤 Current user data:', { userId, name: userData.name, surname: userData.surname, phone: userData.phone });
+
+    // Create walk request data
+    const walkRequestData = {
+      requesterId: userId,
+      requesterName: `${userData.name} ${userData.surname}`,
+      requesterPhone: userData.phone,
+      pickup: selectedMeetUpPoint,
+      destination: 'UJ Campus',
+      meetupPoint: selectedMeetUpPoint,
+      preferredGender: selectedGender,
+      status: 'pending',
+      createdAt: new Date(),
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000),
     };
 
-    try {
-      // Send the walk request via FCM
-      await sendWalkRequest(walkData);
-      
-      // Show searching UI
-      setIsSearchPartner(true);
-      setIsStartPoint(false);
-      
-    } catch (error) {
-      console.error("💥 Error in handleSearch:", error);
-      alert("Failed to send walk request. Please try again.");
-    } finally {
-      setIsSending(false);
-    }
-  };
+    console.log('📝 Creating walk request with data:', walkRequestData);
+
+    // Call FirebaseService.createWalkRequest - it should return a string ID
+    const requestId = await FirebaseService.createWalkRequest(walkRequestData);
+
+    console.log('✅ Walk request created successfully with ID:', requestId);
+
+    Alert.alert('Success', 'Walk request sent! Nearby users will be notified.');
+    setIsSearchPartner(true);
+    setIsStartPoint(false);
+  } catch (error) {
+    console.error("💥 Error in handleSearch:", error);
+    console.error("💥 Error details:", error.message, error.stack);
+    Alert.alert('Error', `Failed to send walk request: ${error.message}`);
+  } finally {
+    setIsSending(false);
+  }
+};
 
   const colors = {
     background: isDark ? '#121212' : '#FFFFFF',
@@ -80,7 +101,7 @@ const WalkStartPoint = ({ setIsDestinationDone, setIsSearchPartner, setIsStartPo
     'Any',
     'Male',
     'Female',
-    // 'Non-binary'
+    'Other',
   ];
 
   // Coordinates for each meet-up point (example coordinates for Johannesburg universities)

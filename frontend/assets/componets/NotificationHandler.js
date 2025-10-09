@@ -1,5 +1,6 @@
-import React from 'react';
-import { Modal, View } from 'react-native';
+import React, { useEffect } from 'react';
+import { Modal } from 'react-native';
+import * as Notifications from 'expo-notifications';
 import { useNotifications } from '../contexts/NotificationContext';
 import WalkRequest from './notifications/WalkRequest';
 
@@ -9,8 +10,34 @@ const NotificationHandler = () => {
     isNotificationVisible,
     acceptWalkRequest,
     declineWalkRequest,
-    setIsNotificationVisible
+    setIsNotificationVisible,
+    setCurrentWalkRequest,
   } = useNotifications();
+
+  useEffect(() => {
+    // Handle notifications when app is in foreground
+    const foregroundSubscription = Notifications.addNotificationReceivedListener(notification => {
+      const data = notification.request.content.data;
+      if (data?.walkRequest) {
+        setCurrentWalkRequest(data.walkRequest);
+        setIsNotificationVisible(true);
+      }
+    });
+
+    // Handle notification taps
+    const responseSubscription = Notifications.addNotificationResponseReceivedListener(response => {
+      const data = response.notification.request.content.data;
+      if (data?.walkRequest) {
+        setCurrentWalkRequest(data.walkRequest);
+        setIsNotificationVisible(true);
+      }
+    });
+
+    return () => {
+      foregroundSubscription.remove();
+      responseSubscription.remove();
+    };
+  }, []);
 
   if (!currentWalkRequest) return null;
 

@@ -37,6 +37,48 @@ export const FirebaseService = {
   // USER PRESENCE
   // ========================
 
+/**
+ * Get ALL users with push tokens (for testing - sends to everyone)
+ * @returns {Promise<Array>} - Array of all users with push tokens
+ */
+getAllUsersWithPushTokens: async () => {
+  try {
+    console.log('Getting ALL users with push tokens...');
+    
+    const usersRef = collection(db, 'users');
+    const querySnapshot = await getDocs(usersRef);
+    
+    const users = [];
+    querySnapshot.forEach((doc) => {
+      const userData = doc.data();
+      
+      // Check for both field names since you have different field names in different user documents
+      const pushToken = userData.ExpoPushToken || userData.PushToken;
+      const phone = userData.Phone;
+      
+      if (pushToken && phone) {
+        users.push({
+          id: doc.id,
+          userId: userData.userID,
+          phone: phone,
+          pushToken: pushToken,
+          name: userData.Name || 'User',
+          surname: userData.Surname || '',
+        });
+        
+        console.log(`✅ Found user: ${userData.Name} with token: ${pushToken.substring(0, 20)}...`);
+      } else {
+        console.log(`❌ User ${userData.Name || doc.id} missing push token or phone`);
+      }
+    });
+    
+    console.log(`Found ${users.length} total users with push tokens`);
+    return users;
+  } catch (error) {
+    console.error('Error getting all users with push tokens:', error);
+    return [];
+  }
+},
   /**
  * Update user's battery level in Firebase
  * @param {string} userId - User's document ID
@@ -2222,4 +2264,246 @@ getFriendsFromArray: async (userId) => {
       return { success: false, error: error.message };
     }
   }
+  },
+
+  /**
+   * Send walk request to nearby users
+   * @param {Object} walkData - Walk request details
+   * @returns {Promise<string>} - The document ID of the created walk request
+   */
+  sendWalkRequest: async (walkData) => {
+    try {
+      const docRef = await addDoc(collection(db, 'walkRequests'), {
+        ...walkData,
+        timestamp: new Date(),
+        status: 'pending'
+      });
+      console.log('Walk request created with ID:', docRef.id);
+      return docRef.id;
+    } catch (error) {
+      console.error('Error sending walk request:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Subscribe to walk requests topic
+   * (Future implementation - location-based subscriptions)
+   */
+  subscribeToWalkRequests: async () => {
+    try {
+      console.log('Subscribing to walk requests topic (placeholder)');
+      // In production, implement topic subscription based on user’s location
+    } catch (error) {
+      console.error('Error subscribing to walk requests:', error);
+    }
+  },
+
+  // ========================
+  // WALK REQUEST SYSTEM
+  // ========================
+
+  /**
+   * Update user's Expo push token in Firestore
+   * @param {string} userPhone - User's phone number
+   * @param {string} pushToken - Expo push token
+   * @returns {Promise<Object>} - { success: boolean, error?: string }
+   */
+  updateUserPushToken: async (userPhone, pushToken) => {
+    try {
+      const formattedPhone = FirebaseService.formatPhoneNumber(userPhone);
+      console.log('Updating push token for:', formattedPhone);
+      
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('Phone', '==', formattedPhone));
+      const querySnapshot = await getDocs(q);
+      
+      if (querySnapshot.empty) {
+        console.error('User not found:', formattedPhone);
+        return { success: false, error: 'User not found' };
+      }
+      
+      const userDoc = querySnapshot.docs[0];
+      await updateDoc(userDoc.ref, {
+        pushToken: pushToken,
+        pushTokenUpdatedAt: serverTimestamp(),
+      });
+      
+      console.log('✅ Push token updated successfully');
+      return { success: true };
+    } catch (error) {
+      console.error('Error updating push token:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Get nearby users with push tokens
+   * For now, returns all users with push tokens (you can add geolocation filtering later)
+   * @param {Object} meetupPoint - Meetup point data (for future location-based filtering)
+   * @returns {Promise<Array>} - Array of users with push tokens
+   */
+  getNearbyUsersWithTokens: async (meetupPoint) => {
+    try {
+      console.log('Getting users with push tokens near:', meetupPoint);
+      
+      const usersRef = collection(db, 'users');
+      const querySnapshot = await getDocs(usersRef);
+      
+      const users = [];
+      querySnapshot.forEach((doc) => {
+        const userData = doc.data();
+        if (userData.pushToken && userData.Phone) {
+          users.push({
+            id: doc.id,
+            phone: userData.Phone,
+            pushToken: userData.pushToken,
+            firstName: userData.Name || userData.FirstName || 'User',
+            lastName: userData.Surname || userData.LastName || '',
+          });
+        }
+      });
+      
+      console.log(`Found ${users.length} users with push tokens`);
+      return users.slice(0, 10);
+    } catch (error) {
+      console.error('Error getting nearby users:', error);
+      return [];
+    }
+  },
+
+  /**
+   * Create a walk request document in Firestore
+   * @param {Object} walkRequestData - Walk request details
+   * @returns {Promise<string>} - The document ID of the created walk request
+   */
+  createWalkRequest: async (walkRequestData) => {
+    try {
+      console.log('Creating walk request document...', walkRequestData);
+      
+      const walkRequestsRef = collection(db, 'walkRequests');
+      const docRef = await addDoc(walkRequestsRef, {
+        ...walkRequestData,
+        status: 'pending',
+        createdAt: serverTimestamp(),
+        expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+      });
+      
+      console.log('Walk request created with ID:', docRef.id);
+      return docRef.id; // This should return just the string ID
+    } catch (error) {
+      console.error('Error creating walk request:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Accept a walk request
+   */
+  acceptWalkRequest: async (requestId, accepterPhone, senderPhone) => {
+    try {
+      console.log('Accepting walk request:', requestId);
+      const formattedAccepterPhone = FirebaseService.formatPhoneNumber(accepterPhone);
+      const formattedSenderPhone = FirebaseService.formatPhoneNumber(senderPhone);
+      const requestRef = doc(db, 'walkRequests', requestId);
+      await updateDoc(requestRef, {
+        status: 'accepted',
+        acceptedBy: formattedAccepterPhone,
+        acceptedAt: serverTimestamp(),
+      });
+      const accepterResult = await FirebaseService.getUserByPhone(formattedAccepterPhone);
+      if (!accepterResult.exists) throw new Error('Accepter user not found');
+      const accepterData = accepterResult.userData;
+      const accepterName = `${accepterData.Name || accepterData.FirstName || ''} ${accepterData.Surname || accepterData.LastName || ''}`.trim();
+      await FirebaseService.createNotification({
+        userId: accepterData.id,
+        recipientPhone: formattedSenderPhone,
+        type: 'walk_accepted',
+        title: 'Walk Request Accepted! ',
+        message: `${accepterName} accepted your walk request!`,
+        priority: 'high',
+        data: { requestId, accepterPhone: formattedAccepterPhone, accepterName, action: 'view_walk_details' }
+      });
+      console.log('Walk request accepted successfully');
+      return { success: true };
+    } catch (error) {
+      console.error('Error accepting walk request:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Decline a walk request
+   */
+  declineWalkRequest: async (requestId, declinerPhone) => {
+    try {
+      console.log('Declining walk request:', requestId);
+      const requestRef = doc(db, 'walkRequests', requestId);
+      await updateDoc(requestRef, {
+        status: 'declined',
+        declinedBy: FirebaseService.formatPhoneNumber(declinerPhone),
+        declinedAt: serverTimestamp(),
+      });
+      console.log('Walk request declined');
+      return { success: true };
+    } catch (error) {
+      console.error('Error declining walk request:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Listen to walk requests for a user
+   */
+  listenToWalkRequests: (userPhone, callback) => {
+    try {
+      const formattedPhone = FirebaseService.formatPhoneNumber(userPhone);
+      console.log('Setting up walk request listener for:', formattedPhone);
+      const walkRequestsRef = collection(db, 'walkRequests');
+      const q = query(
+        walkRequestsRef,
+        where('status', '==', 'pending'),
+        where('expiresAt', '>', new Date()),
+        orderBy('expiresAt', 'desc'),
+        limit(10)
+      );
+      return onSnapshot(q, (snapshot) => {
+        const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        console.log(`Found ${requests.length} active walk requests`);
+        callback(requests);
+      }, (error) => {
+        console.error('Error listening to walk requests:', error);
+        callback([]);
+      });
+    } catch (error) {
+      console.error('Error setting up walk request listener:', error);
+      return () => {};
+    }
+  },
+
+  /**
+   * Clean up expired walk requests (improved with console.log and batch.update)
+   */
+  cleanupExpiredWalkRequests: async () => {
+    try {
+      const walkRequestsRef = collection(db, 'walkRequests');
+      const q = query(
+        walkRequestsRef,
+        where('status', '==', 'pending'),
+        where('expiresAt', '<', new Date())
+      );
+      
+      const querySnapshot = await getDocs(q);
+      const batch = writeBatch(db);
+      
+      querySnapshot.forEach((doc) => {
+        batch.update(doc.ref, { status: 'expired' });
+      });
+      
+      await batch.commit();
+      console.log(`Cleaned up ${querySnapshot.size} expired walk requests`);
+    } catch (error) {
+      console.error('Error cleaning up expired walk requests:', error);
+    }
+  },
 };

@@ -1,3 +1,37 @@
+/**
+ * Create a walk request document
+ * @param {string} userId - User ID
+ * @param {Object} requestData - Walk request data
+ * @returns {Promise<string>} - Request ID
+ */
+export const createWalkRequest = async (userId, requestData) => {  
+  try {  
+    const requestRef = doc(collection(db, "walkRequests"));  
+
+    // Ensure all required fields are present
+    const walkRequestData = {
+      requesterId: userId,  
+      requesterName: requestData.requesterName || 'Unknown User',  
+      pickup: requestData.pickup || 'Unknown Location',  
+      destination: requestData.destination || 'Unknown Destination',  
+      meetupPoint: requestData.meetupPoint || requestData.pickup,
+      preferredGender: requestData.preferredGender || 'Any',
+      status: 'pending',  
+      createdAt: new Date(),  
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes
+    };
+
+    console.log('Creating walk request with data:', walkRequestData);
+
+    await setDoc(requestRef, walkRequestData);  
+
+    console.log('Walk request created with ID:', requestRef.id);
+    return requestRef.id;  
+  } catch (error) {  
+    console.error('Error creating walk request', error);  
+    throw error;  
+  }  
+};
 import { 
   getFirestore, 
   doc, 
@@ -16,6 +50,10 @@ import {
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from '../backend/Firebase/FirebaseConfig';
 import { app } from '../backend/Firebase/FirebaseConfig';
+import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
+import * as Device from 'expo-device';
+import Constants from 'expo-constants';
 
 /**
  * Creates a new user document in Firestore matching your schema
@@ -123,7 +161,10 @@ const firestoreData = {
   },
   Surname: safeUserData.surname,
   Walks: safeUserData.walks,
-  userID: userId
+  userID: userId,
+  PushToken: null, // Will be updated after user grants permission
+  PushTokenUpdatedAt: null,
+  DevicePlatform: Platform.OS
 };
 
     console.log("Creating user document with data:", firestoreData);
@@ -764,6 +805,168 @@ export const syncAddressesFromFirebase = async (userId) => {
 };
 
 // Export all functions
+
+/**
+ * Get Expo Push Token
+ * @returns {Promise<string>} - Expo push token
+ */
+export const getExpoPushToken = async () => {
+  try {
+    console.log('Starting push token request...');
+    
+    if (!Device.isDevice) {
+      console.log('Push notifications only work on physical devices');
+      return 'ExponentPushToken[SIMULATOR_MOCK_TOKEN]';
+    }
+
+    console.log('Requesting permissions...');
+    const { status: existingStatus } = await Promise.race([
+      Notifications.getPermissionsAsync(),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Permission check timeout')), 5000)
+      )
+    ]);
+    
+    let finalStatus = existingStatus;
+    
+    if (existingStatus !== 'granted') {
+      console.log('Requesting new permissions...');
+      const { status } = await Promise.race([
+        Notifications.requestPermissionsAsync(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Permission request timeout')), 10000)
+        )
+      ]);
+      finalStatus = status;
+    }
+    
+    if (finalStatus !== 'granted') {
+      console.log('Push notification permission denied');
+      return null;
+    }
+
+    console.log('Permission granted, getting token...');
+    
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId || Constants.easConfig?.projectId;
+    
+    if (!projectId) {
+      console.error('Project ID not found in app config');
+      return null;
+    }
+
+    console.log('Using project ID:', projectId);
+
+    const tokenData = await Promise.race([
+      Notifications.getExpoPushTokenAsync({ projectId }),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Token fetch timeout')), 10000)
+      )
+    ]);
+    
+    console.log('Token obtained successfully');
+    return tokenData.data;
+    
+  } catch (error) {
+    console.error('Error getting push token:', error.message);
+    return null;
+  }
+};
+
+/**
+ * Save push token to user document
+ * @param {string} userId - Firebase Auth UID
+ * @param {string} pushToken - Expo push token
+ * @returns {Promise<boolean>} - True if successful
+ */
+export const savePushToken = async (userId, pushToken) => {
+  try {
+    if (!pushToken) {
+      console.log('No push token to save');
+      return false;
+    }
+
+    await updateDoc(doc(db, "users", userId), {
+      PushToken: pushToken,
+      PushTokenUpdatedAt: new Date(),
+      DevicePlatform: Platform.OS,
+      LastLogin: new Date()
+    });
+    
+    console.log('Push token saved successfully');
+    return true;
+  } catch (error) {
+    const handledError = handleFirestoreError(error);
+    console.error("Error saving push token:", handledError);
+    throw handledError;
+  }
+};
+
+/**
+ * Get push tokens for specific users (for sending notifications)
+ * @param {Array<string>} userIds - Array of user IDs
+ * @returns {Promise<Array>} - Array of { userId, pushToken }
+ */
+export const getPushTokensForUsers = async (userIds) => {
+  try {
+    if (!Array.isArray(userIds) || userIds.length === 0) {
+      return [];
+    }
+    
+    const tokens = [];
+    const batchSize = 10;
+    
+    for (let i = 0; i < userIds.length; i += batchSize) {
+      const batch = userIds.slice(i, i + batchSize);
+      
+      const q = query(
+        collection(db, "users"),
+        where("userID", "in", batch)
+      );
+      
+      const querySnapshot = await getDocs(q);
+      
+      querySnapshot.forEach(doc => {
+        const data = doc.data();
+        if (data.PushToken) {
+          tokens.push({
+            userId: data.userID,
+            pushToken: data.PushToken,
+            name: data.Name,
+            surname: data.Surname
+          });
+        }
+      });
+    }
+    
+    return tokens;
+  } catch (error) {
+    const handledError = handleFirestoreError(error);
+    console.error("Error getting push tokens:", handledError);
+    throw handledError;
+  }
+};
+
+/**
+ * Remove push token (on logout)
+ * @param {string} userId - Firebase Auth UID
+ * @returns {Promise<boolean>} - True if successful
+ */
+export const removePushToken = async (userId) => {
+  try {
+    await updateDoc(doc(db, "users", userId), {
+      PushToken: null,
+      PushTokenUpdatedAt: new Date()
+    });
+    
+    console.log('Push token removed successfully');
+    return true;
+  } catch (error) {
+    const handledError = handleFirestoreError(error);
+    console.error("Error removing push token:", handledError);
+    throw handledError;
+  }
+};
+
 export default {
   createUserDocument,
   updateUserDocument,
@@ -788,5 +991,10 @@ export default {
   updateCurrentLocation,
   saveUserAddress,
   updateUserAddress,
-  getUserAddresses
+  getUserAddresses,
+  getExpoPushToken,
+  savePushToken,
+  getPushTokensForUsers,
+  removePushToken,
+  createWalkRequest
 };

@@ -13,6 +13,9 @@ import { SOSService } from './assets/services/SOSService';
 import { BatteryService } from './assets/services/BatteryService';
 import './backend/Firebase/FirebaseConfig';
 import NotificationHandler from './assets/componets/NotificationHandler';
+import NotificationModal from './assets/componets/notifications/NotificationModal';
+import DeepLinkHandler from './assets/componets/DeepLinkHandler';
+import WalkRequest from './assets/componets/notifications/WalkRequest';
 
 export default function App() {
   const batteryCleanupRef = useRef(null);
@@ -87,13 +90,14 @@ export default function App() {
         <ScheduledSlotsProvider>
           <ThemeProvider>
             <FontSizeProvider>
-              <FriendsProvider>
-                <View style={styles.container}>
-                  <AppNavigator />
-                  <NotificationHandler /> 
-                  <StatusBar style="auto" />
-                </View>
-              </FriendsProvider>
+              <View style={styles.container}>
+                <AppNavigator /> 
+                 <NotificationModal /> 
+                <NotificationHandler /> 
+                <DeepLinkHandler /> 
+                {/* <WalkRequest /> */}
+                <StatusBar style="auto" />
+              </View>
             </FontSizeProvider>
           </ThemeProvider>
         </ScheduledSlotsProvider>
