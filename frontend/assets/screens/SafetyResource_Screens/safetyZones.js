@@ -11,31 +11,34 @@ import {
   Alert,
   Dimensions,
   Linking,
+  Platform,
 } from 'react-native';
 import Constants from 'expo-constants';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFontSize } from '../../contexts/FontSizeContext';
-import { useTheme } from '../../contexts/ColorContext'; // ✅ Theme import
+import { useTheme } from '../../contexts/ColorContext';
+import { MaterialCommunityIcons, Feather, Ionicons } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
 
 // Safety categories for filtering/display
 const safetyCategories = [
-  { name: 'Police Station', icon: '👮', filter: 'police' },
-  { name: 'Hospital & Clinics', icon: '➕', filter: 'hospital' },
-  { name: 'Public Safety Centers', icon: '🛡️', filter: 'safety' },
-  { name: 'Fire Stations', icon: '🔥', filter: 'fire' },
+  { name: 'Police Station', icon: 'police-station', filter: 'police' },
+  { name: 'Hospital & Clinics', icon: 'hospital-building', filter: 'hospital' },
+  { name: 'Public Safety Centers', icon: 'shield-check-outline', filter: 'safety' },
+  { name: 'Fire Stations', icon: 'fire-truck', filter: 'fire' },
 ];
 
 const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
-  const { colors } = useTheme(); // ✅ Use theme
+  const { colors } = useTheme();
   
   // Core state for safety zones
   const [safetyZones, setSafetyZones] = useState([]);
   const [nearbyLocations, setNearbyLocations] = useState([]);
   
   // Modal and form state
+  const [activeFilter, setActiveFilter] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Home');
@@ -48,6 +51,7 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
   const [currentLocation, setCurrentLocation] = useState(null);
   const [locationPermission, setLocationPermission] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [isLoadingNearby, setIsLoadingNearby] = useState(false);
 
   // Font scaling context
   const { getScaledFontSize, fontSizeMultiplier } = useFontSize();
@@ -67,6 +71,22 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
     };
   }, [fontSizeMultiplier]);
 
+  // Memoize the filtered list of nearby locations
+  const filteredNearbyLocations = useMemo(() => {
+    if (!activeFilter) {
+      return nearbyLocations;
+    }
+    return nearbyLocations.filter(location => {
+      const type = location.type.toLowerCase();
+      if (activeFilter === 'hospital') {
+        return type.includes('hospital') || type.includes('clinic');
+      }
+      if (activeFilter === 'safety') {
+        return type.includes('security') || type.includes('embassy') || type.includes('information');
+      }
+      return type.includes(activeFilter);
+    });
+  }, [activeFilter, nearbyLocations]);
   // Load saved zones on component mount
   useEffect(() => {
     loadSavedZones();
@@ -140,6 +160,7 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
 
   // Load real nearby safety locations using Overpass API
   const loadNearbyLocations = async (latitude, longitude) => {
+    setIsLoadingNearby(true);
     try {
       const radius = 5000; // 5km radius
       
@@ -189,8 +210,8 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
                   id: `osm_${element.type}_${element.id}`,
                   name: element.tags?.name || getDefaultName(query, element.tags),
                   address: formatAddress(element.tags),
-                  type: getSafetyType(query),
-                  icon: getSafetyIcon(query),
+                  type: getSafetyType(query, element.tags),
+                  icon: getSafetyType(query, element.tags) === 'Police' ? 'police-station' : getSafetyIcon(query),
                   latitude: elementLat,
                   longitude: elementLon,
                   distance: distance,
@@ -233,7 +254,7 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
             name: 'Johannesburg Central Police Station',
             address: '10 Commissioner St, Johannesburg Central, Johannesburg, 2001',
             type: 'Police Station',
-            icon: '👮',
+            icon: 'police-station',
             latitude: -26.2089,
             longitude: 28.0406,
             distance: calculateDistance(latitude, longitude, -26.2089, 28.0406),
@@ -244,7 +265,7 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
             name: 'Charlotte Maxeke Academic Hospital',
             address: 'York Rd, Parktown, Johannesburg, 2193',
             type: 'Hospital',
-            icon: '🏥',
+            icon: 'hospital-building',
             latitude: -26.1867,
             longitude: 28.0359,
             distance: calculateDistance(latitude, longitude, -26.1867, 28.0359),
@@ -255,8 +276,9 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
 
     } catch (error) {
       console.error('Error loading nearby locations:', error);
-      // Set fallback locations if everything fails
       setNearbyLocations([]);
+    } finally {
+      setIsLoadingNearby(false);
     }
   };
 
@@ -290,18 +312,18 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
     return parts.length > 0 ? parts.join(', ') : (tags.name || 'Address not available');
   };
 
-  const getSafetyType = (query) => {
+  const getSafetyType = (query, tags) => {
     const type = query.split('=')[1];
     switch (type) {
-      case 'police': return 'Police Station';
+      case 'police': return 'Police';
       case 'hospital': return 'Hospital';
-      case 'clinic': return 'Medical Clinic';
-      case 'fire_station': return 'Fire Station';
+      case 'clinic': return 'Clinic';
+      case 'fire_station': return 'Fire Dept.';
       case 'pharmacy': return 'Pharmacy';
-      case 'phone': return 'Emergency Phone';
+      case 'phone': return 'Phone';
       case 'embassy': return 'Embassy';
       case 'information': return 'Tourist Info';
-      case 'security': return 'Security Services';
+      case 'security': return 'Security';
       default: return 'Safety Location';
     }
   };
@@ -309,20 +331,20 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
   const getSafetyIcon = (query) => {
     const type = query.split('=')[1];
     switch (type) {
-      case 'police': return '👮';
-      case 'hospital': return '🏥';
-      case 'clinic': return '⚕️';
-      case 'fire_station': return '🚒';
-      case 'pharmacy': return '💊';
-      case 'phone': return '📞';
-      case 'embassy': return '🏛️';
-      case 'information': return 'ℹ️';
-      case 'security': return '🔒';
-      default: return '📍';
+      case 'police': return 'police-station';
+      case 'hospital': return 'hospital-building';
+      case 'clinic': return 'medical-bag';
+      case 'fire_station': return 'fire-truck';
+      case 'pharmacy': return 'pill';
+      case 'phone': return 'phone';
+      case 'embassy': return 'office-building';
+      case 'information': return 'information-outline';
+      case 'security': return 'shield-lock-outline';
+      default: return 'map-marker';
     }
   };
 
-  // Real place search using OpenStreetMap Nominatim API (free alternative to Google Places)
+  // Real place search using OpenStreetMap Nominatim API
   const searchRealPlaces = async (query) => {
     if (query.length < 3) {
       setSearchSuggestions([]);
@@ -332,7 +354,6 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
     setIsSearching(true);
     
     try {
-      // Use Nominatim (OpenStreetMap) API - free alternative to Google Places
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
           query + ', South Africa'
@@ -348,7 +369,7 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
       // Transform Nominatim response to our format
       const suggestions = data.map((place, index) => ({
         id: `nominatim_${place.place_id}`,
-        name: place.display_name.split(',')[0], // First part is usually the name
+        name: place.display_name.split(',')[0],
         address: place.display_name,
         type: getPlaceType(place.type, place.class),
         latitude: parseFloat(place.lat),
@@ -366,7 +387,8 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
           id: `fallback_${Date.now()}`,
           name: `${query} (Search offline)`,
           address: `${query}, Johannesburg, South Africa`,
-          type: 'Location',
+          type: 'location',
+          icon: 'map-marker-outline',
           latitude: currentLocation ? currentLocation.latitude + (Math.random() - 0.5) * 0.01 : -26.2041,
           longitude: currentLocation ? currentLocation.longitude + (Math.random() - 0.5) * 0.01 : 28.0473,
         }
@@ -412,10 +434,8 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
     const updatedZones = [...safetyZones, newZone];
     setSafetyZones(updatedZones);
     
-    // Save to AsyncStorage
     await saveSafetyZones(updatedZones);
     
-    // Show success message
     Alert.alert(
       'Success',
       `${newZone.type} safety zone added successfully!`,
@@ -426,11 +446,11 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
   // Get icon for category
   const getCategoryIcon = (category) => {
     switch (category) {
-      case 'Home': return '🏠';
-      case 'Work': return '💼';
-      case 'Friend\'s Place': return '👥';
-      case 'Custom Label': return '📍';
-      default: return '📍';
+      case 'Home': return 'home-outline';
+      case 'Work': return 'briefcase-outline';
+      case 'Friend\'s Place': return 'account-group-outline';
+      case 'Custom Label': return 'map-marker-outline';
+      default: return 'map-marker-outline';
     }
   };
 
@@ -509,7 +529,6 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
   };
 
   const handleDone = () => {
-    // Validation
     if (!selectedLocation) {
       Alert.alert('Error', 'Please select a location for your safety zone.');
       return;
@@ -520,7 +539,6 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
       return;
     }
 
-    // Create zone data
     const zoneData = {
       category: selectedCategory,
       zoneName: zoneName.trim(),
@@ -529,18 +547,15 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
       location: selectedLocation
     };
     
-    // Add the zone
     addSafetyZone(zoneData);
-    
-    // Close modal
     handleModalClose();
   };
 
   const categoryOptions = [
-    { label: 'Home', icon: '🏠' },
-    { label: 'Work', icon: '💼' },
-    { label: 'Friend\'s Place', icon: '👥' },
-    { label: 'Custom Label', icon: '📍' },
+    { label: 'Home', icon: 'home-outline' },
+    { label: 'Work', icon: 'briefcase-outline' },
+    { label: 'Friend\'s Place', icon: 'account-group-outline' },
+    { label: 'Custom Label', icon: 'map-marker-outline' },
   ];
 
   const renderCategoryOption = (option) => (
@@ -563,7 +578,7 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
   // Render empty state
   const renderEmptyState = () => (
     <View style={styles.emptyStateContainer}>
-      <Text style={styles.emptyStateIcon}>📍</Text>
+      <Feather name="map-pin" size={48} style={styles.emptyStateIcon} color={colors.textSecondary || '#AAA'} />
       <Text style={[styles.emptyStateTitle, { color: colors.text, fontSize: getScaledFontSize(20) }]}>
         No Safety Zones Yet
       </Text>
@@ -603,27 +618,29 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
           <View style={styles.iconCategoryRow}>
             {safetyCategories.map((category) => (
               <TouchableOpacity 
-                key={category.name} 
+                key={category.filter} 
                 style={styles.iconContainer}
-                onPress={() => {
-                  // You can implement filtering logic here
-                  console.log('Filter by:', category.filter);
-                }}
+                onPress={() => setActiveFilter(activeFilter === category.filter ? null : category.filter)}
               >
                 <View style={[
                   styles.iconCircle,
+                  activeFilter === category.filter && {
+                    backgroundColor: '#FFFFFF',
+                    borderColor: '#FF6347',
+                    borderWidth: 2,
+                  },
                   {
                     width: responsiveDimensions.iconCircleSize,
                     height: responsiveDimensions.iconCircleSize,
                     borderRadius: responsiveDimensions.iconCircleSize / 2,
                   }
                 ]}>
-                  <Text style={[
-                    styles.icon,
-                    { fontSize: responsiveDimensions.iconSize }
-                  ]}>
-                    {category.icon}
-                  </Text>
+                  <MaterialCommunityIcons
+                    name={category.icon}
+                    size={responsiveDimensions.iconSize}
+                    color={activeFilter === category.filter ? '#FF6347' : '#FFFFFF'}
+                    style={styles.icon}
+                  />
                 </View>
                 <Text style={[
                   styles.iconLabel,
@@ -664,12 +681,12 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
                     borderRadius: responsiveDimensions.locationIconSize / 2,
                   }
                 ]}>
-                  <Text style={[
-                    styles.locationIcon,
-                    { fontSize: responsiveDimensions.locationIconFontSize }
-                  ]}>
-                    {zone.icon}
-                  </Text>
+                  <MaterialCommunityIcons
+                    name={zone.icon}
+                    size={responsiveDimensions.locationIconFontSize}
+                    color="#FFFFFF"
+                    style={styles.locationIcon}
+                  />
                 </View>
                 <View style={styles.locationTextContainer}>
                   <Text style={[styles.locationType, { color: colors.text, fontSize: getScaledFontSize(17) }]}>
@@ -679,9 +696,12 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
                     {zone.address}
                   </Text>
                   {zone.notificationsEnabled && (
-                    <Text style={[styles.notificationIndicator, { fontSize: getScaledFontSize(12) }]}>
-                      🔔 Notifications ON
-                    </Text>
+                    <View style={styles.notificationIndicatorContainer}>
+                      <Ionicons name="notifications" size={getScaledFontSize(12)} color="#FF6347" />
+                      <Text style={[styles.notificationIndicator, { fontSize: getScaledFontSize(12) }]}>
+                        {' '}Notifications ON
+                      </Text>
+                    </View>
                   )}
                 </View>
               </TouchableOpacity>
@@ -689,27 +709,35 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
           )}
 
           {/* Nearby Locations */}
-          {nearbyLocations.length > 0 && (
+          {isLoadingNearby ? (
+            <View style={styles.loadingNearbyContainer}>
+              <Text style={[styles.loadingText, { color: colors.textSecondary, fontSize: getScaledFontSize(14) }]}>
+                Finding nearby safety spots...
+              </Text>
+            </View>
+          ) : filteredNearbyLocations.length > 0 && (
             <>
               <View style={styles.nearbyHeader}>
                 <Text style={[styles.nearbyTitle, { color: colors.text, fontSize: getScaledFontSize(20) }]}>
-                  Nearby Safety Locations
+                  {activeFilter ? `Nearby ${activeFilter.charAt(0).toUpperCase() + activeFilter.slice(1)}` : 'Nearby Safety Locations'}
                 </Text>
                 <TouchableOpacity 
                   style={styles.refreshButton}
                   onPress={() => {
                     if (currentLocation) {
+                      setActiveFilter(null); // Clear filter on refresh
                       loadNearbyLocations(currentLocation.latitude, currentLocation.longitude);
                     }
                   }}
                 >
+                  <Ionicons name={activeFilter ? "close" : "refresh"} size={getScaledFontSize(14)} color="#FFFFFF" />
                   <Text style={[styles.refreshButtonText, { fontSize: getScaledFontSize(12) }]}>
-                    🔄 Refresh
+                    {activeFilter ? ' Clear Filter' : ' Refresh'}
                   </Text>
                 </TouchableOpacity>
               </View>
               
-              {nearbyLocations.map((location) => (
+              {filteredNearbyLocations.map((location) => (
                 <TouchableOpacity 
                   key={location.id} 
                   style={[
@@ -722,24 +750,30 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
                     location.emergency && { borderColor: '#FF6347', backgroundColor: colors.surface }
                   ]}
                   onPress={() => {
-                    // You can add functionality to view details or navigate
                     Alert.alert(
                       location.name,
-                      `${location.address}\n\n` +
-                      `Type: ${location.type}\n` +
-                      `Distance: ${location.distance}` +
-                      (location.phone ? `\nPhone: ${location.phone}` : '') +
-                      (location.openingHours ? `\nHours: ${location.openingHours}` : '') +
-                      (location.website ? `\nWebsite: ${location.website}` : ''),
+                      `${location.address}\n\nDistance: ${location.distance}`,
                       [
                         { text: 'Close', style: 'cancel' },
+                        {
+                          text: 'Navigate',
+                          onPress: () => {
+                            const scheme = Platform.OS === 'ios' ? 'maps:' : 'geo:';
+                            const url = `${scheme}${location.latitude},${location.longitude}?q=${encodeURIComponent(location.name)}`;
+                            Linking.openURL(url);
+                          }
+                        },
                         ...(location.phone ? [{
                           text: 'Call',
                           onPress: () => {
                             const phoneNumber = location.phone.replace(/\s/g, '');
                             Linking.openURL(`tel:${phoneNumber}`);
                           }
-                        }] : [])
+                        }] : []),
+                        ...(location.website ? [{
+                          text: 'Visit Website',
+                          onPress: () => Linking.openURL(location.website)
+                        }] : []),
                       ]
                     );
                   }}
@@ -753,17 +787,15 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
                     },
                     location.emergency && styles.emergencyIconContainer
                   ]}>
-                    <Text style={[
-                      styles.locationIcon,
-                      { fontSize: responsiveDimensions.locationIconFontSize }
-                    ]}>
-                      {location.icon}
-                    </Text>
+                    <MaterialCommunityIcons
+                      name={location.icon}
+                      size={responsiveDimensions.locationIconFontSize}
+                      color="#FFFFFF"
+                      style={styles.locationIcon}
+                    />
                     {location.emergency && (
                       <View style={styles.emergencyBadge}>
-                        <Text style={[styles.emergencyBadgeText, { fontSize: getScaledFontSize(10) }]}>
-                          !
-                        </Text>
+                        <Ionicons name="alert" size={getScaledFontSize(10)} color="#000000" />
                       </View>
                     )}
                   </View>
@@ -782,9 +814,12 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
                         {location.distance} away
                       </Text>
                       {location.phone && (
-                        <Text style={[styles.phoneText, { fontSize: getScaledFontSize(11) }]}>
-                          📞 Available
-                        </Text>
+                        <View style={styles.phoneAvailableContainer}>
+                          <Ionicons name="call" size={getScaledFontSize(11)} color="#10B981" />
+                          <Text style={[styles.phoneText, { fontSize: getScaledFontSize(11) }]}>
+                            {' '}Available
+                          </Text>
+                        </View>
                       )}
                     </View>
                   </View>
@@ -833,7 +868,7 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
                 <View style={styles.searchSection}>
                   <View style={[styles.searchContainer, { backgroundColor: colors.card || colors.surface, borderColor: colors.border || '#2C2C2E' }]}>
                     <View style={styles.searchIconContainer}>
-                      <Text style={[styles.searchIcon, { color: colors.textSecondary || colors.text }]}>🔍</Text>
+                      <Ionicons name="search" size={getScaledFontSize(18)} color={colors.textSecondary || colors.text} />
                     </View>
                     <TextInput
                       style={[styles.searchInput, { color: colors.text, fontSize: getScaledFontSize(16) }]}
@@ -847,7 +882,7 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
                         style={styles.clearButton}
                         onPress={clearSearch}
                       >
-                        <Text style={[styles.clearButtonText, { color: colors.textSecondary || '#888' }]}>✕</Text>
+                        <Ionicons name="close-circle" size={getScaledFontSize(20)} color={colors.textSecondary || '#888'} />
                       </TouchableOpacity>
                     )}
                   </View>
@@ -869,17 +904,9 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
                           key={suggestion.id}
                           style={[styles.suggestionItem, { borderBottomColor: colors.border || '#2C2C2E' }]}
                           onPress={() => selectLocation(suggestion)}
-                        >
-                          <View style={styles.suggestionIcon}>
-                            <Text style={styles.suggestionIconText}>
-                              {suggestion.type === 'Police Station' ? '👮' :
-                               suggestion.type === 'Hospital' ? '🏥' :
-                               suggestion.type === 'Shop' ? '🛍️' :
-                               suggestion.type === 'Educational Institution' ? '🎓' :
-                               suggestion.type === 'Fire Station' ? '🚒' :
-                               suggestion.type === 'City' ? '🏙️' :
-                               suggestion.type === 'Street' ? '🛣️' : '📍'}
-                            </Text>
+                        > 
+                          <View style={[styles.suggestionIcon, { backgroundColor: '#FF6347' }]}>
+                            <MaterialCommunityIcons name={suggestion.icon || getSafetyIcon(`amenity=${suggestion.type.toLowerCase()}`)} size={18} color="#FFFFFF" />
                           </View>
                           <View style={styles.suggestionText}>
                             <Text style={[styles.suggestionName, { color: colors.text, fontSize: getScaledFontSize(16) }]}>
@@ -901,10 +928,13 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
                 {/* Location Preview */}
                 <View style={styles.mapPreview}>
                   <View style={styles.mapContainer}>
-                    <View style={[styles.fallbackMap, { backgroundColor: colors.border || '#2C2C2E' }]}>
-                      <Text style={[styles.mapPlaceholderText, { color: colors.text, fontSize: getScaledFontSize(16) }]}>
-                        📍 Location Preview
-                      </Text>
+                    <View style={[styles.fallbackMap, { backgroundColor: colors.surface }]}>
+                      <View style={styles.mapPlaceholderHeader}>
+                        <Feather name="map-pin" size={getScaledFontSize(16)} color={colors.text} />
+                        <Text style={[styles.mapPlaceholderText, { color: colors.text, fontSize: getScaledFontSize(16) }]}>
+                          {' '}Location Preview
+                        </Text>
+                      </View>
                       <Text style={[styles.mapSubtext, { color: colors.textSecondary || colors.text, fontSize: getScaledFontSize(13) }]}>
                         Selected location details
                       </Text>
@@ -916,9 +946,12 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
                           <Text style={[styles.fallbackLocationAddress, { color: colors.textSecondary || colors.text, fontSize: getScaledFontSize(12) }]} numberOfLines={3}>
                             {selectedLocation.address}
                           </Text>
-                          <Text style={[styles.coordinatesText, { fontSize: getScaledFontSize(11) }]}>
-                            📍 {selectedLocation.latitude?.toFixed(4)}, {selectedLocation.longitude?.toFixed(4)}
-                          </Text>
+                          <View style={styles.coordinatesContainer}>
+                            <Feather name="compass" size={getScaledFontSize(11)} color={'#FF6347'} />
+                            <Text style={[styles.coordinatesText, { fontSize: getScaledFontSize(11) }]}>
+                              {' '}{selectedLocation.latitude?.toFixed(4)}, {selectedLocation.longitude?.toFixed(4)}
+                            </Text>
+                          </View>
                         </View>
                       ) : (
                         <Text style={[styles.noLocationText, { color: colors.textSecondary || colors.text, fontSize: getScaledFontSize(14) }]}>
@@ -934,7 +967,7 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
                         onPress={useCurrentLocation}
                         disabled={!currentLocation}
                       >
-                        <Text style={styles.controlButtonIcon}>📍</Text>
+                        <Feather name="crosshair" size={14} color="#FFFFFF" style={styles.controlButtonIcon} />
                         <Text style={[styles.controlButtonText, { fontSize: getScaledFontSize(14) }]}>
                           {currentLocation ? 'My Location' : 'Getting...'}
                         </Text>
@@ -1078,9 +1111,6 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
-  icon: {
-    // fontSize handled dynamically
-  },
   iconLabel: {
     textAlign: 'center',
     fontWeight: '500',
@@ -1114,9 +1144,6 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 3,
   },
-  locationIcon: {
-    // fontSize handled dynamically
-  },
   locationTextContainer: {
     flex: 1,
   },
@@ -1127,10 +1154,14 @@ const styles = StyleSheet.create({
   locationAddress: {
     lineHeight: 18,
   },
+  notificationIndicatorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
   notificationIndicator: {
     color: '#FF6347',
     fontWeight: '500',
-    marginTop: 4,
   },
   distanceText: {
     color: '#FF6347',
@@ -1148,6 +1179,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   refreshButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#FF6347',
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -1193,10 +1226,14 @@ const styles = StyleSheet.create({
     marginTop: 6,
     flexWrap: 'wrap',
   },
+  phoneAvailableContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 10,
+  },
   phoneText: {
     color: '#10B981',
     fontWeight: '500',
-    marginLeft: 10,
   },
   emptyStateContainer: {
     alignItems: 'center',
@@ -1204,8 +1241,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   emptyStateIcon: {
-    fontSize: 48,
-    marginBottom: 16,
+    marginBottom: 20,
     opacity: 0.6,
   },
   emptyStateTitle: {
@@ -1340,9 +1376,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
   },
-  suggestionIconText: {
-    fontSize: 18,
-  },
   suggestionText: {
     flex: 1,
   },
@@ -1362,7 +1395,7 @@ const styles = StyleSheet.create({
     height: 200,
     borderRadius: 16,
     marginBottom: 32,
-    overflow: 'hidden',
+    overflow: 'hidden', 
     borderWidth: 1,
     borderColor: '#2C2C2E',
   },
@@ -1376,9 +1409,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
   },
+  mapPlaceholderHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
   mapPlaceholderText: {
     fontWeight: 'bold',
-    marginBottom: 6,
     textAlign: 'center',
   },
   mapSubtext: {
@@ -1401,6 +1438,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 8,
     lineHeight: 16,
+  },
+  coordinatesContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   coordinatesText: {
     color: '#FF6347',
@@ -1435,7 +1476,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FF6347',
   },
   controlButtonIcon: {
-    fontSize: 14,
     marginRight: 6,
   },
   controlButtonText: {

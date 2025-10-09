@@ -193,15 +193,15 @@ export default function SafetyResources({
             setIsSubscriptionScreen(true)
           }
         },
-        {
-          icon: <MaterialIcons name="language" size={18} color="#fff" />,
-          text: "Language",
-          keywords: ["language", "translate", "locale", "settings"],
-          onPress: () => {
-            setIsSafetyResources(false)
-            setIsLanguagePage(true)
-          }
-        },
+        // {
+        //   icon: <MaterialIcons name="language" size={18} color="#fff" />,
+        //   text: "Language",
+        //   keywords: ["language", "translate", "locale", "settings"],
+        //   onPress: () => {
+        //     setIsSafetyResources(false)
+        //     setIsLanguagePage(true)
+        //   }
+        // },
         {
           icon: <Ionicons name="color-palette-outline" size={18} color="#fff" />,
           text: "Appearance & Theme",

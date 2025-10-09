@@ -8,6 +8,7 @@ import {
   Dimensions,
   ActivityIndicator,
   Linking,
+  Image,
   Platform,
 } from 'react-native';
 import MapView, { Marker, Circle, PROVIDER_GOOGLE, Polyline } from 'react-native-maps';
@@ -23,6 +24,7 @@ const LocationViewer = ({
   senderName, 
   senderPhone,
   senderId, // New prop for real-time updates
+  senderProfilePicture, // New prop for the user's image
   locationTimestamp, // The timestamp of the initial SOS location
   onClose, 
   onCallSender,
@@ -292,8 +294,8 @@ const LocationViewer = ({
       <MapView
         ref={mapRef}
         style={styles.map}
-        provider={PROVIDER_GOOGLE}
-        showsUserLocation={!!userLocation}
+        provider={PROVIDER_GOOGLE} // The user's location is shown with a custom marker below
+        showsUserLocation={false}
         showsMyLocationButton={false}
         showsCompass={false}
         showsScale={false}
@@ -315,11 +317,10 @@ const LocationViewer = ({
             title={`${senderName}'s SOS Location`}
             description="Emergency was triggered here"
           >
-            <View style={styles.senderMarker}>
-              <View style={styles.markerInner}>
-                <Icon name="alert-circle-outline" size={16} color="#FFFFFF" />
-              </View>
-            </View>
+             <Image
+              source={{ uri: senderProfilePicture }}
+              style={styles.liveMarkerImage}
+            />
           </Marker>
         )}
 
@@ -333,11 +334,10 @@ const LocationViewer = ({
             title={`${senderName}'s Current Location`}
             description="Real-time position"
           >
-            <View style={styles.liveMarker}>
-              <View style={styles.liveMarkerInner}>
-                <Icon name="account-alert" size={16} color="#FFFFFF" />
-              </View>
-            </View>
+            <Image
+              source={{ uri: senderProfilePicture }}
+              style={styles.liveMarkerImage}
+            />
           </Marker>
         )}
 
@@ -373,8 +373,9 @@ const LocationViewer = ({
             title="Your Location"
             description="Your current position"
           >
-            <View style={styles.userMarker}>
-              <Icon name="account" size={14} color="#FFFFFF" />
+            {/* Custom user marker */}
+            <View style={styles.userMarkerContainer}>
+              <View style={styles.userMarkerDot} />
             </View>
           </Marker>
         )}
@@ -398,9 +399,16 @@ const LocationViewer = ({
         <View style={styles.cardContent}>
           {/* Profile section */}
           <View style={styles.profileSection}>
-            <View style={styles.profilePicture}>
-              <Icon name="account" size={32} color="#FFFFFF" />
-            </View>
+            {senderProfilePicture ? (
+              <Image 
+                source={{ uri: senderProfilePicture }} 
+                style={styles.profilePictureImage} 
+              />
+            ) : (
+              <View style={styles.profilePicture}>
+                <Icon name="account" size={32} color="#FFFFFF" />
+              </View>
+            )}
             <View style={styles.profileInfo}>
               <Text style={styles.nameText}>{senderName}</Text>
               {lastUpdatedText && (
@@ -498,54 +506,23 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 30,
   },
-  map: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
-  },
-  senderMarker: {
-    width: 50,
-    height: 50,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  markerInner: {
-    backgroundColor: '#FF4444',
-    padding: 8,
+  map: { flex: 1, width: '100%', height: '100%' },
+  liveMarkerImage: {
+    width: 40,
+    height: 40,
     borderRadius: 20,
-    borderWidth: 3,
-    borderColor: '#FFFFFF',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  liveMarker: {
-    width: 50,
-    height: 50,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  liveMarkerInner: {
-    backgroundColor: '#FF6B35', // A different color for the live marker
-    padding: 8,
-    borderRadius: 20,
-    borderWidth: 3,
-    borderColor: '#FFFFFF',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  userMarker: {
-    backgroundColor: '#4CAF50',
-    padding: 6,
-    borderRadius: 16,
     borderWidth: 2,
     borderColor: '#FFFFFF',
   },
+  userMarkerContainer: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0, 122, 255, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  userMarkerDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#007AFF' },
   closeButton: {
     position: 'absolute',
     top: 50,
@@ -597,6 +574,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 15,
+  },
+  profilePictureImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    marginRight: 15,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
   profileInfo: {
     flex: 1,

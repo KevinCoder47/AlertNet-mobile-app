@@ -130,17 +130,24 @@ const DownloadedMaps = ({ navigation, setIsOfflineMap, setIsDownloadedMaps, down
   };
 
   const MapCard = ({ map, isFirebaseMap = false }) => {
-    const displayExpiryDate = isFirebaseMap && map.expiryDate 
-      ? (map.expiryDate.seconds ? new Date(map.expiryDate.seconds * 1000).toLocaleDateString('en-GB', {
-          day: 'numeric',
-          month: 'long', 
-          year: 'numeric'
-        }) : map.expiryDate.toLocaleDateString('en-GB', {
-          day: 'numeric',
-          month: 'long', 
-          year: 'numeric'
-        }))
-      : map.expiryDate;
+    let rawExpiryDate = map.expiryDate;
+    let dateObject;
+
+    if (isFirebaseMap && rawExpiryDate) {
+      dateObject = rawExpiryDate.seconds 
+        ? new Date(rawExpiryDate.seconds * 1000) 
+        : new Date(rawExpiryDate);
+    } else if (rawExpiryDate) {
+      // For local maps, rawExpiryDate should be an ISO string or a parseable date string
+      dateObject = new Date(rawExpiryDate);
+    } else {
+      dateObject = new Date('Invalid Date'); // Fallback for missing expiryDate
+    }
+
+    const formattedExpiryDate = dateObject instanceof Date && !isNaN(dateObject)
+      ? dateObject.toLocaleDateString('en-GB', {
+      day: '2-digit', month: '2-digit', year: 'numeric'
+    }) : 'Invalid Date'; // Display "Invalid Date" if parsing failed
 
     const displaySize = isFirebaseMap ? `${map.size || 'Unknown'} MB` : map.size;
     
@@ -171,7 +178,7 @@ const DownloadedMaps = ({ navigation, setIsOfflineMap, setIsDownloadedMaps, down
         </View>
         
         <View style={styles.mapCardFooter}>
-          <Text style={[styles.expiryText, { color: colors.textSecondary || colors.text, fontSize: getScaledFontSize(12) }]}>Expires on {displayExpiryDate}</Text>
+          <Text style={[styles.expiryText, { color: colors.textSecondary || colors.text, fontSize: getScaledFontSize(12) }]}>Expires on {formattedExpiryDate}</Text>
           <View style={styles.buttonContainer}>
             <TouchableOpacity 
               style={[styles.actionButton, { backgroundColor: colors.primary ? `${colors.primary}33` : 'rgba(255, 255, 255, 0.2)' }]} 

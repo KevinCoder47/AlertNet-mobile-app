@@ -27,7 +27,6 @@ import { FirebaseService } from '../../backend/Firebase/FirebaseService';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import MapView, { Marker } from 'react-native-maps';
-import { Audio } from 'expo-av';
 import { BlurView } from 'expo-blur';
 import * as Clipboard from 'expo-clipboard';
 import { useNotifications } from '../contexts/NotificationContext';
@@ -42,10 +41,6 @@ const ChatScreen = ({ person, onClose, userData, navigation, onViewProfile }) =>
   const isDark = colorScheme === 'dark';
   const [friendPresence, setFriendPresence] = useState(null);
   const currentUserId = userData?.userId;
-  const [recording, setRecording] = useState(null);
-  const [isRecording, setIsRecording] = useState(false);
-  const [playingAudioId, setPlayingAudioId] = useState(null);
-  const soundRef = useRef(new Audio.Sound());
 
   // State for long-press menu
   const [longPressModalVisible, setLongPressModalVisible] = useState(false);
@@ -144,18 +139,6 @@ const ChatScreen = ({ person, onClose, userData, navigation, onViewProfile }) =>
     scrollToBottom();
   }, [messages]);
 
-  // Unload sound on component unmount
-  useEffect(() => {
-    return () => {
-      console.log("ChatScreen unmounting: cleaning up audio resources.");
-      soundRef.current.unloadAsync();
-      if (recording) {
-        console.log("Unloading active recording object.");
-        recording.stopAndUnloadAsync();
-      }
-    };
-  }, [recording]); // Add recording to the dependency array
-
   // FIXED: Send a new message to Firebase with debug logs
   const sendMessage = async () => {
     if (newMessage.trim() && chatRoomId && currentUserId && person?.id) {
@@ -214,108 +197,6 @@ const ChatScreen = ({ person, onClose, userData, navigation, onViewProfile }) =>
         personPhone: person?.phone
       });
     }
-  };
-
-  const uploadAudio = async (uri) => {
-    console.log('uploadAudio called with uri:', uri);
-    const blob = await new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.onload = () => resolve(xhr.response);
-        xhr.onerror = (e) => {
-            console.error(e);
-            reject(new TypeError("Network request failed"));
-        };
-        xhr.responseType = "blob";
-        xhr.open("GET", uri, true);
-        xhr.send(null);
-    });
-
-    const storageRef = ref(storage, `voice-notes/${chatRoomId}/${Date.now()}`);
-    console.log('Uploading to:', storageRef);
-    await uploadBytes(storageRef, blob);
-    blob.close();
-
-    const downloadURL = await getDownloadURL(storageRef);
-    console.log('Download URL:', downloadURL);
-    return downloadURL;
-  };
-
-  const startRecording = async () => {
-    console.log('startRecording called');
-    // Safeguard to prevent multiple recording objects.
-    if (recording) {
-      console.warn("An existing recording was found. Unloading it before starting a new one.");
-      await recording.stopAndUnloadAsync();
-      setRecording(null);
-    }
-
-    try {
-      const permission = await Audio.requestPermissionsAsync();
-      console.log('Audio permission:', permission);
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
-      console.log('Starting recording..');
-      const { recording } = await Audio.Recording.createAsync(
-         Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
-      setRecording(recording);
-      setIsRecording(true);
-      console.log('Recording started');
-    } catch (err) {
-      console.error('Failed to start recording', err);
-    }
-  };
-
-  const stopRecording = async () => {
-    if (!recording) return;
-    console.log('Stopping recording..');
-    setIsRecording(false);
-    await recording.stopAndUnloadAsync();
-    const uri = recording.getURI();
-    console.log('Recording stopped and stored at', uri);
-    
-    const status = await recording.getStatusAsync();
-    const durationMillis = status.durationMillis;
-    console.log('Recording duration:', durationMillis);
-
-    // Optimistic UI update for voice note
-    const optimisticMessage = {
-      id: `temp_${Date.now()}`,
-      text: 'Voice Note',
-      senderId: currentUserId,
-      createdAt: new Date(),
-      isOptimistic: true,
-      type: 'audio',
-      audioUrl: uri, // Use local URI for optimistic playback
-      audioDuration: durationMillis,
-    };
-    setMessages(prevMessages => [...prevMessages, optimisticMessage]);
-    scrollToBottom();
-
-    try {
-        const audioUrl = await uploadAudio(uri);
-        await FirebaseService.sendMessage(chatRoomId, {
-            text: 'Voice Note',
-            senderId: currentUserId,
-            recipientId: person.id,
-            type: 'audio',
-            audioUrl: audioUrl,
-            audioDuration: durationMillis,
-            // Notification data
-            senderName: userData.name,
-            senderProfilePicture: userData.imageUrl,
-            recipientPhone: person.phone,
-            senderPhone: userData.phone,
-        });
-    } catch (error) {
-        console.error("Failed to send voice message:", error);
-        Alert.alert("Error", "Could not send your voice message. Please try again.");
-        // If sending fails, remove the optimistic message
-        setMessages(prevMessages => prevMessages.filter(m => m.id !== optimisticMessage.id));
-    }
-    setRecording(null);
   };
 
   const handleShareLocation = async () => {
@@ -407,62 +288,6 @@ const ChatScreen = ({ person, onClose, userData, navigation, onViewProfile }) =>
     if (!prevMsg.createdAt || !currentMsg.createdAt) return false;
     const timeDiff = new Date(currentMsg.createdAt) - new Date(prevMsg.createdAt);
     return timeDiff > 300000; // 5 minutes
-  };
-
-  const formatDuration = (millis) => {
-    if (!millis) return '0:00';
-    const minutes = Math.floor(millis / 60000);
-    const seconds = ((millis % 60000) / 1000).toFixed(0);
-    return `${minutes}:${(seconds < 10 ? '0' : '')}${seconds}`;
-  };
-
-  const playAudio = async (message) => {
-    try {
-        // Set the audio mode to playback. This is crucial for iOS to handle audio sessions
-        // correctly, especially when switching from recording to playback.
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: false,
-          playsInSilentModeIOS: true, // Ensures audio plays even if the device is on silent
-          interruptionModeIOS: Audio.INTERRUPTION_MODE_IOS_DO_NOT_MIX,
-          shouldDuckAndroid: true,
-          interruptionModeAndroid: Audio.INTERRUPTION_MODE_ANDROID_DO_NOT_MIX,
-          playThroughEarpieceAndroid: false,
-        });
-        const sound = soundRef.current;
-        const status = await sound.getStatusAsync();
-
-        if (status.isLoaded && playingAudioId === message.id) {
-            if (status.isPlaying) {
-                await sound.pauseAsync();
-                setPlayingAudioId(null); // To change icon back to play
-            } else {
-                await sound.playAsync();
-                setPlayingAudioId(message.id);
-            }
-        } else {
-            if (status.isLoaded) {
-                await sound.unloadAsync();
-            }
-            console.log('Loading Sound from', message.audioUrl);
-            await sound.loadAsync({ uri: message.audioUrl });
-            sound.setOnPlaybackStatusUpdate((playbackStatus) => {
-                if (playbackStatus.didJustFinish) {
-                    setPlayingAudioId(null);
-                    sound.unloadAsync();
-                }
-            });
-            await sound.playAsync();
-            setPlayingAudioId(message.id);
-        }
-    } catch (error) {
-        console.error('Failed to play audio', error);
-        Alert.alert(
-          "Playback Error",
-          "Could not play the voice note. It might be corrupted or there was a network issue.",
-          [{ text: "OK" }]
-        );
-        setPlayingAudioId(null);
-    }
   };
 
   const formatLastSeen = (timestamp) => {
@@ -625,19 +450,9 @@ const ChatScreen = ({ person, onClose, userData, navigation, onViewProfile }) =>
           <View style={[
             styles.messageBubble,
             isUserMessage ? styles.userMessage : styles.otherMessage,
-            (message.type === 'image' || message.type === 'location' || message.type === 'audio') && { padding: message.type === 'audio' ? 10 : 4, backgroundColor: isDark ? '#222' : '#f0f0f0' }
+            (message.type === 'image' || message.type === 'location') && { padding: 4, backgroundColor: isDark ? '#222' : '#f0f0f0' }
           ]}>
-            {message.type === 'audio' && message.audioUrl ? (
-              <TouchableOpacity style={styles.audioPlayer} onPress={() => playAudio(message)}>
-                <Ionicons name={playingAudioId === message.id ? "pause" : "play"} size={24} color={isUserMessage ? '#fff' : '#333'} />
-                <View style={[styles.audioProgressContainer, {backgroundColor: isUserMessage ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.1)'}]}>
-                  <View style={styles.audioProgressDot} />
-                </View>
-                <Text style={[styles.audioDuration, { color: isUserMessage ? '#fff' : '#666' }]}>
-                    {formatDuration(message.audioDuration)}
-                </Text>
-              </TouchableOpacity>
-            ) : message.type === 'location' && message.location ? (
+            {message.type === 'location' && message.location ? (
               <TouchableOpacity onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${message.location.latitude},${message.location.longitude}`)}>
                 <MapView
                   style={styles.mapSnapshot}
@@ -743,37 +558,20 @@ const ChatScreen = ({ person, onClose, userData, navigation, onViewProfile }) =>
               style={styles.textInput}
               value={newMessage}
               onChangeText={setNewMessage}
-              placeholder={isRecording ? "Recording..." : "Message..."}
+              placeholder="Message..."
               placeholderTextColor="#999"
               multiline
-              editable={!isRecording}
             />
           </View>
           
-          {newMessage.trim() === '' ? (
-            <Pressable
-                onPressIn={startRecording}
-                onPressOut={stopRecording}
-                style={({ pressed }) => [
-                    styles.sendButton,
-                    { backgroundColor: pressed || isRecording ? '#e74c3c' : '#007AFF' }
-                ]}
-            >
-                <Ionicons 
-                    name="mic" 
-                    size={20} 
-                    color="white" 
-                />
-            </Pressable>
-          ) : (
-            <TouchableOpacity
-                onPress={sendMessage}
-                style={styles.sendButton}
-                activeOpacity={0.7}
-            >
-                <Ionicons name="send" size={20} color="white" />
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity
+              onPress={sendMessage}
+              style={[styles.sendButton, newMessage.trim() === '' && styles.disabledSendButton]}
+              activeOpacity={0.7}
+              disabled={newMessage.trim() === ''}
+          >
+              <Ionicons name="send" size={20} color="white" />
+          </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
 
@@ -1040,27 +838,6 @@ const styles = StyleSheet.create({
   },
   otherMessageText: {
     color: '#333',
-  },
-  audioPlayer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: width * 0.5,
-  },
-  audioProgressContainer: {
-    flex: 1,
-    height: 3,
-    marginHorizontal: 10,
-    borderRadius: 2,
-    justifyContent: 'center',
-  },
-  audioProgressDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#fff',
-  },
-  audioDuration: {
-    fontSize: 12,
   },
   messageInfo: {
     flexDirection: 'row',
