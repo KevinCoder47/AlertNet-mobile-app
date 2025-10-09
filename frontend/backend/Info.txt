@@ -1,0 +1,2 @@
+This backend folder is for lighter backend functions and use cases.
+If we ever scale uo or requre custom backend like node.js, then we will use the root backend folder.
