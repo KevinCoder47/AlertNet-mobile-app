@@ -1,7 +1,8 @@
 import { useNotifications } from '../../contexts/NotificationContext';
-import { StyleSheet, Text, View, Dimensions, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, Dimensions, TouchableOpacity, Image } from 'react-native';
 import React from 'react';
 import { Ionicons } from '@expo/vector-icons';
+import MapWithDetails from '../../screens/MapWithDetails';
 
 const { width, height } = Dimensions.get('window');
 
@@ -43,6 +44,7 @@ const WalkRequest = ({ walkData, onAccept, onDecline }) => {
 
   return (
     <View style={styles.container}>
+      <MapWithDetails />
       <View style={styles.pushBottom}>
         {/* Main popup card */}
         <View style={styles.popUpContainer}>
@@ -58,9 +60,10 @@ const WalkRequest = ({ walkData, onAccept, onDecline }) => {
                 <Text style={styles.avatarText}>{partnerInitials}</Text>
               </View>
               {isVerified && (
-                <View style={styles.verifiedBadge}>
-                  <Ionicons name="checkmark" size={12} color="white" />
-                </View>
+                // <View style={styles.verifiedBadge}>
+                //   <Ionicons name="checkmark" size={12} color="white" />
+                // </View>
+                <Image source = {require('../../icons/checkmark.png')} style={styles.verifiedBadge}/>
               )}
             </View>
             
@@ -148,9 +151,10 @@ const styles = StyleSheet.create({
     height: height,
     backgroundColor: 'transparent',
   },
-  pushBottom: {
+ pushBottom: {
     flex: 1,
     justifyContent: 'flex-end',
+    pointerEvents: 'box-none',
   },
   popUpContainer: {
     width: width,
@@ -223,7 +227,6 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#4CAF50',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
@@ -247,9 +250,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   ratingText: {
-    fontSize: 15,
+    fontSize: 12,
     fontWeight: '500',
-    color: '#1C1C1E',
+    color: '#666',
     fontFamily: 'Poppins',
   },
   actionButtons: {

@@ -12,6 +12,7 @@ import './backend/Firebase/FirebaseConfig';
 import NotificationHandler from './assets/componets/NotificationHandler';
 import NotificationModal from './assets/componets/notifications/NotificationModal';
 import DeepLinkHandler from './assets/componets/DeepLinkHandler';
+import WalkRequest from './assets/componets/notifications/WalkRequest';
 
 export default function App() {
   useEffect(() => {
@@ -37,10 +38,11 @@ export default function App() {
           <ThemeProvider>
             <FontSizeProvider>
               <View style={styles.container}>
-                <AppNavigator />
-                <NotificationModal /> 
+                <AppNavigator /> 
+                 <NotificationModal /> 
                 <NotificationHandler /> 
                 <DeepLinkHandler /> 
+                {/* <WalkRequest /> */}
                 <StatusBar style="auto" />
               </View>
             </FontSizeProvider>
