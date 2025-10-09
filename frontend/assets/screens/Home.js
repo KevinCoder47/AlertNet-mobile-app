@@ -7,7 +7,6 @@ import InAppNotificationPopup from '../componets/InAppNotificationPopup';
 import { MapProvider } from '../contexts/MapContext';
 import { useFriends } from '../contexts/FriendsContext';
 import MyProfile from '../screens/MyProfile';
-import MyProfile from './MyProfile';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { Alert, Linking, AppState } from 'react-native';

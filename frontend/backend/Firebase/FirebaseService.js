@@ -2263,9 +2263,8 @@ getFriendsFromArray: async (userId) => {
       console.error('Error getting notification stats:', error);
       return { success: false, error: error.message };
     }
-  }
   },
-
+  
   /**
    * Send walk request to nearby users
    * @param {Object} walkData - Walk request details

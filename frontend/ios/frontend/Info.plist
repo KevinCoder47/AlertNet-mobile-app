@@ -27,6 +27,7 @@
       <dict>
         <key>CFBundleURLSchemes</key>
         <array>
+          <string>alertnet</string>
           <string>com.mpilonhle.alertnet</string>
         </array>
       </dict>

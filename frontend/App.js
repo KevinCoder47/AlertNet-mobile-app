@@ -84,26 +84,27 @@ export default function App() {
     };
   }, []);
 
-  return (
-    <NotificationProvider>
-      <LanguageProvider>
-        <ScheduledSlotsProvider>
-          <ThemeProvider>
-            <FontSizeProvider>
+return (
+  <NotificationProvider>
+    <LanguageProvider>
+      <ScheduledSlotsProvider>
+        <ThemeProvider>
+          <FontSizeProvider>
+            <FriendsProvider>
               <View style={styles.container}>
                 <AppNavigator /> 
-                 <NotificationModal /> 
+                <NotificationModal /> 
                 <NotificationHandler /> 
                 <DeepLinkHandler /> 
-                {/* <WalkRequest /> */}
                 <StatusBar style="auto" />
               </View>
-            </FontSizeProvider>
-          </ThemeProvider>
-        </ScheduledSlotsProvider>
-      </LanguageProvider>
-    </NotificationProvider>
-  );
+            </FriendsProvider>
+          </FontSizeProvider>
+        </ThemeProvider>
+      </ScheduledSlotsProvider>
+    </LanguageProvider>
+  </NotificationProvider>
+);
 }
 
 const styles = StyleSheet.create({
