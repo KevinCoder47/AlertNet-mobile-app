@@ -2,6 +2,7 @@ import React from 'react';
 import { Modal, View } from 'react-native';
 import { useNotifications } from '../../contexts/NotificationContext';
 import WalkRequest from './WalkRequest';
+import AcceptanceLoader from '../Loaders/AcceptanceLoader'
 
 const NotificationModal = () => {
   const {
@@ -9,7 +10,8 @@ const NotificationModal = () => {
     isNotificationVisible,
     acceptWalkRequest,
     declineWalkRequest,
-    setIsNotificationVisible
+    setIsNotificationVisible,
+    acceptanceLoading,
   } = useNotifications();
 
   console.log('🎪 NotificationModal rendered - State:', {
@@ -24,6 +26,15 @@ const NotificationModal = () => {
   }
 
   console.log('🎪 Rendering Modal with walk request:', currentWalkRequest);
+
+  if (acceptanceLoading && currentWalkRequest) {
+  return (
+    <AcceptanceLoader 
+      partnerName={currentWalkRequest.partnerName}
+      meetupPoint={currentWalkRequest.meetupPoint}
+    />
+  );
+}
 
   return (
     <Modal

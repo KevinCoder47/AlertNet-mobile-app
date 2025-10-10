@@ -46,6 +46,9 @@ export const NotificationProvider = ({ children }) => {
   const [currentWalkRequest, setCurrentWalkRequest] = useState(null);
   const [isNotificationVisible, setIsNotificationVisible] = useState(false);
 
+  const [acceptanceLoading, setAcceptanceLoading] = useState(false);
+const [acceptedWalkRequest, setAcceptedWalkRequest] = useState(null);
+
   // Sound state for notification sounds
   const [sound, setSound] = useState(null);
   const [isSoundLoaded, setIsSoundLoaded] = useState(false);
@@ -545,47 +548,47 @@ const sendExpoPushNotification = async (pushToken, title, body, data) => {
     setIsNotificationVisible(true);
   };
 
+// Updated acceptWalkRequest to handle acceptance loader and set acceptedWalkRequest
 const acceptWalkRequest = async () => {
   if (!currentWalkRequest) return;
-
-  console.log('✅ Walk request accepted:', currentWalkRequest);
-  
+  setAcceptanceLoading(true);
   try {
     // Play acceptance sound
     await playNotificationSound('walk_accepted');
-    
     // Get current user data (the person accepting)
     const userId = await AsyncStorage.getItem('userId');
     const userDataString = await AsyncStorage.getItem('userData');
-    const userData = JSON.parse(userDataString);
+    const userDataObj = JSON.parse(userDataString);
 
-    if (!userId || !userData) {
+    if (!userId || !userDataObj) {
       Alert.alert('Error', 'User data not found. Please log in again.');
+      setAcceptanceLoading(false);
       return;
     }
 
     // Notify the sender that request was accepted
     const result = await FirebaseService.acceptWalkRequest(
       currentWalkRequest.requestId,
-      userData.phone, // Current user's phone (accepter)
+      userDataObj.phone, // Current user's phone (accepter)
       currentWalkRequest.senderPhone // Original requester's phone
     );
 
     if (result.success) {
-      // Send push notification to the original requester with accepter's details
+      // Prepare accepter's data
       const accepterData = {
         id: userId,
-        name: `${userData.name} ${userData.surname}`,
-        phone: userData.phone,
-        rating: 4.8, // You might want to store ratings in user data
-        bio: "I walk to campus daily from Horizon. let's walk together.",
-        availability: "Available Now",
-        gender: userData.gender || "Male",
-        walksCompleted: 13,
-        universityYear: "3rd Year",
-        isVerified: true
+        name: `${userDataObj.name || userDataObj.Name || ''} ${userDataObj.surname || userDataObj.Surname || ''}`.trim(),
+        phone: userDataObj.phone,
+        rating: userDataObj.rating || 4.8,
+        bio: userDataObj.bio || "I walk to campus daily from Horizon. let's walk together.",
+        availability: userDataObj.availability || "Available Now",
+        gender: userDataObj.gender || userDataObj.Gender || "Male",
+        walksCompleted: userDataObj.walksCompleted || 13,
+        universityYear: userDataObj.universityYear || "3rd Year",
+        isVerified: userDataObj.isVerified !== undefined ? userDataObj.isVerified : true
       };
 
+      // Send push notification to the original requester with accepter's details
       await sendWalkAcceptedNotification(
         currentWalkRequest.senderPhone,
         currentWalkRequest.requestId,
@@ -593,6 +596,10 @@ const acceptWalkRequest = async () => {
         currentWalkRequest
       );
 
+      setAcceptedWalkRequest({
+        ...currentWalkRequest,
+        accepterData
+      });
       Alert.alert(
         'Request Accepted! 🎉',
         `You've accepted the walk request from ${currentWalkRequest.partnerName}. They will be notified.`
@@ -601,10 +608,45 @@ const acceptWalkRequest = async () => {
 
     setIsNotificationVisible(false);
     setCurrentWalkRequest(null);
-
   } catch (error) {
     console.error('Error accepting walk request:', error);
     Alert.alert('Error', 'Failed to accept walk request. Please try again.');
+    setIsNotificationVisible(false);
+    setCurrentWalkRequest(null);
+  } finally {
+    setAcceptanceLoading(false);
+  }
+};
+// Listen for sender's confirmation and cleanup after confirmation
+const setupConfirmationListener = (requestId, onConfirmed) => {
+  // Listen for sender confirmation in Firestore
+  // Returns unsubscribe function
+  const walkRequestRef = collection(db, 'walkRequests');
+  const q = query(walkRequestRef, where('__name__', '==', requestId));
+  const unsubscribe = onSnapshot(q, (snapshot) => {
+    snapshot.forEach(docSnap => {
+      const data = docSnap.data();
+      // Assume senderConfirmed flag is set by the sender when they confirm the receiver
+      if (data.senderConfirmed) {
+        if (typeof onConfirmed === 'function') onConfirmed(data);
+        // Clean up listener after confirmation
+        unsubscribe();
+      }
+    });
+  });
+  return unsubscribe;
+};
+
+// Called by sender to confirm the receiver
+const confirmWalkRequest = async (requestId) => {
+  try {
+    // Update Firestore walkRequest document with senderConfirmed flag
+    await FirebaseService.confirmWalkRequest(requestId);
+    Alert.alert('Confirmation Sent!', 'You have confirmed your walking partner.');
+    // Optionally, cleanup UI or state here
+  } catch (error) {
+    console.error('Error confirming walk request:', error);
+    Alert.alert('Error', 'Failed to confirm walk. Please try again.');
   }
 };
 
@@ -1090,7 +1132,7 @@ const sendWalkAcceptedNotification = async (requesterPhone, requestId, accepterD
     soundEnabled,
     activePopup,
     expoPushToken,
-    
+
     // Actions
     markNotificationAsRead,
     markAllNotificationsAsRead,
@@ -1101,7 +1143,7 @@ const sendWalkAcceptedNotification = async (requesterPhone, requestId, accepterD
     dismissPopup,
     setActiveChat,
     clearActiveChat,
-    
+
     // Utilities
     getNotificationById,
     getUnreadNotifications,
@@ -1115,6 +1157,13 @@ const sendWalkAcceptedNotification = async (requesterPhone, requestId, accepterD
     acceptWalkRequest,
     declineWalkRequest,
     setIsNotificationVisible,
+
+    // New walk request acceptance states
+    acceptanceLoading,
+    setAcceptanceLoading,
+    acceptedWalkRequest,
+    setAcceptedWalkRequest,
+    confirmWalkRequest,
   };
 
   return (

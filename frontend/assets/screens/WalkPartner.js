@@ -141,7 +141,17 @@ const calculatePartnerStats = async (walkerLoc, startLoc) => {
       async (acceptedWalkRequest) => {
         try {
           console.log('🎯 Walk request accepted!', acceptedWalkRequest);
-          
+
+          // --- NEW HANDLING: If the sender confirms the acceptance (status === 'accepted_by_both') ---
+          if (acceptedWalkRequest.status === 'accepted_by_both') {
+            // If you have a loading state for acceptance, stop it here
+            if (typeof setAcceptanceLoading === 'function') {
+              setAcceptanceLoading(false);
+            }
+            // You may want to update UI or navigate to the active walk screen here
+            return;
+          }
+
           // Get accepter's phone number
           const accepterPhone = acceptedWalkRequest.acceptedBy;
           if (!accepterPhone) {

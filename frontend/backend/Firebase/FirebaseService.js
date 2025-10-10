@@ -2303,6 +2303,57 @@ getFriendsFromArray: async (userId) => {
   // ========================
 
   /**
+   * Accept a walk request (by walker).
+   * Updates the walk request status to 'accepted' and sends a notification to the sender.
+   * @param {string} walkRequestId - The ID of the walk request.
+   * @param {string} walkerUserId - The userId of the walker accepting the request.
+   * @returns {Object} - { success: boolean, error?: string }
+   */
+  acceptWalkRequest: async (walkRequestId, walkerUserId) => {
+    try {
+      if (!walkRequestId || !walkerUserId) {
+        return { success: false, error: 'walkRequestId and walkerUserId required' };
+      }
+      const walkRequestRef = doc(db, 'walkRequests', walkRequestId);
+      const walkRequestDoc = await getDoc(walkRequestRef);
+      if (!walkRequestDoc.exists()) {
+        return { success: false, error: 'Walk request not found' };
+      }
+      const walkRequestData = walkRequestDoc.data();
+      // Only accept if still pending
+      if (walkRequestData.status !== 'pending') {
+        return { success: false, error: 'Walk request is not pending' };
+      }
+      // Update status to accepted and set walkerUserId
+      await updateDoc(walkRequestRef, {
+        status: 'accepted',
+        walkerUserId: walkerUserId,
+        acceptedAt: serverTimestamp()
+      });
+      // Send notification to sender (senderUserId)
+      if (walkRequestData.senderUserId) {
+        await FirebaseService.createNotification({
+          userId: walkRequestData.senderUserId,
+          recipientPhone: walkRequestData.senderPhone,
+          type: 'walk_request_pending_confirmation',
+          title: 'Walker Accepted Your Request',
+          message: 'A walker has accepted your request. Please confirm if you still need a walk.',
+          priority: 'normal',
+          data: {
+            walkRequestId: walkRequestId,
+            walkerUserId: walkerUserId,
+            action: 'confirm_walk_request'
+          }
+        });
+      }
+      return { success: true };
+    } catch (error) {
+      console.error('Error accepting walk request:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
    * Listen to acceptance of a walk request.
    * @param {string} walkRequestId - The ID of the walk request.
    * @param {Function} callback - Callback function to handle updates.
@@ -2315,15 +2366,152 @@ getFriendsFromArray: async (userId) => {
         callback(null);
         return () => {};
       }
+      
+      const walkRequestRef = doc(db, 'walkRequests', walkRequestId);
+      console.log('🔍 Setting up walk request acceptance listener for:', walkRequestId);
+      
+      return onSnapshot(walkRequestRef, (docSnap) => {
+        if (docSnap.exists()) {
+          const walkRequest = { id: docSnap.id, ...docSnap.data() };
+          console.log('📡 Walk request update:', walkRequest.status);
+          
+          // Call the callback with the updated walk request data
+          callback(walkRequest);
+        } else {
+          console.log('❌ Walk request document does not exist');
+          callback(null);
+        }
+      }, (error) => {
+        console.error(`❌ Error listening to walk request ${walkRequestId}:`, error);
+        callback(null);
+      });
+      
+    } catch (error) {
+      console.error('💥 Error setting up walk request acceptance listener:', error);
+      return () => {};
+    }
+  },
+
+  /**
+   * Confirm a walk request (by sender, after walker accepted).
+   * Updates the walk request status to 'confirmed'.
+   * @param {string} walkRequestId - The ID of the walk request.
+   * @param {string} senderUserId - The userId of the sender confirming the request.
+   * @returns {Object} - { success: boolean, error?: string }
+   */
+  confirmWalkRequest: async (walkRequestId, senderUserId) => {
+    try {
+      if (!walkRequestId || !senderUserId) {
+        return { success: false, error: 'walkRequestId and senderUserId required' };
+      }
+      const walkRequestRef = doc(db, 'walkRequests', walkRequestId);
+      const walkRequestDoc = await getDoc(walkRequestRef);
+      if (!walkRequestDoc.exists()) {
+        return { success: false, error: 'Walk request not found' };
+      }
+      const walkRequestData = walkRequestDoc.data();
+      // Only confirm if accepted and by the correct sender
+      if (walkRequestData.status !== 'accepted') {
+        return { success: false, error: 'Walk request must be accepted before confirming' };
+      }
+      if (walkRequestData.senderUserId !== senderUserId) {
+        return { success: false, error: 'Unauthorized: Not the sender of this walk request' };
+      }
+      await updateDoc(walkRequestRef, {
+        status: 'confirmed',
+        confirmedAt: serverTimestamp()
+      });
+      // Optionally: send notification to walker
+      if (walkRequestData.walkerUserId) {
+        await FirebaseService.createNotification({
+          userId: walkRequestData.walkerUserId,
+          recipientPhone: walkRequestData.walkerPhone,
+          type: 'walk_request_confirmed',
+          title: 'Walk Request Confirmed',
+          message: 'The sender has confirmed the walk request.',
+          priority: 'normal',
+          data: {
+            walkRequestId: walkRequestId,
+            senderUserId: senderUserId,
+            action: 'walk_confirmed'
+          }
+        });
+      }
+      return { success: true };
+    } catch (error) {
+      console.error('Error confirming walk request:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Listen to walk requests for a user (sender or walker).
+   * Returns all walk requests where the user is the sender or walker, ordered by timestamp.
+   * @param {string} userId - The userId to listen for (sender or walker).
+   * @param {Function} callback - Callback function to handle updates.
+   * @returns {Function} - Unsubscribe function.
+   */
+  listenToWalkRequests: (userId, callback) => {
+    try {
+      if (!userId) {
+        console.warn('listenToWalkRequests called with no userId.');
+        callback([]);
+        return () => {};
+      }
+      const walkRequestsRef = collection(db, 'walkRequests');
+      // Listen for requests where user is sender or walker, and not cancelled or completed
+      const q = query(
+        walkRequestsRef,
+        where('status', 'in', ['pending', 'accepted', 'confirmed']),
+        // Firestore does not support 'or' queries directly, so client-side filter
+        orderBy('timestamp', 'desc'),
+        limit(50)
+      );
+      return onSnapshot(q, (snapshot) => {
+        const requests = snapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .filter(req =>
+            req.senderUserId === userId || req.walkerUserId === userId
+          );
+        callback(requests);
+      }, (error) => {
+        console.error('Error listening to walk requests:', error);
+        callback([]);
+      });
+    } catch (error) {
+      console.error('Error setting up walk request listener:', error);
+      return () => {};
+    }
+  },
+
+  /**
+   * Listen to the status of a specific walk request.
+   * @param {string} walkRequestId - The ID of the walk request.
+   * @param {Function} callback - Callback function to handle status updates.
+   * @returns {Function} - Unsubscribe function.
+   */
+  listenToWalkRequestStatus: (walkRequestId, callback) => {
+    try {
+      if (!walkRequestId) {
+        console.warn('listenToWalkRequestStatus called with no walkRequestId.');
+        callback(null);
+        return () => {};
+      }
       const walkRequestRef = doc(db, 'walkRequests', walkRequestId);
       return onSnapshot(walkRequestRef, (docSnap) => {
-        callback(docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } : null);
+        if (!docSnap.exists()) {
+          callback(null);
+          return;
+        }
+        const data = docSnap.data();
+        // Status could be: pending, accepted, confirmed, cancelled, completed
+        callback({ id: docSnap.id, ...data });
       }, (error) => {
-        console.error(`Error listening to walk request ${walkRequestId}:`, error);
+        console.error(`Error listening to walk request status for ${walkRequestId}:`, error);
         callback(null);
       });
     } catch (error) {
-      console.error('Error setting up walk request acceptance listener:', error);
+      console.error('Error setting up walk request status listener:', error);
       return () => {};
     }
   },

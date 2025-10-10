@@ -17,8 +17,11 @@ import NotificationModal from './assets/componets/notifications/NotificationModa
 import DeepLinkHandler from './assets/componets/DeepLinkHandler';
 import SelectWalker from './assets/componets/SelectWalker';
 
+
+
 export default function App() {
   const batteryCleanupRef = useRef(null);
+  
 
   useEffect(() => {
     const initializeFCM = async () => {
