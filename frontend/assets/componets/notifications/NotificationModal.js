@@ -1,4 +1,3 @@
-// components/NotificationModal.js
 import React from 'react';
 import { Modal, View } from 'react-native';
 import { useNotifications } from '../../contexts/NotificationContext';

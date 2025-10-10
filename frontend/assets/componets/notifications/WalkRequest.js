@@ -1,8 +1,9 @@
 import { useNotifications } from '../../contexts/NotificationContext';
 import { StyleSheet, Text, View, Dimensions, TouchableOpacity, Image } from 'react-native';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import MapWithDetails from '../../screens/MapWithDetails';
+import { getUserDocument, getRequesterAvatar } from '../../../services/firestore';
 
 const { width, height } = Dimensions.get('window');
 
@@ -42,6 +43,33 @@ const WalkRequest = ({ walkData, onAccept, onDecline }) => {
     isVerified = true,
   } = walkData || {};
 
+  const [avatarUrl, setAvatarUrl] = useState(null);
+
+  useEffect(() => {
+    const fetchAvatar = async () => {
+      try {
+        console.log('Fetching avatar for requesterId:', walkData?.requesterId);
+        
+        if (walkData?.requesterId) {
+          const user = await getUserDocument(walkData.requesterId);
+          console.log('Fetched user data:', user);
+          console.log('User image URL:', user?.imageUrl);
+          
+          if (user?.imageUrl) {
+            setAvatarUrl(user.imageUrl);
+          } else {
+            console.log('No image URL found for user');
+          }
+        } else {
+          console.log('No requesterId found in walkData');
+        }
+      } catch (error) {
+        console.error('Error fetching requester avatar:', error);
+      }
+    };
+    fetchAvatar();
+  }, [walkData?.requesterId]);
+
   return (
     <View style={styles.container}>
       <MapWithDetails />
@@ -57,12 +85,16 @@ const WalkRequest = ({ walkData, onAccept, onDecline }) => {
           <View style={styles.profileSection}>
             <View style={styles.avatarContainer}>
               <View style={styles.avatarPlaceholder}>
-                <Text style={styles.avatarText}>{partnerInitials}</Text>
+                {avatarUrl ? (
+                  <Image
+                    style={styles.avatarPlaceholder}
+                    source={{ uri: avatarUrl }}
+                  />
+                ) : (
+                  <Text style={styles.avatarText}>{partnerInitials}</Text>
+                )}
               </View>
               {isVerified && (
-                // <View style={styles.verifiedBadge}>
-                //   <Ionicons name="checkmark" size={12} color="white" />
-                // </View>
                 <Image source = {require('../../icons/checkmark.png')} style={styles.verifiedBadge}/>
               )}
             </View>

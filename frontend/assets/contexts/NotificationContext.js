@@ -173,6 +173,7 @@ export const NotificationProvider = ({ children }) => {
                 currentTime: requestTime,
                 meetupPoint: walkRequest.meetupPoint,
                 preferredGender: walkRequest.preferredGender,
+                requesterId: walkRequest.requesterId,
                 // Add any other fields you want to display
               };
               console.log('🎯 Processed walk data for modal:', walkData);
@@ -330,6 +331,7 @@ export const NotificationProvider = ({ children }) => {
         currentTime: data.currentTime,
         meetupPoint: data.meetupPoint,
         preferredGender: data.preferredGender,
+         requesterId: data.requesterId,
       };
 
       console.log('Setting current walk request from foreground:', walkData);
@@ -360,6 +362,7 @@ export const NotificationProvider = ({ children }) => {
         currentTime: data.currentTime,
         meetupPoint: data.meetupPoint,
         preferredGender: data.preferredGender,
+        requesterId: data.requesterId, 
       };
 
       console.log('🎯 Walk data prepared:', walkData);
@@ -418,6 +421,7 @@ const notificationData = {
   currentTime: walkData.currentTime || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
   meetupPoint: walkData.meetupPoint || 'APB Campus',
   preferredGender: walkData.preferredGender || 'Any',
+  requesterId: userId,
 };
 
       console.log('📨 Sending notifications to all users:', allUsers.length);

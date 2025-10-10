@@ -96,6 +96,7 @@ return (
                 <NotificationModal /> 
                 <NotificationHandler /> 
                 <DeepLinkHandler /> 
+                {/* <WalkRequest /> */}
                 <StatusBar style="auto" />
               </View>
             </FriendsProvider>

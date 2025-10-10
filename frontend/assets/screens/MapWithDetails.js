@@ -402,8 +402,8 @@ const MapWithDetails = ({ isTapWhere, userLocation, setUserLocation, destination
           </Marker>
         )}
 
-        {/* Route from Start Point to Destination - only when not searching */}
-        {startPoint && destination && !isSearching && (
+        {/* Route from Start Point to Destination */}
+        {startPoint && destination && (
           <MapViewDirections
             origin={{
               latitude: startPoint.latitude,
@@ -415,14 +415,14 @@ const MapWithDetails = ({ isTapWhere, userLocation, setUserLocation, destination
             }}
             apikey={GOOGLE_MAPS_API_KEY}
             strokeWidth={6}
-            strokeColor={isDark ? '#7CA3DA' : '#2196F3'}
+            fillColor={isDark ? '#7CA3DA' : '#1f2021ff'}
             mode="WALKING"
             resetOnChange={false}
           />
         )}
 
-        {/* Route from User to Start Point - only when not searching */}
-        {userLocation && startPoint && !isSearching && (
+        {/* Route from User to Start Point */}
+        {userLocation && startPoint && (
           <MapViewDirections
             origin={{
               latitude: userLocation.latitude,
@@ -434,12 +434,11 @@ const MapWithDetails = ({ isTapWhere, userLocation, setUserLocation, destination
             }}
             apikey={GOOGLE_MAPS_API_KEY}
             strokeWidth={6}
-            strokeColor={isDark ? '#4CAF50' : '#66BB6A'}
+            fillColor={isDark ? '#4CAF50' : '#66BB6A'}
             mode="WALKING"
             resetOnChange={false}
           />
         )}
-
 
       </MapView>
 
