@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, ActivityIndicator, TouchableOpacity, Animated } from 'react-native';
+import { StyleSheet, Text, View, Dimensions, ActivityIndicator, TouchableOpacity, Animated } from 'react-native';
 import React, { useState, useEffect, useRef } from 'react';
 import MapView, { PROVIDER_GOOGLE, Marker, Polyline, Circle } from 'react-native-maps';
 import { useTheme } from '../contexts/ColorContext';
@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import UserMapMarker from '../componets/UserMapMarker';
 import MapViewDirections from 'react-native-maps-directions';
 import { GOOGLE_MAPS_API_KEY } from '@env';
+import PartnerMarker from '../componets/PartnerMarker';
 
 // Custom Start Point Marker Component
 const StartPointMarker = () => {
@@ -49,7 +50,18 @@ const PotentialPartnerMarker = ({ fadeAnim }) => {
   );
 };
 
-const MapWithDetails = ({ isTapWhere, userLocation, setUserLocation, destination, startPoint, userImage, isSearching = false }) => {
+const MapWithDetails = ({
+  isTapWhere,
+  userLocation,
+  setUserLocation,
+  destination,
+  startPoint,
+  userImage,
+  isSearching = false,
+  isSelectPartner = false, 
+  partnerLocation = null,
+  partnerData = null
+}) => {
   const { colors, isDark } = useTheme();
   const [userToStartRoute, setUserToStartRoute] = useState(null);
   const [startToDestRoute, setStartToDestRoute] = useState(null);
@@ -112,6 +124,22 @@ const MapWithDetails = ({ isTapWhere, userLocation, setUserLocation, destination
     ]
   };
 
+  // Auto-fit map when in select partner mode
+  useEffect(() => {
+    if (isSelectPartner && partnerLocation && startPoint && mapRef.current) {
+      const coordinates = [partnerLocation, startPoint];
+      mapRef.current.fitToCoordinates(coordinates, {
+        edgePadding: {
+          top: 150,
+          right: 80,
+          bottom: 250,
+          left: 80
+        },
+        animated: true
+      });
+    }
+  }, [isSelectPartner, partnerLocation, startPoint]);
+
   // Generate random potential partner locations around start point
   const generatePotentialPartners = () => {
     if (!startPoint) return [];
@@ -135,28 +163,19 @@ const MapWithDetails = ({ isTapWhere, userLocation, setUserLocation, destination
 
   // Search animation effect
   useEffect(() => {
-    if (isSearching && startPoint) {
+    if (isSearching && startPoint && !isSelectPartner) {
       setPotentialPartners(generatePotentialPartners());
       setCurrentPartnerIndex(0);
       pathAnimProgress.setValue(0);
-      
-      // Animate path drawing
-      Animated.loop(
-        Animated.timing(pathAnimProgress, {
-          toValue: 1,
-          duration: 2000,
-          useNativeDriver: false,
-        })
-      ).start();
     } else {
       setPotentialPartners([]);
       setCurrentPartnerIndex(0);
     }
-  }, [isSearching, startPoint]);
+  }, [isSearching, startPoint, isSelectPartner]);
 
   // Cycle through potential partners
   useEffect(() => {
-    if (isSearching && potentialPartners.length > 0) {
+    if (isSearching && potentialPartners.length > 0 && !isSelectPartner) {
       const interval = setInterval(() => {
         // Fade out current partner
         Animated.timing(fadeAnim, {
@@ -197,27 +216,14 @@ const MapWithDetails = ({ isTapWhere, userLocation, setUserLocation, destination
 
       return () => clearInterval(interval);
     }
-  }, [isSearching, potentialPartners, currentPartnerIndex]);
+  }, [isSearching, potentialPartners, currentPartnerIndex, isSelectPartner]);
 
-  // Subtle zoom out animation when searching starts
+  // Fetch routes when start point or destination changes (only in regular mode)
   useEffect(() => {
-    if (isSearching && mapRef.current && startPoint) {
-      mapRef.current.animateCamera({
-        center: {
-          latitude: startPoint.latitude,
-          longitude: startPoint.longitude,
-        },
-        zoom: 14,
-      }, { duration: 1000 });
-    }
-  }, [isSearching]);
-
-  // Fetch routes when start point or destination changes
-  useEffect(() => {
-    if (userLocation && startPoint && destination && !isSearching) {
+    if (userLocation && startPoint && destination && !isSearching && !isSelectPartner) {
       fetchAllRoutes();
     }
-  }, [userLocation, startPoint, destination, isSearching]);
+  }, [userLocation, startPoint, destination, isSearching, isSelectPartner]);
 
   const fetchAllRoutes = async () => {
     if (!userLocation || !startPoint || !destination) return;
@@ -309,7 +315,7 @@ const MapWithDetails = ({ isTapWhere, userLocation, setUserLocation, destination
   };
 
   return (
-    <View style={styles.fullMapContainer}>
+    <View style={[styles.fullMapContainer, isSelectPartner && styles.selectPartnerMapContainer]}>
       <MapView
         ref={mapRef}
         style={styles.fullMap}
@@ -322,130 +328,194 @@ const MapWithDetails = ({ isTapWhere, userLocation, setUserLocation, destination
           longitudeDelta: 0.05,
         }}
         showsUserLocation={false}
-        showsMyLocationButton={true}
+        showsMyLocationButton={!isSelectPartner} // Hide in select partner mode
         showsCompass={true}
       >
-        {/* User Location Marker */}
-        {userLocation && (
-          <Marker
-            coordinate={{
-              latitude: userLocation.latitude,
-              longitude: userLocation.longitude
-            }}
-            title="Your Location"
-            zIndex={1000}
-          >
-            <UserMapMarker userImage={userImage} />
-          </Marker>
-        )}
 
-        {/* Destination Marker */}
-        {destination && !isSearching && (
+        {/* ===== SELECT PARTNER MODE - SIMPLIFIED VIEW ===== */}
+        {isSelectPartner ? (
           <>
-            <Marker
-              coordinate={{
-                latitude: destination.latitude,
-                longitude: destination.longitude
-              }}
-              title="Destination"
-              description="Your walking destination"
-              zIndex={999}
-            >
-              <DestinationMarker />
-            </Marker>
-            <Circle
-              center={{
-                latitude: destination.latitude,
-                longitude: destination.longitude
-              }}
-              radius={8}
-              strokeWidth={2}
-              strokeColor={isDark ? '#F44336' : '#EF5350'}
-              fillColor={isDark ? 'rgba(244, 67, 54, 0.3)' : 'rgba(239, 83, 80, 0.3)'}
-            />
-          </>
-        )}
+            {/* Partner Marker */}
+            {partnerLocation && (
+              <Marker
+                coordinate={partnerLocation}
+                title="Walk Partner"
+                description="Your walk partner"
+                zIndex={997}
+              >
+                <PartnerMarker partner={partnerData} />
+              </Marker>
+            )}
 
-        {/* Start Point Marker */}
-        {startPoint && (
+            {/* Meetup Point Marker (Start Point) */}
+            {startPoint && (
+              <>
+                <Marker
+                  coordinate={{
+                    latitude: startPoint.latitude,
+                    longitude: startPoint.longitude
+                  }}
+                  title="Meetup Point"
+                  zIndex={998}
+                >
+                  <StartPointMarker />
+                </Marker>
+                <Circle
+                  center={{
+                    latitude: startPoint.latitude,
+                    longitude: startPoint.longitude
+                  }}
+                  radius={8}
+                  strokeWidth={2}
+                  fillColor={isDark ? '#4CAF50' : '#66BB6A'}
+                  // fillColor={isDark ? 'rgba(76, 175, 80, 0.3)' : 'rgba(102, 187, 106, 0.3)'}
+                />
+              </>
+            )}
+
+            {/* Pathway from partner to meetup point */}
+            {partnerLocation && startPoint && (
+              <MapViewDirections
+                origin={partnerLocation}
+                destination={startPoint}
+                apikey={GOOGLE_MAPS_API_KEY}
+                strokeWidth={5}
+                fillColor="#FF6B35"
+                mode="WALKING"
+                resetOnChange={false}
+                onReady={(result) => {
+                  console.log('Partner to meetup route calculated:', result.distance, result.duration);
+                }}
+                onError={(errorMessage) => {
+                  console.log('Error calculating partner route:', errorMessage);
+                }}
+              />
+            )}
+          </>
+        ) : (
+          /* ===== REGULAR MODE - SHOW ALL MARKERS ===== */
           <>
-            <Marker
-              coordinate={{
-                latitude: startPoint.latitude,
-                longitude: startPoint.longitude
-              }}
-              title="Start Point"
-              zIndex={998}
-            >
-              <StartPointMarker />
-            </Marker>
-            <Circle
-              center={{
-                latitude: startPoint.latitude,
-                longitude: startPoint.longitude
-              }}
-              radius={8}
-              strokeWidth={2}
-              strokeColor={isDark ? '#4CAF50' : '#66BB6A'}
-              fillColor={isDark ? 'rgba(76, 175, 80, 0.3)' : 'rgba(102, 187, 106, 0.3)'}
-            />
+            {/* User Location Marker */}
+            {userLocation && (
+              <Marker
+                coordinate={{
+                  latitude: userLocation.latitude,
+                  longitude: userLocation.longitude
+                }}
+                title="Your Location"
+                zIndex={1000}
+              >
+                <UserMapMarker userImage={userImage} />
+              </Marker>
+            )}
+
+            {/* Destination Marker */}
+            {destination && !isSearching && (
+              <>
+                <Marker
+                  coordinate={{
+                    latitude: destination.latitude,
+                    longitude: destination.longitude
+                  }}
+                  title="Destination"
+                  description="Your walking destination"
+                  zIndex={999}
+                >
+                  <DestinationMarker />
+                </Marker>
+                <Circle
+                  center={{
+                    latitude: destination.latitude,
+                    longitude: destination.longitude
+                  }}
+                  radius={8}
+                  strokeWidth={2}
+                  fillColor={isDark ? '#F44336' : '#EF5350'}
+                  
+                />
+              </>
+            )}
+
+            {/* Start Point Marker */}
+            {startPoint && (
+              <>
+                <Marker
+                  coordinate={{
+                    latitude: startPoint.latitude,
+                    longitude: startPoint.longitude
+                  }}
+                  title="Start Point"
+                  zIndex={998}
+                >
+                  <StartPointMarker />
+                </Marker>
+                <Circle
+                  center={{
+                    latitude: startPoint.latitude,
+                    longitude: startPoint.longitude
+                  }}
+                  radius={8}
+                  strokeWidth={2}
+                  fillColor={isDark ? '#4CAF50' : '#66BB6A'}
+                 
+                />
+              </>
+            )}
+
+            {/* Potential Partner Markers during search */}
+            {isSearching && potentialPartners.length > 0 && potentialPartners[currentPartnerIndex] && (
+              <Marker
+                coordinate={potentialPartners[currentPartnerIndex]}
+                zIndex={997}
+              >
+                <PotentialPartnerMarker fadeAnim={fadeAnim} />
+              </Marker>
+            )}
+
+            {/* Route from Start Point to Destination */}
+            {startPoint && destination && !isSearching && (
+              <MapViewDirections
+                origin={{
+                  latitude: startPoint.latitude,
+                  longitude: startPoint.longitude
+                }}
+                destination={{
+                  latitude: destination.latitude,
+                  longitude: destination.longitude
+                }}
+                apikey={GOOGLE_MAPS_API_KEY}
+                strokeWidth={6}
+                fillColor={isDark ? '#7CA3DA' : '#1f2021ff'}
+                mode="WALKING"
+                resetOnChange={false}
+              />
+            )}
+
+            {/* Route from User to Start Point */}
+            {userLocation && startPoint && !isSearching && (
+              <MapViewDirections
+                origin={{
+                  latitude: userLocation.latitude,
+                  longitude: userLocation.longitude
+                }}
+                destination={{
+                  latitude: startPoint.latitude,
+                  longitude: startPoint.longitude
+                }}
+                apikey={GOOGLE_MAPS_API_KEY}
+                strokeWidth={6}
+                fillColor={isDark ? '#4CAF50' : '#66BB6A'}
+                mode="WALKING"
+                resetOnChange={false}
+              />
+            )}
           </>
-        )}
-
-        {/* Potential Partner Markers - Show one at a time during search */}
-        {isSearching && potentialPartners.length > 0 && potentialPartners[currentPartnerIndex] && (
-          <Marker
-            coordinate={potentialPartners[currentPartnerIndex]}
-            zIndex={997}
-          >
-            <PotentialPartnerMarker fadeAnim={fadeAnim} />
-          </Marker>
-        )}
-
-        {/* Route from Start Point to Destination */}
-        {startPoint && destination && (
-          <MapViewDirections
-            origin={{
-              latitude: startPoint.latitude,
-              longitude: startPoint.longitude
-            }}
-            destination={{
-              latitude: destination.latitude,
-              longitude: destination.longitude
-            }}
-            apikey={GOOGLE_MAPS_API_KEY}
-            strokeWidth={6}
-            fillColor={isDark ? '#7CA3DA' : '#1f2021ff'}
-            mode="WALKING"
-            resetOnChange={false}
-          />
-        )}
-
-        {/* Route from User to Start Point */}
-        {userLocation && startPoint && (
-          <MapViewDirections
-            origin={{
-              latitude: userLocation.latitude,
-              longitude: userLocation.longitude
-            }}
-            destination={{
-              latitude: startPoint.latitude,
-              longitude: startPoint.longitude
-            }}
-            apikey={GOOGLE_MAPS_API_KEY}
-            strokeWidth={6}
-            fillColor={isDark ? '#4CAF50' : '#66BB6A'}
-            mode="WALKING"
-            resetOnChange={false}
-          />
         )}
 
       </MapView>
 
-
-
       {/* Loading Indicator */}
-      {loading && !isSearching && (
+      {loading && !isSearching && !isSelectPartner && (
         <View style={styles.loadingContainer}>
           <View style={[styles.loadingBox, { backgroundColor: isDark ? 'rgba(0, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.9)' }]}>
             <ActivityIndicator size="large" color={isDark ? "#7CA3DA" : "#2196F3"} />
@@ -457,7 +527,7 @@ const MapWithDetails = ({ isTapWhere, userLocation, setUserLocation, destination
       )}
 
       {/* Error Message */}
-      {error && !loading && (
+      {error && !loading && !isSelectPartner && (
         <View style={styles.errorContainer}>
           <View style={[styles.errorBox, { 
             backgroundColor: isDark ? 'rgba(50, 50, 50, 0.9)' : 'rgba(255, 255, 255, 0.9)',
@@ -503,6 +573,9 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+  },
+  selectPartnerMapContainer: {
+    bottom: 150, // Extra space for SelectWalker component
   },
   fullMap: {
     ...StyleSheet.absoluteFillObject,

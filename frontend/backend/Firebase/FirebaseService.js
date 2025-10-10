@@ -2303,6 +2303,84 @@ getFriendsFromArray: async (userId) => {
   // ========================
 
   /**
+   * Listen to acceptance of a walk request.
+   * @param {string} walkRequestId - The ID of the walk request.
+   * @param {Function} callback - Callback function to handle updates.
+   * @returns {Function} - Unsubscribe function.
+   */
+  listenToWalkRequestAcceptance: (walkRequestId, callback) => {
+    try {
+      if (!walkRequestId) {
+        console.warn('listenToWalkRequestAcceptance called with no walkRequestId.');
+        callback(null);
+        return () => {};
+      }
+      const walkRequestRef = doc(db, 'walkRequests', walkRequestId);
+      return onSnapshot(walkRequestRef, (docSnap) => {
+        callback(docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } : null);
+      }, (error) => {
+        console.error(`Error listening to walk request ${walkRequestId}:`, error);
+        callback(null);
+      });
+    } catch (error) {
+      console.error('Error setting up walk request acceptance listener:', error);
+      return () => {};
+    }
+  },
+
+  /**
+   * Get user by phone number (returns full user document).
+   * @param {string} phone - Phone number to check.
+   * @returns {Object} - { exists: boolean, userData: object|null, error?: string }
+   */
+  getUserByPhone: async (phone) => {
+    try {
+      const formattedPhone = FirebaseService.formatPhoneNumber(phone);
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('Phone', '==', formattedPhone));
+      const querySnapshot = await getDocs(q);
+      if (querySnapshot.empty) {
+        return { exists: false, userData: null };
+      }
+      const userDoc = querySnapshot.docs[0];
+      const userData = userDoc.data();
+      return {
+        exists: true,
+        userData: {
+          id: userDoc.id,
+          ...userData
+        }
+      };
+    } catch (error) {
+      console.error('Error getting user by phone:', error);
+      return { exists: false, userData: null, error: error.message };
+    }
+  },
+
+  /**
+   * Get a walker's current location by user ID.
+   * @param {string} walkerUserId - Walker's user document ID.
+   * @returns {Object} - { success: boolean, location: object|null, error?: string }
+   */
+  getWalkerLocation: async (walkerUserId) => {
+    try {
+      if (!walkerUserId) {
+        return { success: false, location: null, error: 'Walker user ID required' };
+      }
+      const userDoc = await getDoc(doc(db, 'users', walkerUserId));
+      if (!userDoc.exists()) {
+        return { success: false, location: null, error: 'Walker not found' };
+      }
+      const userData = userDoc.data();
+      const location = userData.CurrentLocation || null;
+      return { success: true, location };
+    } catch (error) {
+      console.error('Error getting walker location:', error);
+      return { success: false, location: null, error: error.message };
+    }
+  },
+
+  /**
    * Update user's Expo push token in Firestore
    * @param {string} userPhone - User's phone number
    * @param {string} pushToken - Expo push token

@@ -554,17 +554,50 @@ const acceptWalkRequest = async () => {
     // Play acceptance sound
     await playNotificationSound('walk_accepted');
     
+    // Get current user data (the person accepting)
+    const userId = await AsyncStorage.getItem('userId');
+    const userDataString = await AsyncStorage.getItem('userData');
+    const userData = JSON.parse(userDataString);
+
+    if (!userId || !userData) {
+      Alert.alert('Error', 'User data not found. Please log in again.');
+      return;
+    }
+
     // Notify the sender that request was accepted
-    await FirebaseService.acceptWalkRequest(
+    const result = await FirebaseService.acceptWalkRequest(
       currentWalkRequest.requestId,
-      userData?.phone || userData?.phoneNumber,
-      currentWalkRequest.senderPhone
+      userData.phone, // Current user's phone (accepter)
+      currentWalkRequest.senderPhone // Original requester's phone
     );
 
-    Alert.alert(
-      'Request Accepted! 🎉',
-      `You've accepted the walk request from ${currentWalkRequest.partnerName}. They will be notified.`
-    );
+    if (result.success) {
+      // Send push notification to the original requester with accepter's details
+      const accepterData = {
+        id: userId,
+        name: `${userData.name} ${userData.surname}`,
+        phone: userData.phone,
+        rating: 4.8, // You might want to store ratings in user data
+        bio: "I walk to campus daily from Horizon. let's walk together.",
+        availability: "Available Now",
+        gender: userData.gender || "Male",
+        walksCompleted: 13,
+        universityYear: "3rd Year",
+        isVerified: true
+      };
+
+      await sendWalkAcceptedNotification(
+        currentWalkRequest.senderPhone,
+        currentWalkRequest.requestId,
+        accepterData,
+        currentWalkRequest
+      );
+
+      Alert.alert(
+        'Request Accepted! 🎉',
+        `You've accepted the walk request from ${currentWalkRequest.partnerName}. They will be notified.`
+      );
+    }
 
     setIsNotificationVisible(false);
     setCurrentWalkRequest(null);
@@ -572,6 +605,37 @@ const acceptWalkRequest = async () => {
   } catch (error) {
     console.error('Error accepting walk request:', error);
     Alert.alert('Error', 'Failed to accept walk request. Please try again.');
+  }
+};
+
+// New function to send acceptance notification to original requester
+const sendWalkAcceptedNotification = async (requesterPhone, requestId, accepterData, walkData) => {
+  try {
+    // Get the requester's push token
+    const requesterResult = await FirebaseService.getUserByPhone(requesterPhone);
+    if (!requesterResult.exists || !requesterResult.userData.pushToken) {
+      console.error('Requester not found or has no push token');
+      return;
+    }
+
+    const notificationData = {
+      type: 'walk_accepted',
+      requestId: requestId,
+      accepterData: accepterData,
+      walkData: walkData,
+      action: 'show_select_walker'
+    };
+
+    await sendExpoPushNotification(
+      requesterResult.userData.pushToken,
+      '🚶‍♂️ Walk Request Accepted!',
+      `${accepterData.name} accepted your walk request!`,
+      notificationData
+    );
+
+    console.log('✅ Acceptance notification sent to requester');
+  } catch (error) {
+    console.error('Error sending acceptance notification:', error);
   }
 };
 

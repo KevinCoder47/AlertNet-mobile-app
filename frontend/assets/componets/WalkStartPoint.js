@@ -52,64 +52,61 @@ const WalkStartPoint = ({
   const [showStreetViewModal, setShowStreetViewModal] = useState(false);
   const { sendWalkRequest } = useNotifications();
 
-  const handleSearch = async () => {
-    console.log("Search button pressed (latest version, FirebaseService)");
+const handleSearch = async () => {
+  if (isSending) {
+    console.log("Already sending a request, please wait...");
+    return;
+  }
 
-    if (isSending) {
-      console.log("Already sending a request, please wait...");
+  setIsSending(true);
+
+  try {
+    // Get current user data
+    const userId = await AsyncStorage.getItem('userId');
+    const userDataString = await AsyncStorage.getItem('userData');
+    const userData = JSON.parse(userDataString);
+
+    if (!userId || !userData) {
+      Alert.alert('Error', 'User data not found. Please log in again.');
       return;
     }
 
-    setIsSending(true);
+    // Clean the dropoff location
+    const cleanedDestination = cleanLocationName(dropoffLocation);
 
-    try {
-      // Get current user data
-      const userId = await AsyncStorage.getItem('userId');
-      const userDataString = await AsyncStorage.getItem('userData');
-      const userData = JSON.parse(userDataString);
+    // Create walk request data
+    const walkRequestData = {
+      requesterId: userId,
+      requesterName: `${userData.name} ${userData.surname}`,
+      requesterPhone: userData.phone,
+      pickup: selectedMeetUpPoint,
+      destination: cleanedDestination,
+      meetupPoint: selectedMeetUpPoint,
+      preferredGender: selectedGender,
+      status: 'pending',
+      createdAt: new Date(),
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+    };
 
-      if (!userId || !userData) {
-        Alert.alert('Error', 'User data not found. Please log in again.');
-        return;
-      }
+    console.log('📝 Creating walk request with data:', walkRequestData);
 
-      console.log('👤 Current user data:', { userId, name: userData.name, surname: userData.surname, phone: userData.phone });
+    // Create walk request in Firebase
+    const requestId = await FirebaseService.createWalkRequest(walkRequestData);
 
-      // Clean the dropoff location
-      const cleanedDestination = cleanLocationName(dropoffLocation);
+    console.log('✅ Walk request created successfully with ID:', requestId);
 
-      // Create walk request data with cleaned destination
-      const walkRequestData = {
-        requesterId: userId,
-        requesterName: `${userData.name} ${userData.surname}`,
-        requesterPhone: userData.phone,
-        pickup: selectedMeetUpPoint,
-        destination: cleanedDestination, // Use cleaned location
-        meetupPoint: selectedMeetUpPoint,
-        preferredGender: selectedGender,
-        status: 'pending',
-        createdAt: new Date(),
-        expiresAt: new Date(Date.now() + 15 * 60 * 1000),
-      };
+    Alert.alert('Success', 'Walk request sent! Nearby users will be notified.');
 
-      console.log('📝 Creating walk request with data:', walkRequestData);
-
-      // Call FirebaseService.createWalkRequest - it should return a string ID
-      const requestId = await FirebaseService.createWalkRequest(walkRequestData);
-
-      console.log('✅ Walk request created successfully with ID:', requestId);
-
-      Alert.alert('Success', 'Walk request sent! Nearby users will be notified.');
-      setIsSearchPartner(true);
-      setIsStartPoint(false);
-    } catch (error) {
-      console.error("💥 Error in handleSearch:", error);
-      console.error("💥 Error details:", error.message, error.stack);
-      Alert.alert('Error', `Failed to send walk request: ${error.message}`);
-    } finally {
-      setIsSending(false);
-    }
-  };
+    // Return the requestId to the parent component
+    setIsSearchPartner(requestId);
+    setIsStartPoint(false);
+  } catch (error) {
+    console.error("💥 Error in handleSearch:", error);
+    Alert.alert('Error', `Failed to send walk request: ${error.message}`);
+  } finally {
+    setIsSending(false);
+  }
+};
 
   const colors = {
     background: isDark ? '#121212' : '#FFFFFF',

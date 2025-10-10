@@ -15,7 +15,7 @@ import './backend/Firebase/FirebaseConfig';
 import NotificationHandler from './assets/componets/NotificationHandler';
 import NotificationModal from './assets/componets/notifications/NotificationModal';
 import DeepLinkHandler from './assets/componets/DeepLinkHandler';
-import WalkRequest from './assets/componets/notifications/WalkRequest';
+import SelectWalker from './assets/componets/SelectWalker';
 
 export default function App() {
   const batteryCleanupRef = useRef(null);
@@ -96,7 +96,6 @@ return (
                 <NotificationModal /> 
                 <NotificationHandler /> 
                 <DeepLinkHandler /> 
-                {/* <WalkRequest /> */}
                 <StatusBar style="auto" />
               </View>
             </FriendsProvider>
