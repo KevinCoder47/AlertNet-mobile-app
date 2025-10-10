@@ -161,18 +161,19 @@ export const NotificationProvider = ({ children }) => {
               const requestTime = walkRequest.createdAt?.toDate
                 ? walkRequest.createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                 : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-              // Convert Firestore data to walk request format
+              // Convert Firestore data to walk request format (updated)
               const walkData = {
                 requestId: change.doc.id,
                 walkFrom: walkRequest.pickup || walkRequest.walkFrom,
                 walkTo: walkRequest.destination || walkRequest.walkTo,
-                time: '5 mins',
+                time: '5 mins', // You might want to calculate this based on distance
                 partnerName: walkRequest.requesterName,
                 partnerInitials: getInitials(walkRequest.requesterName),
                 senderPhone: walkRequest.requesterPhone,
                 currentTime: requestTime,
                 meetupPoint: walkRequest.meetupPoint,
                 preferredGender: walkRequest.preferredGender,
+                // Add any other fields you want to display
               };
               console.log('🎯 Processed walk data for modal:', walkData);
               // Play notification sound for new walk request

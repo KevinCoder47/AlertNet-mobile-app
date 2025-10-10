@@ -69,7 +69,7 @@ const handleDestinationSelect = (coordinates) => {
   };
 
   const handleSaveAddress = (updatedAddresses) => {
-    setSavedAddresses(updatedAddresses);
+    setSavedAddressearchbases(updatedAddresses);
   };
 
   const handleAddAddressPress = (locationType) => {
@@ -296,7 +296,8 @@ const reverseGeocode = async (coords) => {
             setUserLocation={setUserLocation} 
             destination={destinationCoords}
             startPoint={startPointCoords}
-            userImage = {userImage}
+            userImage={userImage}
+            isSearching={isSearchPartner}
           />
         )}
 
@@ -306,7 +307,8 @@ const reverseGeocode = async (coords) => {
               setIsDestinationDone={setIsDestinationDone} 
               setIsSearchPartner={setIsSearchPartner} 
               setIsStartPoint={setIsStartPoint}
-              onStartPointSelect={handleStartPointSelect} // Add this prop
+              onStartPointSelect={handleStartPointSelect} 
+              dropoffLocation = {dropoffLocation}
             />
           </View>
         )}

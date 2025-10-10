@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, ActivityIndicator, TouchableOpacity, Animated } from 'react-native';
 import React, { useState, useEffect, useRef } from 'react';
 import MapView, { PROVIDER_GOOGLE, Marker, Polyline, Circle } from 'react-native-maps';
 import { useTheme } from '../contexts/ColorContext';
@@ -36,7 +36,20 @@ const DestinationMarker = () => {
   );
 };
 
-const MapWithDetails = ({ isTapWhere, userLocation, setUserLocation, destination, startPoint, userImage }) => {
+// Potential Partner Marker with Pulse Animation
+const PotentialPartnerMarker = ({ fadeAnim }) => {
+  const { isDark } = useTheme();
+  
+  return (
+    <Animated.View style={[styles.potentialPartnerContainer, { opacity: fadeAnim }]}>
+      <View style={[styles.potentialPartnerCircle, { backgroundColor: isDark ? '#7CA3DA' : '#2196F3' }]}>
+        <Ionicons name="person" size={16} color="white" />
+      </View>
+    </Animated.View>
+  );
+};
+
+const MapWithDetails = ({ isTapWhere, userLocation, setUserLocation, destination, startPoint, userImage, isSearching = false }) => {
   const { colors, isDark } = useTheme();
   const [userToStartRoute, setUserToStartRoute] = useState(null);
   const [startToDestRoute, setStartToDestRoute] = useState(null);
@@ -44,110 +57,167 @@ const MapWithDetails = ({ isTapWhere, userLocation, setUserLocation, destination
   const [error, setError] = useState(null);
   const [showErrorDetails, setShowErrorDetails] = useState(false);
   const mapRef = useRef(null);
+  
+  // Search animation states
+  const [potentialPartners, setPotentialPartners] = useState([]);
+  const [currentPartnerIndex, setCurrentPartnerIndex] = useState(0);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const pathAnimProgress = useRef(new Animated.Value(0)).current;
 
   const MAP_STYLES = {
-        light: [
-          {
-            "elementType": "geometry",
-            "stylers": [{ "color": "#f5f5f5" }]
-          },
-          {
-            "elementType": "labels.icon",
-            "stylers": [{ "visibility": "off" }]
-          },
-          {
-            "elementType": "labels.text.fill",
-            "stylers": [{ "color": "#616161" }]
-          },
-          {
-            "elementType": "labels.text.stroke",
-            "stylers": [{ "color": "#f5f5f5" }]
-          },
-          {
-            "featureType": "poi",
-            "elementType": "labels.text",
-            "stylers": [{ "visibility": "off" }]
-          },
-          {
-            "featureType": "poi.business",
-            "stylers": [{ "visibility": "off" }]
-          },
-          {
-            "featureType": "poi.government",
-            "stylers": [{ "visibility": "off" }]
-          },
-          {
-            "featureType": "poi.medical",
-            "stylers": [{ "visibility": "on" }]
-          },
-          {
-            "featureType": "poi.police",
-            "stylers": [{ "visibility": "on" }]
-          },
-          {
-            "featureType": "poi.attraction",
-            "stylers": [{ "visibility": "off" }]
-          },
-          {
-            "featureType": "poi.school",
-            "stylers": [{ "visibility": "on" }]
-          },
-          {
-            "featureType": "road",
-            "elementType": "geometry",
-            "stylers": [{ "color": "#ffffff" }]
-          },
-          {
-            "featureType": "road.highway",
-            "elementType": "geometry",
-            "stylers": [{ "color": "#dadada" }]
-          },
-          {
-            "featureType": "road.arterial",
-            "elementType": "labels.text.fill",
-            "stylers": [{ "color": "#757575" }]
-          },
-          {
-            "featureType": "road.local",
-            "elementType": "labels.text.fill",
-            "stylers": [{ "color": "#9e9e9e" }]
-          },
-          {
-            "featureType": "transit.station",
-            "stylers": [{ "visibility": "on" }]
-          },
-          {
-            "featureType": "water",
-            "elementType": "geometry",
-            "stylers": [{ "color": "#a8c3d6" }]
-          },
-          {
-            "featureType": "poi.park",
-            "elementType": "geometry",
-            "stylers": [{ "color": "#e0f0e0" }, { "visibility": "on" }]
-          },
-        ],
-        dark: [
-          { elementType: "geometry", stylers: [{ color: "#212121" }] },
-          { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
-          { elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
-          { elementType: "labels.text.stroke", stylers: [{ color: "#212121" }] },
-          { featureType: "administrative", elementType: "geometry", stylers: [{ color: "#757575" }] },
-          { featureType: "poi", stylers: [{ visibility: "off" }] },
-          { featureType: "road", elementType: "geometry", stylers: [{ color: "#383838" }] },
-          { featureType: "road.arterial", elementType: "geometry", stylers: [{ color: "#4a4a4a" }] },
-          { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#616161" }] },
-          { featureType: "transit", stylers: [{ visibility: "off" }] },
-          { featureType: "water", elementType: "geometry", stylers: [{ color: "#000000" }] }
-        ]
-      };
+    light: [
+      {
+        "elementType": "geometry",
+        "stylers": [{ "color": "#f5f5f5" }]
+      },
+      {
+        "elementType": "labels.icon",
+        "stylers": [{ "visibility": "off" }]
+      },
+      {
+        "elementType": "labels.text.fill",
+        "stylers": [{ "color": "#616161" }]
+      },
+      {
+        "elementType": "labels.text.stroke",
+        "stylers": [{ "color": "#f5f5f5" }]
+      },
+      {
+        "featureType": "poi",
+        "elementType": "labels.text",
+        "stylers": [{ "visibility": "off" }]
+      },
+      {
+        "featureType": "poi.business",
+        "stylers": [{ "visibility": "off" }]
+      },
+      {
+        "featureType": "road",
+        "elementType": "geometry",
+        "stylers": [{ "color": "#ffffff" }]
+      },
+      {
+        "featureType": "water",
+        "elementType": "geometry",
+        "stylers": [{ "color": "#a8c3d6" }]
+      },
+    ],
+    dark: [
+      { elementType: "geometry", stylers: [{ color: "#212121" }] },
+      { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+      { elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
+      { elementType: "labels.text.stroke", stylers: [{ color: "#212121" }] },
+      { featureType: "road", elementType: "geometry", stylers: [{ color: "#383838" }] },
+      { featureType: "water", elementType: "geometry", stylers: [{ color: "#000000" }] }
+    ]
+  };
+
+  // Generate random potential partner locations around start point
+  const generatePotentialPartners = () => {
+    if (!startPoint) return [];
     
+    const partners = [];
+    const radius = 0.01; // Approximately 1km
+    
+    for (let i = 0; i < 5; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const distance = Math.random() * radius;
+      
+      partners.push({
+        latitude: startPoint.latitude + Math.cos(angle) * distance,
+        longitude: startPoint.longitude + Math.sin(angle) * distance,
+        id: i
+      });
+    }
+    
+    return partners;
+  };
+
+  // Search animation effect
+  useEffect(() => {
+    if (isSearching && startPoint) {
+      setPotentialPartners(generatePotentialPartners());
+      setCurrentPartnerIndex(0);
+      pathAnimProgress.setValue(0);
+      
+      // Animate path drawing
+      Animated.loop(
+        Animated.timing(pathAnimProgress, {
+          toValue: 1,
+          duration: 2000,
+          useNativeDriver: false,
+        })
+      ).start();
+    } else {
+      setPotentialPartners([]);
+      setCurrentPartnerIndex(0);
+    }
+  }, [isSearching, startPoint]);
+
+  // Cycle through potential partners
+  useEffect(() => {
+    if (isSearching && potentialPartners.length > 0) {
+      const interval = setInterval(() => {
+        // Fade out current partner
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }).start(() => {
+          // Move to next partner
+          setCurrentPartnerIndex((prev) => (prev + 1) % potentialPartners.length);
+          
+          // Fade in new partner
+          Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+          }).start();
+        });
+
+        // Subtle map pan to show the partner
+        if (mapRef.current && potentialPartners[currentPartnerIndex]) {
+          const partner = potentialPartners[currentPartnerIndex];
+          mapRef.current.animateCamera({
+            center: {
+              latitude: (startPoint.latitude + partner.latitude) / 2,
+              longitude: (startPoint.longitude + partner.longitude) / 2,
+            },
+            zoom: 14.5,
+          }, { duration: 1500 });
+        }
+      }, 2500);
+
+      // Initial fade in
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+
+      return () => clearInterval(interval);
+    }
+  }, [isSearching, potentialPartners, currentPartnerIndex]);
+
+  // Subtle zoom out animation when searching starts
+  useEffect(() => {
+    if (isSearching && mapRef.current && startPoint) {
+      mapRef.current.animateCamera({
+        center: {
+          latitude: startPoint.latitude,
+          longitude: startPoint.longitude,
+        },
+        zoom: 14,
+      }, { duration: 1000 });
+    }
+  }, [isSearching]);
+
   // Fetch routes when start point or destination changes
   useEffect(() => {
-    if (userLocation && startPoint && destination) {
+    if (userLocation && startPoint && destination && !isSearching) {
       fetchAllRoutes();
     }
-  }, [userLocation, startPoint, destination]);
+  }, [userLocation, startPoint, destination, isSearching]);
 
   const fetchAllRoutes = async () => {
     if (!userLocation || !startPoint || !destination) return;
@@ -158,7 +228,6 @@ const MapWithDetails = ({ isTapWhere, userLocation, setUserLocation, destination
     setStartToDestRoute(null);
     
     try {
-      // Fetch route from user location to start point
       const userToStart = await getWalkingRoute(
         {
           latitude: userLocation.latitude,
@@ -172,7 +241,6 @@ const MapWithDetails = ({ isTapWhere, userLocation, setUserLocation, destination
       
       setUserToStartRoute(userToStart);
       
-      // Fetch route from start point to destination
       const startToDest = await getWalkingRoute(
         {
           latitude: startPoint.latitude,
@@ -186,7 +254,6 @@ const MapWithDetails = ({ isTapWhere, userLocation, setUserLocation, destination
       
       setStartToDestRoute(startToDest);
       
-      // Fit map to show all routes and markers
       if (mapRef.current && userToStart.coordinates && startToDest.coordinates) {
         const allCoordinates = [...userToStart.coordinates, ...startToDest.coordinates];
         mapRef.current.fitToCoordinates(allCoordinates, {
@@ -203,7 +270,6 @@ const MapWithDetails = ({ isTapWhere, userLocation, setUserLocation, destination
       console.error('Error fetching routes:', err);
       setError(err.message);
       
-      // Fallback to straight line routes
       try {
         const userToStartFallback = getStraightLineRoute(
           {
@@ -244,132 +310,143 @@ const MapWithDetails = ({ isTapWhere, userLocation, setUserLocation, destination
 
   return (
     <View style={styles.fullMapContainer}>
-<MapView
-  ref={mapRef}
-  style={styles.fullMap}
-  provider={PROVIDER_GOOGLE}
-  customMapStyle={isDark ? MAP_STYLES.dark : MAP_STYLES.light}
-  initialRegion={{
-    latitude: userLocation?.latitude || -26.2041,
-    longitude: userLocation?.longitude || 28.0473,
-    latitudeDelta: 0.05,
-    longitudeDelta: 0.05,
-  }}
-  showsUserLocation={false}
-  showsMyLocationButton={true}
-  showsCompass={true}
->
-  {/* User Location Marker */}
-  {userLocation && (
-    <Marker
-      coordinate={{
-        latitude: userLocation.latitude,
-        longitude: userLocation.longitude
-      }}
-      title="Your Location"
-      zIndex={1000}
-    >
-      <UserMapMarker userImage={userImage} />
-    </Marker>
-  )}
-
-  {/* Destination Marker */}
-  {destination && (
-    <>
-      <Marker
-        coordinate={{
-          latitude: destination.latitude,
-          longitude: destination.longitude
+      <MapView
+        ref={mapRef}
+        style={styles.fullMap}
+        provider={PROVIDER_GOOGLE}
+        customMapStyle={isDark ? MAP_STYLES.dark : MAP_STYLES.light}
+        initialRegion={{
+          latitude: userLocation?.latitude || -26.2041,
+          longitude: userLocation?.longitude || 28.0473,
+          latitudeDelta: 0.05,
+          longitudeDelta: 0.05,
         }}
-        title="Destination"
-        description="Your walking destination"
-        zIndex={999}
+        showsUserLocation={false}
+        showsMyLocationButton={true}
+        showsCompass={true}
       >
-        <DestinationMarker />
-      </Marker>
-      <Circle
-        center={{
-          latitude: destination.latitude,
-          longitude: destination.longitude
-        }}
-        radius={8}
-        strokeWidth={2}
-        strokeColor={isDark ? '#F44336' : '#EF5350'}
-        fillColor={isDark ? 'rgba(244, 67, 54, 0.3)' : 'rgba(239, 83, 80, 0.3)'}
-      />
-    </>
-  )}
+        {/* User Location Marker */}
+        {userLocation && (
+          <Marker
+            coordinate={{
+              latitude: userLocation.latitude,
+              longitude: userLocation.longitude
+            }}
+            title="Your Location"
+            zIndex={1000}
+          >
+            <UserMapMarker userImage={userImage} />
+          </Marker>
+        )}
 
-  {/* Start Point Marker */}
-  {startPoint && (
-    <>
-      <Marker
-        coordinate={{
-          latitude: startPoint.latitude,
-          longitude: startPoint.longitude
-        }}
-        title="Start Point"
-        zIndex={998}
-      >
-        <StartPointMarker />
-      </Marker>
-      <Circle
-        center={{
-          latitude: startPoint.latitude,
-          longitude: startPoint.longitude
-        }}
-        radius={8}
-        strokeWidth={2}
-        strokeColor={isDark ? '#4CAF50' : '#66BB6A'}
-        fillColor={isDark ? 'rgba(76, 175, 80, 0.3)' : 'rgba(102, 187, 106, 0.3)'}
-      />
-    </>
-  )}
+        {/* Destination Marker */}
+        {destination && !isSearching && (
+          <>
+            <Marker
+              coordinate={{
+                latitude: destination.latitude,
+                longitude: destination.longitude
+              }}
+              title="Destination"
+              description="Your walking destination"
+              zIndex={999}
+            >
+              <DestinationMarker />
+            </Marker>
+            <Circle
+              center={{
+                latitude: destination.latitude,
+                longitude: destination.longitude
+              }}
+              radius={8}
+              strokeWidth={2}
+              strokeColor={isDark ? '#F44336' : '#EF5350'}
+              fillColor={isDark ? 'rgba(244, 67, 54, 0.3)' : 'rgba(239, 83, 80, 0.3)'}
+            />
+          </>
+        )}
 
-  {/* Route from Start Point to Destination using MapViewDirections */}
-  {startPoint && destination && (
-    <MapViewDirections
-      origin={{
-        latitude: startPoint.latitude,
-        longitude: startPoint.longitude
-      }}
-      destination={{
-        latitude: destination.latitude,
-        longitude: destination.longitude
-      }}
-      apikey={GOOGLE_MAPS_API_KEY}
-      strokeWidth={6}
-      fillColor={'black'}
-      mode="WALKING"
-      resetOnChange={false}
-    />
-  )}
+        {/* Start Point Marker */}
+        {startPoint && (
+          <>
+            <Marker
+              coordinate={{
+                latitude: startPoint.latitude,
+                longitude: startPoint.longitude
+              }}
+              title="Start Point"
+              zIndex={998}
+            >
+              <StartPointMarker />
+            </Marker>
+            <Circle
+              center={{
+                latitude: startPoint.latitude,
+                longitude: startPoint.longitude
+              }}
+              radius={8}
+              strokeWidth={2}
+              strokeColor={isDark ? '#4CAF50' : '#66BB6A'}
+              fillColor={isDark ? 'rgba(76, 175, 80, 0.3)' : 'rgba(102, 187, 106, 0.3)'}
+            />
+          </>
+        )}
 
-  {/* Route from User to Start Point using MapViewDirections */}
-  {userLocation && startPoint && (
-    <MapViewDirections
-      origin={{
-        latitude: userLocation.latitude,
-        longitude: userLocation.longitude
-      }}
-      destination={{
-        latitude: startPoint.latitude,
-        longitude: startPoint.longitude
-      }}
-      apikey={GOOGLE_MAPS_API_KEY}
-      strokeWidth={6}
-      fillColor={isDark ? '#4CAF50' : '#66BB6A'}
-      mode="WALKING"
-      resetOnChange={false}
-    />
-  )}
-</MapView>
+        {/* Potential Partner Markers - Show one at a time during search */}
+        {isSearching && potentialPartners.length > 0 && potentialPartners[currentPartnerIndex] && (
+          <Marker
+            coordinate={potentialPartners[currentPartnerIndex]}
+            zIndex={997}
+          >
+            <PotentialPartnerMarker fadeAnim={fadeAnim} />
+          </Marker>
+        )}
 
-      {/* Route Info Panel */}
+        {/* Route from Start Point to Destination - only when not searching */}
+        {startPoint && destination && !isSearching && (
+          <MapViewDirections
+            origin={{
+              latitude: startPoint.latitude,
+              longitude: startPoint.longitude
+            }}
+            destination={{
+              latitude: destination.latitude,
+              longitude: destination.longitude
+            }}
+            apikey={GOOGLE_MAPS_API_KEY}
+            strokeWidth={6}
+            strokeColor={isDark ? '#7CA3DA' : '#2196F3'}
+            mode="WALKING"
+            resetOnChange={false}
+          />
+        )}
+
+        {/* Route from User to Start Point - only when not searching */}
+        {userLocation && startPoint && !isSearching && (
+          <MapViewDirections
+            origin={{
+              latitude: userLocation.latitude,
+              longitude: userLocation.longitude
+            }}
+            destination={{
+              latitude: startPoint.latitude,
+              longitude: startPoint.longitude
+            }}
+            apikey={GOOGLE_MAPS_API_KEY}
+            strokeWidth={6}
+            strokeColor={isDark ? '#4CAF50' : '#66BB6A'}
+            mode="WALKING"
+            resetOnChange={false}
+          />
+        )}
+
+
+      </MapView>
+
 
 
       {/* Loading Indicator */}
-      {loading && (
+      {loading && !isSearching && (
         <View style={styles.loadingContainer}>
           <View style={[styles.loadingBox, { backgroundColor: isDark ? 'rgba(0, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.9)' }]}>
             <ActivityIndicator size="large" color={isDark ? "#7CA3DA" : "#2196F3"} />
@@ -440,6 +517,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1000,
+    pointerEvents: 'none',
   },
   loadingBox: {
     padding: 20,
@@ -496,18 +574,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
-  routeInfoContainer: {
-    position: 'absolute',
-    bottom: 20,
-    left: 20,
-    right: 20,
-    zIndex: 1000,
-  },
-  // New marker styles
   markerContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    
   },
   startMarker: {
     width: 50,
@@ -542,38 +611,22 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
     marginTop: -2,
   },
-  infoPanel: {
-    position: 'absolute',
-    top: 100,
-    left: 10,
-    right: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    zIndex: 1000,
+  potentialPartnerContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  potentialPartnerCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
     elevation: 5,
-  },
-  routeInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  routeInfoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  colorIndicator: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    marginRight: 8,
-  },
-  infoText: {
-    fontSize: 14,
-    fontWeight: '600',
+    borderWidth: 3,
+    borderColor: 'white',
   },
 });

@@ -6,13 +6,43 @@ import { FirebaseService } from '../../backend/Firebase/FirebaseService';
 import { useNotifications } from '../contexts/NotificationContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-
 const { width, height } = Dimensions.get('window');
 
 // Replace with your actual Google Maps API key
 const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 
-const WalkStartPoint = ({ setIsDestinationDone, setIsSearchPartner, setIsStartPoint, onStartPointSelect }) => {
+// Location cleaning function
+const cleanLocationName = (location) => {
+  if (!location) return 'Destination';
+  
+  console.log('📍 Original location:', location);
+  
+  let cleaned = location;
+  
+  // Remove common suffixes and clean up
+  const patternsToRemove = [
+    /,\s*Aukland park.*/i,
+    /,\s*Johannesburg.*/i,
+    /,\s*\d{4}.*/, // Remove postal codes (4 digits)
+    /-.*$/, // Remove everything after hyphen (like "- twinchenham road")
+  ];
+  
+  patternsToRemove.forEach(pattern => {
+    cleaned = cleaned.replace(pattern, '');
+  });
+  
+  // Split by comma and take the first part as final cleanup
+  cleaned = cleaned.split(',')[0].trim();
+  
+  console.log('📍 Cleaned location:', cleaned);
+  return cleaned;
+};
+
+const WalkStartPoint = ({
+  setIsDestinationDone, setIsSearchPartner,
+  setIsStartPoint, onStartPointSelect,
+  dropoffLocation
+}) => {
   const [isSending, setIsSending] = useState(false);
   const [isDark] = useState(false);
   const [showMeetUpDropdown, setShowMeetUpDropdown] = useState(false);
@@ -22,62 +52,64 @@ const WalkStartPoint = ({ setIsDestinationDone, setIsSearchPartner, setIsStartPo
   const [showStreetViewModal, setShowStreetViewModal] = useState(false);
   const { sendWalkRequest } = useNotifications();
 
-// In your WalkStartPoint component - update handleSearch
-const handleSearch = async () => {
-  console.log("Search button pressed (latest version, FirebaseService)");
+  const handleSearch = async () => {
+    console.log("Search button pressed (latest version, FirebaseService)");
 
-  if (isSending) {
-    console.log("Already sending a request, please wait...");
-    return;
-  }
-
-  setIsSending(true);
-
-  try {
-    // Get current user data
-    const userId = await AsyncStorage.getItem('userId');
-    const userDataString = await AsyncStorage.getItem('userData');
-    const userData = JSON.parse(userDataString);
-
-    if (!userId || !userData) {
-      Alert.alert('Error', 'User data not found. Please log in again.');
+    if (isSending) {
+      console.log("Already sending a request, please wait...");
       return;
     }
 
-    console.log('👤 Current user data:', { userId, name: userData.name, surname: userData.surname, phone: userData.phone });
+    setIsSending(true);
 
-    // Create walk request data
-    const walkRequestData = {
-      requesterId: userId,
-      requesterName: `${userData.name} ${userData.surname}`,
-      requesterPhone: userData.phone,
-      pickup: selectedMeetUpPoint,
-      destination: 'UJ Campus',
-      meetupPoint: selectedMeetUpPoint,
-      preferredGender: selectedGender,
-      status: 'pending',
-      createdAt: new Date(),
-      expiresAt: new Date(Date.now() + 15 * 60 * 1000),
-    };
+    try {
+      // Get current user data
+      const userId = await AsyncStorage.getItem('userId');
+      const userDataString = await AsyncStorage.getItem('userData');
+      const userData = JSON.parse(userDataString);
 
-    console.log('📝 Creating walk request with data:', walkRequestData);
+      if (!userId || !userData) {
+        Alert.alert('Error', 'User data not found. Please log in again.');
+        return;
+      }
 
-    // Call FirebaseService.createWalkRequest - it should return a string ID
-    const requestId = await FirebaseService.createWalkRequest(walkRequestData);
+      console.log('👤 Current user data:', { userId, name: userData.name, surname: userData.surname, phone: userData.phone });
 
-    console.log('✅ Walk request created successfully with ID:', requestId);
+      // Clean the dropoff location
+      const cleanedDestination = cleanLocationName(dropoffLocation);
 
-    Alert.alert('Success', 'Walk request sent! Nearby users will be notified.');
-    setIsSearchPartner(true);
-    setIsStartPoint(false);
-  } catch (error) {
-    console.error("💥 Error in handleSearch:", error);
-    console.error("💥 Error details:", error.message, error.stack);
-    Alert.alert('Error', `Failed to send walk request: ${error.message}`);
-  } finally {
-    setIsSending(false);
-  }
-};
+      // Create walk request data with cleaned destination
+      const walkRequestData = {
+        requesterId: userId,
+        requesterName: `${userData.name} ${userData.surname}`,
+        requesterPhone: userData.phone,
+        pickup: selectedMeetUpPoint,
+        destination: cleanedDestination, // Use cleaned location
+        meetupPoint: selectedMeetUpPoint,
+        preferredGender: selectedGender,
+        status: 'pending',
+        createdAt: new Date(),
+        expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+      };
+
+      console.log('📝 Creating walk request with data:', walkRequestData);
+
+      // Call FirebaseService.createWalkRequest - it should return a string ID
+      const requestId = await FirebaseService.createWalkRequest(walkRequestData);
+
+      console.log('✅ Walk request created successfully with ID:', requestId);
+
+      Alert.alert('Success', 'Walk request sent! Nearby users will be notified.');
+      setIsSearchPartner(true);
+      setIsStartPoint(false);
+    } catch (error) {
+      console.error("💥 Error in handleSearch:", error);
+      console.error("💥 Error details:", error.message, error.stack);
+      Alert.alert('Error', `Failed to send walk request: ${error.message}`);
+    } finally {
+      setIsSending(false);
+    }
+  };
 
   const colors = {
     background: isDark ? '#121212' : '#FFFFFF',
