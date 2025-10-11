@@ -20,7 +20,7 @@ const SOSBtn = ({ onPress, isSOSPreview, setIsSOSPreview }) => {
       <TouchableOpacity
       style={styles.container}
       onPress={async () => {
-        console.log('SOS Button Pressed');
+        // console.log($&);
         
         if (isSOSPreview) {
           setIsTest(true);

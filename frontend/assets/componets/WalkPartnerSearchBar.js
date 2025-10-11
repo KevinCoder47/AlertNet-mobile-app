@@ -87,7 +87,7 @@ const getPlaceDetails = async (placeId) => {
     const data = await response.json();
     
     if (data.result && data.result.geometry) {
-      console.log('Place details response:', data.result);
+      // console.log($&);
       return {
         latitude: data.result.geometry.location.lat,
         longitude: data.result.geometry.location.lng,
@@ -115,7 +115,7 @@ const handlePlaceSelect = async (place) => {
     // Get coordinates for the selected destination
     const placeDetails = await getPlaceDetails(place.place_id);
     if (placeDetails && onDestinationSelect) {
-      console.log('Sending coordinates to parent:', placeDetails);
+      // console.log($&);
       onDestinationSelect({
         latitude: placeDetails.latitude,
         longitude: placeDetails.longitude

@@ -88,7 +88,7 @@ class OfflineMapService {
 
     const mapId = `map_${Date.now()}`; // Unique ID for this map download
 
-    console.log(`Starting download: ${totalTiles} tiles for region:`, region, `across zoom levels ${this.MIN_ZOOM_LEVEL}-${this.MAX_ZOOM_LEVEL}`);
+    // console.log($&);
 
     try {
       for (let zoom = this.MIN_ZOOM_LEVEL; zoom <= this.MAX_ZOOM_LEVEL; zoom++) {
@@ -101,7 +101,7 @@ class OfflineMapService {
         const topLeft = this.deg2num(northLat, westLon, zoom);
         const bottomRight = this.deg2num(southLat, eastLon, zoom);
 
-        console.log(`Downloading for zoom level ${zoom}: x(${topLeft.x}-${bottomRight.x}), y(${topLeft.y}-${bottomRight.y})`);
+        // console.log($&);
 
         const xRange = Array.from({ length: Math.abs(bottomRight.x - topLeft.x) + 1 }, (_, i) => Math.min(topLeft.x, bottomRight.x) + i);
         const yRange = Array.from({ length: Math.abs(bottomRight.y - topLeft.y) + 1 }, (_, i) => Math.min(topLeft.y, bottomRight.y) + i);
@@ -114,14 +114,14 @@ class OfflineMapService {
             
             try {
               await FileSystem.makeDirectoryAsync(tileDir, { intermediates: true });
-              console.log(`Downloading tile: ${zoom}/${x}/${y} from ${tileUrl}`);
+              // console.log($&);
               
               await FileSystem.downloadAsync(tileUrl, tileFile);
               
               const fileInfo = await FileSystem.getInfoAsync(tileFile);
               if (fileInfo.exists && fileInfo.size > 0) {
                 downloadedTiles++;
-                console.log(`Successfully downloaded tile ${zoom}/${x}/${y}, size: ${fileInfo.size} bytes`);
+                // console.log($&);
               } else {
                 failedTiles++;
                 console.error(`Downloaded tile ${zoom}/${x}/${y} is empty or doesn't exist`);
@@ -154,7 +154,7 @@ class OfflineMapService {
           }
         }
       }
-      console.log(`Download complete: ${downloadedTiles} successful, ${failedTiles} failed`);
+      // console.log($&);
 
       if (downloadedTiles === 0) {
         return { success: false, error: `No tiles downloaded successfully. Failed: ${failedTiles}` };

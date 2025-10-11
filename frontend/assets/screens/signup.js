@@ -85,7 +85,7 @@ const SignupScreen = ({ navigation, setIsLoggedIn }) => {
 
     try {
       await AsyncStorage.setItem('userData', JSON.stringify(userData));
-      console.log('User data saved:', userData);
+      // console.log($&);
     } catch (error) {
       console.error('Save failed:', error);
     }

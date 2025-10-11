@@ -384,10 +384,10 @@ const MapWithDetails = ({
                 mode="WALKING"
                 resetOnChange={false}
                 onReady={(result) => {
-                  console.log('Partner to meetup route calculated:', result.distance, result.duration);
+                  // console.log($&);
                 }}
                 onError={(errorMessage) => {
-                  console.log('Error calculating partner route:', errorMessage);
+                  // console.log($&);
                 }}
               />
             )}

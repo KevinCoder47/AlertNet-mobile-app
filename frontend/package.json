@@ -42,6 +42,7 @@
     "expo-network": "~7.0.5",
     "expo-notifications": "~0.29.14",
     "expo-router": "~4.0.21",
+    "expo-sensors": "~14.0.2",
     "expo-sharing": "~13.0.1",
     "expo-sms": "~13.0.1",
     "expo-status-bar": "~2.0.1",

@@ -1,5 +1,4 @@
-// Firestore imports for walk request listener
-import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit, onSnapshot, doc } from 'firebase/firestore';
 import { db } from '../../backend/Firebase/FirebaseConfig';
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -71,7 +70,7 @@ const [acceptedWalkRequest, setAcceptedWalkRequest] = useState(null);
   // Function to play notification sound based on type
   const playNotificationSound = async (type = 'walk_request') => {
     try {
-      console.log('🔊 Playing notification sound for:', type);
+      // console.log($&);
       
       if (sound) {
         await sound.stopAsync();
@@ -98,7 +97,7 @@ const [acceptedWalkRequest, setAcceptedWalkRequest] = useState(null);
           soundFile = require('../notification-sounds/walk_request.mp3');
       }
 
-      console.log('🔊 Loading sound file:', soundFile);
+      // console.log($&);
       
       const { sound: newSound } = await Audio.Sound.createAsync(
         soundFile,
@@ -109,10 +108,10 @@ const [acceptedWalkRequest, setAcceptedWalkRequest] = useState(null);
       setSound(newSound);
       setIsSoundLoaded(true);
       
-      console.log('🔊 Sound played successfully');
+      // console.log($&);
 
     } catch (error) {
-      console.error('🔊 Error playing notification sound:', error);
+      // console.error('🔊 Error playing notification sound:', error);
     }
   };
 
@@ -120,7 +119,7 @@ const [acceptedWalkRequest, setAcceptedWalkRequest] = useState(null);
   useEffect(() => {
     return () => {
       if (sound) {
-        console.log('🔊 Cleaning up sound');
+        // console.log($&);
         sound.stopAsync();
         sound.unloadAsync();
       }
@@ -130,7 +129,7 @@ const [acceptedWalkRequest, setAcceptedWalkRequest] = useState(null);
   // Optimized Firestore walk request listener
   useEffect(() => {
     if (!userData) {
-      console.log('⏳ No user data yet, waiting for authentication...');
+      // console.log($&);
       return;
     }
 
@@ -139,10 +138,10 @@ const [acceptedWalkRequest, setAcceptedWalkRequest] = useState(null);
       try {
         const userId = userData?.id || userData?.userId;
         if (!userId) {
-          console.log('⏳ No user ID available yet');
+          // console.log($&);
           return;
         }
-        console.log('🔍 Setting up Firestore walk request listener for user:', userId);
+        // console.log($&);
         const walkRequestsRef = collection(db, 'walkRequests');
         const q = query(
           walkRequestsRef,
@@ -151,13 +150,13 @@ const [acceptedWalkRequest, setAcceptedWalkRequest] = useState(null);
           limit(10)
         );
         const unsubscribe = onSnapshot(q, (snapshot) => {
-          console.log(`📡 Firestore snapshot received: ${snapshot.docChanges().length} changes`);
+          // console.log($&);
           snapshot.docChanges().forEach((change) => {
             if (change.type === 'added') {
               const walkRequest = change.doc.data();
               // Skip if this is your own request
               if (walkRequest.requesterId === userId) {
-                console.log('⏭️ Skipping own walk request');
+                // console.log($&);
                 return;
               }
               // Convert Firestore timestamp to readable time
@@ -179,7 +178,7 @@ const [acceptedWalkRequest, setAcceptedWalkRequest] = useState(null);
                 requesterId: walkRequest.requesterId,
                 // Add any other fields you want to display
               };
-              console.log('🎯 Processed walk data for modal:', walkData);
+              // console.log($&);
               // Play notification sound for new walk request
               playNotificationSound('walk_request');
               setCurrentWalkRequest(walkData);
@@ -189,7 +188,7 @@ const [acceptedWalkRequest, setAcceptedWalkRequest] = useState(null);
         }, (error) => {
           console.error('❌ Firestore listener error:', error);
         });
-        console.log('✅ Firestore walk request listener established');
+        // console.log($&);
         return unsubscribe;
       } catch (error) {
         console.error('💥 Error setting up walk request listener:', error);
@@ -199,11 +198,66 @@ const [acceptedWalkRequest, setAcceptedWalkRequest] = useState(null);
     const unsubscribe = setupWalkRequestListener();
     return () => {
       if (unsubscribe) {
-        console.log('🔴 Cleaning up Firestore walk request listener');
+        // console.log($&);
         unsubscribe();
       }
     };
   }, [userData, setCurrentWalkRequest, setIsNotificationVisible]);
+
+  // Listen for acceptance status updates for the current walk request
+  useEffect(() => {
+    if (!currentWalkRequest?.requestId) return;
+
+    // console.log($&);
+    
+    const walkRequestRef = doc(db, 'walkRequests', currentWalkRequest.requestId);
+    const unsubscribe = onSnapshot(walkRequestRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        // console.log($&);
+        
+        if (data.status === 'accepted_by_both') {
+          // Sender confirmed - hide loader and close modal
+          setAcceptanceLoading(false);
+          setIsNotificationVisible(false);
+          setCurrentWalkRequest(null);
+        } else if (data.status === 'cancelled') {
+          // Request was cancelled - hide loader
+          setAcceptanceLoading(false);
+          Alert.alert('Cancelled', 'The walk request was cancelled.');
+        }
+      }
+    });
+
+    return () => unsubscribe();
+  }, [currentWalkRequest?.requestId]);
+
+  // Unified walk request status listener
+  useEffect(() => {
+    if (!currentWalkRequest?.requestId) return;
+
+    // Listen for any updates to the walk request status
+    const walkRequestRef = doc(db, 'walkRequests', currentWalkRequest.requestId);
+    const unsubscribe = onSnapshot(walkRequestRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        // Handle all walk request status changes here
+        if (data.status === 'accepted_by_both') {
+          setAcceptanceLoading(false);
+          setIsNotificationVisible(false);
+          setCurrentWalkRequest(null);
+        } else if (data.status === 'cancelled') {
+          setAcceptanceLoading(false);
+          Alert.alert('Cancelled', 'The walk request was cancelled.');
+        } else if (data.status === 'pending') {
+          // Optionally handle pending state
+        }
+        // Add more status handling as needed
+      }
+    });
+
+    return () => unsubscribe();
+  }, [currentWalkRequest?.requestId]);
   
 
   // Initialize the notification system
@@ -212,13 +266,13 @@ const [acceptedWalkRequest, setAcceptedWalkRequest] = useState(null);
     setupPushNotifications();
     
     const handleAppStateChange = (nextAppState) => {
-      console.log('App state changed from', appStateRef.current, 'to', nextAppState);
+      // console.log($&);
       
       if (appStateRef.current.match(/inactive|background/) && nextAppState === 'active') {
-        console.log('App resumed - notification system active');
+        // console.log($&);
       } else if (nextAppState.match(/inactive|background/)) {
         if (activePopup) {
-          console.log('App backgrounded - dismissing active popup');
+          // console.log($&);
           setActivePopup(null);
         }
       }
@@ -242,30 +296,30 @@ const [acceptedWalkRequest, setAcceptedWalkRequest] = useState(null);
       
       if (token) {
         setExpoPushToken(token);
-        console.log('✅ Expo Push Token:', token);
+        // console.log($&);
         
         // Store token in Firebase for this user
         const userPhone = userData?.phone || userData?.phoneNumber;
         if (userPhone) {
           await FirebaseService.updateUserPushToken(userPhone, token);
-          console.log('✅ Push token saved to Firebase');
+          // console.log($&);
         }
       }
 
       // Listen for notifications when app is in foreground
       notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
-        console.log('📬 Notification received in foreground:', notification);
+        // console.log($&);
         handleIncomingPushNotification(notification);
       });
 
       // Listen for user tapping on notification
       responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
-        console.log('👆 User tapped notification:', response);
+        // console.log($&);
         handleNotificationTap(response);
       });
 
     } catch (error) {
-      console.error('Error setting up push notifications:', error);
+      // console.error('Error setting up push notifications:', error);
     }
   };
 
@@ -307,9 +361,9 @@ const [acceptedWalkRequest, setAcceptedWalkRequest] = useState(null);
         projectId: projectId,
       })).data;
       
-      console.log('📱 Device push token obtained:', token);
+      // console.log($&);
     } else {
-      Alert.alert('Simulator Detected', 'Push notifications don\'t work on simulator. Use a physical device.');
+      // Alert.alert('Simulator Detected', 'Push notifications don\'t work on simulator. Use a physical device.');
       console.warn('⚠️ Must use physical device for Push Notifications');
     }
 
@@ -320,7 +374,7 @@ const [acceptedWalkRequest, setAcceptedWalkRequest] = useState(null);
   const handleIncomingPushNotification = (notification) => {
     const data = notification.request.content.data;
     
-    console.log('📬 Notification received in foreground:', data);
+    // console.log($&);
 
     if (data.type === 'walk_request') {
       const walkData = {
@@ -337,22 +391,22 @@ const [acceptedWalkRequest, setAcceptedWalkRequest] = useState(null);
          requesterId: data.requesterId,
       };
 
-      console.log('Setting current walk request from foreground:', walkData);
+      // console.log($&);
       handleIncomingWalkRequest(walkData);
     }
   };
 
   // Handle when user taps on notification - UPDATED WITH DETAILED LOGGING
   const handleNotificationTap = (response) => {
-    console.log('🎯 ========== NOTIFICATION TAPPED ==========');
-    console.log('🎯 Full response:', JSON.stringify(response, null, 2));
+    // console.log($&);
+    // console.log($&);
     
     const data = response.notification.request.content.data;
-    console.log('🎯 Notification data:', data);
-    console.log('🎯 Notification type:', data.type);
+    // console.log($&);
+    // console.log($&);
     
     if (data.type === 'walk_request') {
-      console.log('🎯 Processing walk request notification...');
+      // console.log($&);
       
       const walkData = {
         requestId: data.requestId,
@@ -368,26 +422,26 @@ const [acceptedWalkRequest, setAcceptedWalkRequest] = useState(null);
         requesterId: data.requesterId, 
       };
 
-      console.log('🎯 Walk data prepared:', walkData);
-      console.log('🎯 Setting currentWalkRequest and showing modal...');
+      // console.log($&);
+      // console.log($&);
       
       setCurrentWalkRequest(walkData);
       setIsNotificationVisible(true);
       
-      console.log('🎯 State updated - modal should be visible now');
-      console.log('🎯 currentWalkRequest set to:', walkData);
-      console.log('🎯 isNotificationVisible set to: true');
+      // console.log($&);
+      // console.log($&);
+      // console.log($&);
       
     } else {
-      console.log('🎯 Unknown notification type:', data.type);
+      // console.log($&);
     }
-    console.log('🎯 ========== END NOTIFICATION TAPPED ==========');
+    // console.log($&);
   };
 
   // Send walk request to ALL users (for testing)
   const sendWalkRequest = async (walkData) => {
     try {
-      console.log('🚀 Sending walk request to ALL users:', walkData);
+      // console.log($&);
       
       const userPhone = userData?.phone || userData?.phoneNumber;
       if (!userPhone) {
@@ -403,7 +457,7 @@ const [acceptedWalkRequest, setAcceptedWalkRequest] = useState(null);
       // Get ALL users with push tokens (not just nearby/friends)
       const allUsers = await FirebaseService.getAllUsersWithPushTokens();
       
-      console.log(`📍 Found ${allUsers.length} total users with push tokens`);
+      // console.log($&);
 
       if (allUsers.length === 0) {
         Alert.alert('No Users Available', 'No users found with push tokens.');
@@ -427,18 +481,18 @@ const notificationData = {
   requesterId: userId,
 };
 
-      console.log('📨 Sending notifications to all users:', allUsers.length);
+      // console.log($&);
 
       // Send push notification to each user
       const sendPromises = allUsers.map(async (user) => {
         if (!user.pushToken) {
-          console.log(`⚠️ User ${user.userId} has no push token`);
+          // console.log($&);
           return null;
         }
 
         // Skip sending to current user
         if (user.phone === userPhone) {
-          console.log(`⏭️ Skipping notification to current user: ${user.phone}`);
+          // console.log($&);
           return null;
         }
 
@@ -455,8 +509,8 @@ const notificationData = {
       const failedCount = results.filter(r => r?.success === false).length;
       const skippedCount = results.filter(r => r === null).length;
 
-      console.log(`✅ Sent ${successCount}/${allUsers.length} walk requests successfully`);
-      console.log(`❌ Failed: ${failedCount}, Skipped: ${skippedCount}`);
+      // console.log($&);
+      // console.log($&);
 
       return { 
         success: true, 
@@ -507,17 +561,17 @@ const sendExpoPushNotification = async (pushToken, title, body, data) => {
       body: JSON.stringify(message),
     });
 
-    console.log(`📨 Response status: ${response.status}`);
+    // console.log($&);
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
     const result = await response.json();
-    console.log(`📨 Expo API response:`, result);
+    // console.log($&);
     
     if (result.data && result.data.status === 'ok') {
-      console.log('✅ Push notification sent successfully');
+      // console.log($&);
       return { success: true, result };
     } else {
       console.error('❌ Push notification failed:', result);
@@ -536,7 +590,7 @@ const sendExpoPushNotification = async (pushToken, title, body, data) => {
 };
 
   const handleIncomingWalkRequest = (walkData) => {
-    console.log('📬 Received walk request:', walkData);
+    // console.log($&);
     
     // Play notification sound/vibration
     if (soundEnabled) {
@@ -548,24 +602,36 @@ const sendExpoPushNotification = async (pushToken, title, body, data) => {
     setIsNotificationVisible(true);
   };
 
-// Updated acceptWalkRequest to handle acceptance loader and set acceptedWalkRequest
 const acceptWalkRequest = async () => {
-  if (!currentWalkRequest) return;
+  // --- PATCH: Set loader and keep modal open at start ---
+  console.log("✅ ACCEPT: Setting loader to true, keeping modal open");
   setAcceptanceLoading(true);
+  // DON'T close the modal here!
+
+  if (!currentWalkRequest || !currentWalkRequest.senderPhone) {
+    console.error('Cannot accept: Walk request data is incomplete.', currentWalkRequest);
+    Alert.alert('Error', 'Invalid walk request data.');
+    return;
+  }
+
   try {
     // Play acceptance sound
     await playNotificationSound('walk_accepted');
+    
     // Get current user data (the person accepting)
     const userId = await AsyncStorage.getItem('userId');
     const userDataString = await AsyncStorage.getItem('userData');
     const userDataObj = JSON.parse(userDataString);
 
     if (!userId || !userDataObj) {
-      Alert.alert('Error', 'User data not found. Please log in again.');
+      console.error('❌ User data not found');
       setAcceptanceLoading(false);
+      Alert.alert('Error', 'User data not found. Please try again.');
       return;
     }
 
+    // console.log($&);
+    
     // Notify the sender that request was accepted
     const result = await FirebaseService.acceptWalkRequest(
       currentWalkRequest.requestId,
@@ -580,7 +646,7 @@ const acceptWalkRequest = async () => {
         name: `${userDataObj.name || userDataObj.Name || ''} ${userDataObj.surname || userDataObj.Surname || ''}`.trim(),
         phone: userDataObj.phone,
         rating: userDataObj.rating || 4.8,
-        bio: userDataObj.bio || "I walk to campus daily from Horizon. let's walk together.",
+        bio: userDataObj.bio || "I walk to campus daily from Horizon. Let's walk together.",
         availability: userDataObj.availability || "Available Now",
         gender: userDataObj.gender || userDataObj.Gender || "Male",
         walksCompleted: userDataObj.walksCompleted || 13,
@@ -596,25 +662,31 @@ const acceptWalkRequest = async () => {
         currentWalkRequest
       );
 
+      // Set accepted walk request data
       setAcceptedWalkRequest({
         ...currentWalkRequest,
         accepterData
       });
-      Alert.alert(
-        'Request Accepted! 🎉',
-        `You've accepted the walk request from ${currentWalkRequest.partnerName}. They will be notified.`
-      );
+
+      // CRITICAL: DO NOT setAcceptanceLoading(false) here
+      // DO NOT close the modal - keep it open with the loader
+      // The loader will be hidden when we receive confirmation from sender via Firestore listener
+
+      // (Modal will be closed by Firestore listener upon confirmation)
+    } else {
+      throw new Error(result.error || 'Unknown error accepting walk request');
     }
 
-    setIsNotificationVisible(false);
-    setCurrentWalkRequest(null);
   } catch (error) {
-    console.error('Error accepting walk request:', error);
-    Alert.alert('Error', 'Failed to accept walk request. Please try again.');
-    setIsNotificationVisible(false);
-    setCurrentWalkRequest(null);
-  } finally {
+    // PATCH: Improved error logging and loader hiding, keep modal open to show error state
+    console.error("❌ ACCEPT: Error occurred", error);
+    // On error, hide loader but keep modal open to show error state
     setAcceptanceLoading(false);
+    // Optionally show an alert but don't close modal immediately
+    Alert.alert("Acceptance Failed", "Please try again.");
+    // Do NOT close modal or clear currentWalkRequest here
+    // setIsNotificationVisible(false);
+    // setCurrentWalkRequest(null);
   }
 };
 // Listen for sender's confirmation and cleanup after confirmation
@@ -650,58 +722,69 @@ const confirmWalkRequest = async (requestId) => {
   }
 };
 
-// New function to send acceptance notification to original requester
+// Improved function to send acceptance notification to original requester
 const sendWalkAcceptedNotification = async (requesterPhone, requestId, accepterData, walkData) => {
   try {
+    // console.log($&);
+
     // Get the requester's push token
     const requesterResult = await FirebaseService.getUserByPhone(requesterPhone);
-    if (!requesterResult.exists || !requesterResult.userData.pushToken) {
-      console.error('Requester not found or has no push token');
-      return;
+    const userData = requesterResult.userData || requesterResult.data;
+
+    if (!userData?.pushToken) {
+      console.error(`❌ No push token for requester: ${requesterPhone}`);
+      return { success: false, error: 'No push token found' };
     }
 
     const notificationData = {
       type: 'walk_accepted',
-      requestId: requestId,
-      accepterData: accepterData,
-      walkData: walkData,
+      requestId,
+      accepterData,
+      walkData,
       action: 'show_select_walker'
     };
 
     await sendExpoPushNotification(
-      requesterResult.userData.pushToken,
+      userData.pushToken,
       '🚶‍♂️ Walk Request Accepted!',
       `${accepterData.name} accepted your walk request!`,
       notificationData
     );
 
-    console.log('✅ Acceptance notification sent to requester');
+    // console.log($&);
+    return { success: true };
+
   } catch (error) {
-    console.error('Error sending acceptance notification:', error);
+    console.error('💥 Error sending acceptance notification:', error.message || error);
+    return { success: false, error: error.message || error };
   }
 };
 
-  const declineWalkRequest = async () => {
-    if (!currentWalkRequest) return;
+const declineWalkRequest = async () => {
+  if (!currentWalkRequest) return;
 
-    console.log('❌ Walk request declined');
-    
-    try {
-      // Optionally notify the sender
-      await FirebaseService.declineWalkRequest(
-        currentWalkRequest.requestId,
-        userData?.phone || userData?.phoneNumber
-      );
+  // console.log($&);
+  
+  // Ensure loading is stopped when declining
+  setAcceptanceLoading(false);
+  
+  try {
+    // Optionally notify the sender
+    await FirebaseService.declineWalkRequest(
+      currentWalkRequest.requestId,
+      userData?.phone || userData?.phoneNumber
+    );
 
-      setIsNotificationVisible(false);
-      setCurrentWalkRequest(null);
+    setIsNotificationVisible(false);
+    setCurrentWalkRequest(null);
 
-    } catch (error) {
-      console.error('Error declining walk request:', error);
-      setIsNotificationVisible(false);
-      setCurrentWalkRequest(null);
-    }
-  };
+  } catch (error) {
+    console.error('Error declining walk request:', error);
+    setIsNotificationVisible(false);
+    setCurrentWalkRequest(null);
+    setAcceptanceLoading(false);
+  }
+};
 
   // Load shown notifications from storage
   useEffect(() => {
@@ -731,7 +814,7 @@ const sendWalkAcceptedNotification = async (requesterPhone, requestId, accepterD
       if (shownNotificationsJSON) {
         const shownIds = JSON.parse(shownNotificationsJSON);
         setShownNotifications(new Set(shownIds));
-        console.log(`Loaded ${shownIds.length} previously shown notification IDs`);
+        // console.log($&);
       }
     } catch (error) {
       console.error('Error loading shown notifications:', error);
@@ -757,7 +840,7 @@ const sendWalkAcceptedNotification = async (requesterPhone, requestId, accepterD
         const newShownSet = new Set(validShownNotifications);
         setShownNotifications(newShownSet);
         await saveShownNotifications(newShownSet);
-        console.log('Cleaned up shown notifications');
+        // console.log($&);
       }
     } catch (error) {
       console.error('Error cleaning up shown notifications:', error);
@@ -766,13 +849,13 @@ const sendWalkAcceptedNotification = async (requesterPhone, requestId, accepterD
 
   const initializeNotificationSystem = async () => {
     try {
-      console.log('Initializing notification system...');
+      // console.log($&);
       
       const jsonValue = await AsyncStorage.getItem('userData');
       if (jsonValue) {
         const data = JSON.parse(jsonValue);
         setUserData(data);
-        console.log('User data loaded for:', data.phone || data.phoneNumber);
+        // console.log($&);
         
         const soundPreference = await AsyncStorage.getItem('notificationSoundEnabled');
         if (soundPreference !== null) {
@@ -786,7 +869,7 @@ const sendWalkAcceptedNotification = async (requesterPhone, requestId, accepterD
       }
       
       setIsInitialized(true);
-      console.log('Notification system initialized successfully');
+      // console.log($&);
     } catch (error) {
       console.error('Error initializing notification system:', error);
       setIsInitialized(true);
@@ -794,7 +877,7 @@ const sendWalkAcceptedNotification = async (requesterPhone, requestId, accepterD
   };
 
   const setupNotificationListener = (userPhone) => {
-    console.log('Setting up notification listeners for:', userPhone);
+    // console.log($&);
     
     unsubscribeNotifications.current = FirebaseService.listenToNotifications(
       userPhone,
@@ -846,18 +929,18 @@ const sendWalkAcceptedNotification = async (requesterPhone, requestId, accepterD
 
   const handleNewNotification = async (notification) => {
     try {
-      console.log('Processing new notification:', notification.title);
+      // console.log($&);
 
       if (notification.type === 'chat_message' && 
           activeChatRoomId && 
           notification.chatRoomId === activeChatRoomId) {
-        console.log('✅ User is already in the chat room. Marking as read.');
+        // console.log($&);
         await markNotificationAsRead(notification.id);
         return;
       }
       
       if (shownNotifications.has(notification.id) || notification.read) {
-        console.log('Notification already processed, skipping');
+        // console.log($&);
         return;
       }
 
@@ -868,7 +951,7 @@ const sendWalkAcceptedNotification = async (requesterPhone, requestId, accepterD
       const shouldShowPopup = shouldShowNotificationPopup(notification);
       
       if (shouldShowPopup) {
-        console.log('✅ Showing popup for notification:', notification.id);
+        // console.log($&);
         await markNotificationAsShown(notification.id);
         setActivePopup(notification);
       }
@@ -915,7 +998,7 @@ const sendWalkAcceptedNotification = async (requesterPhone, requestId, accepterD
 
     try {
       if (Platform.OS === 'ios' && Platform.constants.model?.includes('Simulator')) {
-        console.log('iOS Simulator - vibration not supported');
+        // console.log($&);
         return;
       }
       // Play vibration pattern
@@ -959,7 +1042,7 @@ const sendWalkAcceptedNotification = async (requesterPhone, requestId, accepterD
         await playNotificationSound(type);
       }
     } catch (error) {
-      console.log('Error playing notification pattern:', error);
+      // console.log($&);
     }
   };
 
@@ -1108,7 +1191,7 @@ const sendWalkAcceptedNotification = async (requesterPhone, requestId, accepterD
   };
 
   const cleanup = () => {
-    console.log('Cleaning up notification system...');
+    // console.log($&);
     
     if (unsubscribeNotifications.current) {
       unsubscribeNotifications.current();

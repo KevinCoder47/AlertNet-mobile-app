@@ -143,7 +143,7 @@ class SOSServiceClass {
    * @returns {Promise<string>} The ID of the created SOS session.
    */
   static async initiateSOSSession(triggeredBy = 'manual') {
-    console.log('SOS: Initiating session...');
+    // console.log($&);
     // 1. Get location first, as it's critical for all notifications.
     const location = await this.getCurrentLocation();
 
@@ -158,7 +158,7 @@ class SOSServiceClass {
       throw new Error('Failed to create a valid SOS session. Cannot proceed.');
     }
     const sosSessionId = sessionResult.sessionId;
-    console.log(`SOS: Session created with ID: ${sosSessionId}`);
+    // console.log($&);
 
     // 3. Log the initial trigger event.
     await SOSFirebaseService.addLogToSOSSession(sosSessionId, `SOS triggered by ${triggeredBy} action.`);
@@ -166,7 +166,7 @@ class SOSServiceClass {
     // 4. Dispatch all notifications in the background.
     // We DO NOT await this. This is "fire-and-forget".
     this.dispatchNotificationsInBackground(sosSessionId, location);
-    console.log('SOS: Notification dispatch running in the background.');
+    // console.log($&);
 
     // 5. Return the session ID to the UI immediately.
     return sosSessionId;
@@ -179,7 +179,7 @@ class SOSServiceClass {
    * @param {object} location - The user's location coordinates.
    */
   static async dispatchNotificationsInBackground(sosSessionId, location) {
-    console.log('SOS Background Task: Starting...');
+    // console.log($&);
     try {
       // Call police and log the event
       const policeCallResult = await this.callPolice();
@@ -200,7 +200,7 @@ class SOSServiceClass {
       // Send push notifications to app friends
       await SOSFirebaseService.sendSOSNotifications(location, null, sosSessionId);
 
-      console.log('SOS Background Task: Completed.');
+      // console.log($&);
     } catch (error) {
       console.error('SOS Background Task: A critical error occurred:', error);
       await SOSFirebaseService.addLogToSOSSession(sosSessionId, `A critical error occurred during notification dispatch: ${error.message}`, 'critical_error');
@@ -225,7 +225,7 @@ class SOSServiceClass {
       const isAvailable = await SMS.isAvailableAsync();
       if (isAvailable) {
         await SMS.sendSMSAsync(phoneNumbers, message);
-        console.log(`SOS Background Task: SMS sent to ${contacts.length} emergency contacts.`);
+        // console.log($&);
         // Log each SMS contact notification individually
         for (const contact of contacts) {
           await SOSFirebaseService.addLogToSOSSession(
@@ -327,7 +327,7 @@ class SOSServiceClass {
 
       const token = await SOSFirebaseService.initializeFCM(userId);
       if (token) {
-        console.log('FCM initialized successfully');
+        // console.log($&);
       }
       return token;
     } catch (error) {

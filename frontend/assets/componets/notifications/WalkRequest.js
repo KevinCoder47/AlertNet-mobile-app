@@ -11,7 +11,7 @@ const WalkStartPoint = ({ setIsDestinationDone, setIsSearchPartner, setIsStartPo
   const { sendWalkRequest } = useNotifications();
 
   const handleSearch = () => {
-    console.log("Search button pressed");
+    // console.log($&);
     const walkData = {
       walkFrom: 'UJ APB Campus',
       walkTo: 'Res - Richmond 50 Rd', 
@@ -31,7 +31,7 @@ const WalkStartPoint = ({ setIsDestinationDone, setIsSearchPartner, setIsStartPo
   );
 };
 
-const WalkRequest = ({ walkData, onAccept, onDecline }) => {
+const WalkRequest = ({ walkData, onAccept, onDecline, acceptanceLoading }) => {
   const {
     walkFrom = 'UJ APB Campus',
     walkTo = 'Res - Richmond 50 Rd',
@@ -48,20 +48,20 @@ const WalkRequest = ({ walkData, onAccept, onDecline }) => {
   useEffect(() => {
     const fetchAvatar = async () => {
       try {
-        console.log('Fetching avatar for requesterId:', walkData?.requesterId);
+        // console.log($&);
         
         if (walkData?.requesterId) {
           const user = await getUserDocument(walkData.requesterId);
-          console.log('Fetched user data:', user);
-          console.log('User image URL:', user?.imageUrl);
+          // console.log($&);
+          // console.log($&);
           
           if (user?.imageUrl) {
             setAvatarUrl(user.imageUrl);
           } else {
-            console.log('No image URL found for user');
+            // console.log($&);
           }
         } else {
-          console.log('No requesterId found in walkData');
+          // console.log($&);
         }
       } catch (error) {
         console.error('Error fetching requester avatar:', error);
@@ -122,8 +122,14 @@ const WalkRequest = ({ walkData, onAccept, onDecline }) => {
             <TouchableOpacity style={[styles.button, styles.declineButton]} onPress={onDecline}>
               <Text style={[styles.buttonText, styles.declineButtonText]}>Decline</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.button, styles.acceptButton]} onPress={onAccept}>
-              <Text style={[styles.buttonText, styles.acceptButtonText]}>Accept</Text>
+            <TouchableOpacity
+              style={[styles.button, styles.acceptButton]}
+              onPress={onAccept}
+              disabled={acceptanceLoading}
+            >
+              <Text style={[styles.buttonText, styles.acceptButtonText]}>
+                {acceptanceLoading ? 'Accepting...' : 'Accept'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>

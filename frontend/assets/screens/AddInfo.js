@@ -14,7 +14,7 @@ const AddInfo = ({setIsLoggedIn}) => {
   const [profileImageUri, setProfileImageUri] = useState(null);
 
   useEffect(() => {
-  console.log("AddInfo profileImageUri:", profileImageUri);
+  // console.log($&);
 }, [profileImageUri]);
 
   const handleNext = () => {

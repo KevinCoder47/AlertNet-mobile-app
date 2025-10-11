@@ -15,7 +15,7 @@ import './backend/Firebase/FirebaseConfig';
 import NotificationHandler from './assets/componets/NotificationHandler';
 import NotificationModal from './assets/componets/notifications/NotificationModal';
 import DeepLinkHandler from './assets/componets/DeepLinkHandler';
-import SelectWalker from './assets/componets/SelectWalker';
+import AcceptanceLoader from './assets/componets/Loaders/AcceptanceLoader';
 
 
 
@@ -43,12 +43,12 @@ export default function App() {
   useEffect(() => {
     const initializeBatteryMonitoring = async () => {
       try {
-        console.log('Initializing battery monitoring...');
+        // // console.log($&);
         
         // Get user data from AsyncStorage
         const userData = await AsyncStorage.getItem('userData');
         if (!userData) {
-          console.log('No user data found, waiting for login...');
+          // // console.log($&);
           return;
         }
 
@@ -56,19 +56,19 @@ export default function App() {
         const userId = user.uid || user.id || user.userId || user.UID;
 
         if (!userId) {
-          console.log('No valid userId found in user data');
+          // // console.log($&);
           return;
         }
 
-        console.log('Starting battery monitoring for user:', userId);
+        // // console.log($&);
         
         // Start monitoring and save cleanup function
         batteryCleanupRef.current = BatteryService.startBatteryMonitoring(userId);
         
-        console.log('Battery monitoring initialized successfully');
+        // // console.log($&);
         
       } catch (error) {
-        console.error('Error initializing battery monitoring:', error);
+        // console.error('Error initializing battery monitoring:', error);
       }
     };
 
@@ -81,7 +81,7 @@ export default function App() {
     return () => {
       clearTimeout(timeout);
       if (batteryCleanupRef.current) {
-        console.log('Cleaning up battery monitoring');
+        // // console.log($&);
         batteryCleanupRef.current();
       }
     };
@@ -97,8 +97,8 @@ return (
               <View style={styles.container}>
                 <AppNavigator /> 
                 <NotificationModal /> 
-                <NotificationHandler /> 
-                <DeepLinkHandler /> 
+                
+                
                 <StatusBar style="auto" />
               </View>
             </FriendsProvider>

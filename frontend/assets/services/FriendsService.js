@@ -19,7 +19,7 @@ class FriendsService {
       return;
     }
 
-    console.log('FriendsService: Initializing for user:', userData.uid);
+    // console.log($&);
     
     // Clean up existing listeners
     this.cleanup();
@@ -74,7 +74,7 @@ class FriendsService {
         const MAX_CACHE_AGE = 24 * 60 * 60 * 1000; // 24 hours
         
         if (cacheAge < MAX_CACHE_AGE) {
-          console.log('FriendsService: Loading from cache:', friends.length, 'friends');
+          // console.log($&);
           this.cachedFriends = friends;
           this.notifySubscribers(false);
           return;
@@ -95,7 +95,7 @@ class FriendsService {
       };
       
       await AsyncStorage.setItem(cacheKey, JSON.stringify(cacheData));
-      console.log('FriendsService: Saved', friends.length, 'friends to cache');
+      // console.log($&);
     } catch (error) {
       console.error('FriendsService: Error saving cache:', error);
     }
@@ -137,12 +137,12 @@ class FriendsService {
   // Fetch friends data from all sources
   async fetchFriendsData() {
     if (!this.currentUserId) {
-      console.log('FriendsService: No user ID available');
+      // console.log($&);
       return;
     }
 
     try {
-      console.log('FriendsService: Fetching friends for user:', this.currentUserId);
+      // console.log($&);
       this.notifySubscribers(true); // Set loading state
 
       // Method 1: Get friends from the dedicated friends collection
@@ -165,10 +165,10 @@ class FriendsService {
         ...phoneBasedFriends
       ])];
 
-      console.log('FriendsService: Combined friend IDs:', allFriendIds);
+      // console.log($&);
 
       if (allFriendIds.length === 0) {
-        console.log('FriendsService: No friends found');
+        // console.log($&);
         this.cachedFriends = [];
         this.notifySubscribers(false);
         await this.saveFriendsToCache([]);
@@ -178,7 +178,7 @@ class FriendsService {
       // Fetch detailed friend data
       const friendsData = await this.fetchFriendsDetails(allFriendIds);
       
-      console.log('FriendsService: Final friends data:', friendsData.length);
+      // console.log($&);
       this.cachedFriends = friendsData;
       
       // Save to cache and notify subscribers
@@ -203,7 +203,7 @@ class FriendsService {
       const friendsSnapshot = await getDocs(friendsQuery);
       const friendIds = friendsSnapshot.docs.map(doc => doc.data().friendId);
       
-      console.log('FriendsService: Friends from collection:', friendIds);
+      // console.log($&);
       return friendIds;
     } catch (error) {
       console.error('FriendsService: Error fetching from friends collection:', error);
@@ -233,7 +233,7 @@ class FriendsService {
       const receivedFriendIds = receivedSnapshot.docs.map(doc => doc.data().senderId);
 
       const allIds = [...sentFriendIds, ...receivedFriendIds];
-      console.log('FriendsService: Friends from requests:', allIds);
+      // console.log($&);
       return allIds;
     } catch (error) {
       console.error('FriendsService: Error fetching from requests:', error);
@@ -255,7 +255,7 @@ class FriendsService {
         return [];
       }
       
-      console.log('FriendsService: Found', friendsArray.length, 'friends in Friends array');
+      // console.log($&);
       
       // Return the complete friend data objects
       // These already contain: { uid, name, email, phoneNumber }
@@ -327,7 +327,7 @@ class FriendsService {
         }
       }
 
-      console.log('FriendsService: Phone-based friends:', phoneBasedFriends);
+      // console.log($&);
       return phoneBasedFriends;
     } catch (error) {
       console.error('FriendsService: Error fetching phone-based friends:', error);
@@ -351,11 +351,11 @@ class FriendsService {
           }
         }
 
-        console.log('FriendsService: Fetching data for friend:', friendId);
+        // console.log($&);
         const friendDoc = await getDoc(doc(db, 'users', friendId));
         
         if (!friendDoc.exists()) {
-          console.log('FriendsService: Friend document not found:', friendId);
+          // console.log($&);
           return null;
         }
         
@@ -431,12 +431,12 @@ class FriendsService {
   setupRealtimeListeners() {
     if (!this.currentUserId) return;
 
-    console.log('FriendsService: Setting up real-time listeners');
+    // console.log($&);
 
     // Listen to current user document changes
     const userListener = onSnapshot(doc(db, 'users', this.currentUserId), (doc) => {
       if (doc.exists()) {
-        console.log('FriendsService: User document updated');
+        // console.log($&);
         const updatedData = doc.data();
         this.currentUserData = { ...this.currentUserData, ...updatedData };
         this.fetchFriendsData();
@@ -450,12 +450,12 @@ class FriendsService {
         where('userId', '==', this.currentUserId)
       ),
       (snapshot) => {
-        console.log('FriendsService: Friends collection updated');
+        // console.log($&);
         snapshot.docChanges().forEach((change) => {
           if (change.type === 'added' || change.type === 'modified') {
             const friendData = change.doc.data();
             if (friendData.status === 'accepted') {
-              console.log('FriendsService: Friend added/updated, refreshing');
+              // console.log($&);
               setTimeout(() => this.fetchFriendsData(), 500);
             }
           }
@@ -470,12 +470,12 @@ class FriendsService {
         where('senderId', '==', this.currentUserId)
       ),
       (snapshot) => {
-        console.log('FriendsService: Sent friend requests updated');
+        // console.log($&);
         snapshot.docChanges().forEach((change) => {
           if (change.type === 'modified' || change.type === 'added') {
             const request = change.doc.data();
             if (request.status === 'accepted') {
-              console.log('FriendsService: Friend request accepted, refreshing');
+              // console.log($&);
               setTimeout(() => this.fetchFriendsData(), 1000);
             }
           }
@@ -490,12 +490,12 @@ class FriendsService {
         where('recipientId', '==', this.currentUserId)
       ),
       (snapshot) => {
-        console.log('FriendsService: Received friend requests updated');
+        // console.log($&);
         snapshot.docChanges().forEach((change) => {
           if (change.type === 'modified' || change.type === 'added') {
             const request = change.doc.data();
             if (request.status === 'accepted') {
-              console.log('FriendsService: Friend request accepted, refreshing');
+              // console.log($&);
               setTimeout(() => this.fetchFriendsData(), 1000);
             }
           }
@@ -558,7 +558,7 @@ class FriendsService {
       });
       
       await batch.commit();
-      console.log('FriendsService: Friend request accepted successfully');
+      // console.log($&);
       
       return true;
     } catch (error) {
@@ -589,7 +589,7 @@ class FriendsService {
 
   // Cleanup listeners and cache
   cleanup() {
-    console.log('FriendsService: Cleaning up listeners');
+    // console.log($&);
     this.listeners.forEach(unsubscribe => {
       if (typeof unsubscribe === 'function') {
         unsubscribe();

@@ -111,7 +111,7 @@ const AddFriends = ({ navigation, setIsLoggedIn,profileImageUri }) => {
     const [userLocation, setUserLocation] = useState(null);
 
         useEffect(() => {
-  console.log("AddFriends received profileImageUri:", profileImageUri);
+  // console.log($&);
 }, [profileImageUri]);
     
     // Get user data from AsyncStorage and request location permission
@@ -281,11 +281,11 @@ useEffect(() => {
   const fetchUserData = async () => {
     try {
       const jsonValue = await AsyncStorage.getItem('userData');
-      console.log('Stored userData:', jsonValue);  // Debug log
+      // console.log($&);  // Debug log
       
       if (jsonValue) {
         const data = JSON.parse(jsonValue);
-        console.log('Parsed userData:', data);  // Debug log
+        // console.log($&);  // Debug log
         
         setUserData({
           ...data,
@@ -399,16 +399,16 @@ useEffect(() => {
             );
 
             // Get and save push token
-            console.log('Getting push token...');
+            // console.log($&);
             const pushToken = await getExpoPushToken();
             if (pushToken) {
-                console.log('Push token obtained:', pushToken);
+                // console.log($&);
                 await savePushToken(userId, pushToken);
                 
                 // Store in AsyncStorage too
                 currentUserData.pushToken = pushToken;
             } else {
-                console.log('Push token not obtained - user may have denied permission');
+                // console.log($&);
             }
             
             // Update AsyncStorage

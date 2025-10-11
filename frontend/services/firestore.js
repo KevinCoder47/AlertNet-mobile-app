@@ -21,11 +21,11 @@ export const createWalkRequest = async (userId, requestData) => {
       expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes
     };
 
-    console.log('Creating walk request with data:', walkRequestData);
+    // console.log($&);
 
     await setDoc(requestRef, walkRequestData);  
 
-    console.log('Walk request created with ID:', requestRef.id);
+    // console.log($&);
     return requestRef.id;  
   } catch (error) {  
     console.error('Error creating walk request', error);  
@@ -65,43 +65,43 @@ export const createUserDocument = async (userId, userData, profileImageUri = nul
   try {
     let imageUrl = userData.imageUrl || '';
     
-    console.log("createUserDocument received profileImageUri:", profileImageUri);
+    // console.log($&);
     
     // Upload image if provided and it's a local file
     if (profileImageUri && (profileImageUri.startsWith('file://') || profileImageUri.startsWith('/'))) {
       try {
-        console.log("Starting image upload for user:", userId);
+        // console.log($&);
         
         const formattedUri = profileImageUri.startsWith("file://") 
           ? profileImageUri 
           : `file://${profileImageUri}`;
         
         // Convert image file to blob
-        console.log("Fetching image from:", formattedUri);
+        // console.log($&);
         const response = await fetch(formattedUri);
         if (!response.ok) {
           throw new Error(`Failed to fetch image: ${response.status}`);
         }
         
         const blob = await response.blob();
-        console.log("Image blob created successfully, size:", blob.size);
+        // console.log($&);
 
         // Create a storage reference
         const timestamp = Date.now();
         const storageRef = ref(storage, `profileImages/${userId}/${timestamp}.jpg`);
-        console.log("Storage reference:", storageRef.fullPath);
+        // console.log($&);
 
         const metadata = {
           contentType: 'image/jpeg',
         };
         
-        console.log("Uploading image to Firebase Storage...");
+        // console.log($&);
         await uploadBytes(storageRef, blob, metadata);
-        console.log("Image uploaded successfully");
+        // console.log($&);
         
         // Get the download URL
         imageUrl = await getDownloadURL(storageRef);
-        console.log("Download URL obtained:", imageUrl);
+        // console.log($&);
       } catch (uploadError) {
         console.error("Error uploading image:", uploadError);
         // Don't continue with local URI if upload fails
@@ -110,9 +110,9 @@ export const createUserDocument = async (userId, userData, profileImageUri = nul
     } else if (profileImageUri && profileImageUri.startsWith('https://')) {
       // If it's already a URL (from previous upload), use it directly
       imageUrl = profileImageUri;
-      console.log("Using existing image URL:", imageUrl);
+      // console.log($&);
     } else {
-      console.log("No valid profile image provided");
+      // console.log($&);
     }
 
     // Ensure all values are defined
@@ -167,9 +167,9 @@ const firestoreData = {
   DevicePlatform: Platform.OS
 };
 
-    console.log("Creating user document with data:", firestoreData);
+    // console.log($&);
     await setDoc(doc(db, "users", userId), firestoreData);
-    console.log("User document created successfully");
+    // console.log($&);
     
     return true;
   } catch (error) {
@@ -221,7 +221,7 @@ const fieldMap = {
     firestoreUpdates.LastLogin = new Date();
     
     await updateDoc(doc(db, "users", userId), firestoreUpdates);
-    console.log("User document updated:", userId);
+    // console.log($&);
     return true;
   } catch (error) {
     const handledError = handleFirestoreError(error);
@@ -284,7 +284,7 @@ export const getUserDocument = async (userId) => {
 export const deleteUserDocument = async (userId) => {
   try {
     await deleteDoc(doc(db, "users", userId));
-    console.log("User document deleted:", userId);
+    // console.log($&);
     return true;
   } catch (error) {
     const handledError = handleFirestoreError(error);
@@ -812,14 +812,14 @@ export const syncAddressesFromFirebase = async (userId) => {
  */
 export const getExpoPushToken = async () => {
   try {
-    console.log('Starting push token request...');
+    // console.log($&);
     
     if (!Device.isDevice) {
-      console.log('Push notifications only work on physical devices');
+      // console.log($&);
       return 'ExponentPushToken[SIMULATOR_MOCK_TOKEN]';
     }
 
-    console.log('Requesting permissions...');
+    // console.log($&);
     const { status: existingStatus } = await Promise.race([
       Notifications.getPermissionsAsync(),
       new Promise((_, reject) => 
@@ -830,7 +830,7 @@ export const getExpoPushToken = async () => {
     let finalStatus = existingStatus;
     
     if (existingStatus !== 'granted') {
-      console.log('Requesting new permissions...');
+      // console.log($&);
       const { status } = await Promise.race([
         Notifications.requestPermissionsAsync(),
         new Promise((_, reject) => 
@@ -841,11 +841,11 @@ export const getExpoPushToken = async () => {
     }
     
     if (finalStatus !== 'granted') {
-      console.log('Push notification permission denied');
+      // console.log($&);
       return null;
     }
 
-    console.log('Permission granted, getting token...');
+    // console.log($&);
     
     const projectId = Constants.expoConfig?.extra?.eas?.projectId || Constants.easConfig?.projectId;
     
@@ -854,7 +854,7 @@ export const getExpoPushToken = async () => {
       return null;
     }
 
-    console.log('Using project ID:', projectId);
+    // console.log($&);
 
     const tokenData = await Promise.race([
       Notifications.getExpoPushTokenAsync({ projectId }),
@@ -863,7 +863,7 @@ export const getExpoPushToken = async () => {
       )
     ]);
     
-    console.log('Token obtained successfully');
+    // console.log($&);
     return tokenData.data;
     
   } catch (error) {
@@ -881,7 +881,7 @@ export const getExpoPushToken = async () => {
 export const savePushToken = async (userId, pushToken) => {
   try {
     if (!pushToken) {
-      console.log('No push token to save');
+      // console.log($&);
       return false;
     }
 
@@ -892,7 +892,7 @@ export const savePushToken = async (userId, pushToken) => {
       LastLogin: new Date()
     });
     
-    console.log('Push token saved successfully');
+    // console.log($&);
     return true;
   } catch (error) {
     const handledError = handleFirestoreError(error);
@@ -958,7 +958,7 @@ export const removePushToken = async (userId) => {
       PushTokenUpdatedAt: new Date()
     });
     
-    console.log('Push token removed successfully');
+    // console.log($&);
     return true;
   } catch (error) {
     const handledError = handleFirestoreError(error);

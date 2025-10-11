@@ -14,10 +14,10 @@ export const useFriends = () => {
 
 // Inline distance calculation using Haversine formula
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
-  console.log('Calculating distance between:', { lat1, lon1, lat2, lon2 });
+  // console.log($&);
   
   if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) {
-    console.log('Distance calc: Missing coordinate');
+    // console.log($&);
     return 'Unknown';
   }
   
@@ -27,17 +27,17 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const numLon2 = Number(lon2);
   
   if (isNaN(numLat1) || isNaN(numLon1) || isNaN(numLat2) || isNaN(numLon2)) {
-    console.log('Distance calc: Invalid number');
+    // console.log($&);
     return 'Unknown';
   }
   
   if (numLat1 < -90 || numLat1 > 90 || numLat2 < -90 || numLat2 > 90) {
-    console.log('Distance calc: Invalid latitude range');
+    // console.log($&);
     return 'Unknown';
   }
   
   if (numLon1 < -180 || numLon1 > 180 || numLon2 < -180 || numLon2 > 180) {
-    console.log('Distance calc: Invalid longitude range');
+    // console.log($&);
     return 'Unknown';
   }
 
@@ -55,7 +55,7 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   const distanceKm = R * c;
   
-  console.log('Calculated distance:', distanceKm, 'km');
+  // console.log($&);
   
   if (distanceKm < 1) {
     const meters = Math.round(distanceKm * 1000);
@@ -69,10 +69,10 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
 
 // Extract friend location from various possible structures
 const extractFriendLocation = (friend) => {
-  console.log('Extracting friend location for:', friend.name || friend.friendId);
+  // console.log($&);
   
   if (friend.currentLocation?._latitude != null && friend.currentLocation?._longitude != null) {
-    console.log('Found currentLocation (GeoPoint)');
+    // console.log($&);
     return {
       latitude: Number(friend.currentLocation._latitude),
       longitude: Number(friend.currentLocation._longitude)
@@ -80,7 +80,7 @@ const extractFriendLocation = (friend) => {
   }
   
   if (friend.currentLocation?.latitude != null && friend.currentLocation?.longitude != null) {
-    console.log('Found currentLocation (object)');
+    // console.log($&);
     return {
       latitude: Number(friend.currentLocation.latitude),
       longitude: Number(friend.currentLocation.longitude)
@@ -88,7 +88,7 @@ const extractFriendLocation = (friend) => {
   }
   
   if (friend.currentLocation?.lat != null && friend.currentLocation?.lng != null) {
-    console.log('Found currentLocation (lat/lng)');
+    // console.log($&);
     return {
       latitude: Number(friend.currentLocation.lat),
       longitude: Number(friend.currentLocation.lng)
@@ -96,7 +96,7 @@ const extractFriendLocation = (friend) => {
   }
   
   if (friend.CurrentLocation?._latitude != null && friend.CurrentLocation?._longitude != null) {
-    console.log('Found CurrentLocation (GeoPoint)');
+    // console.log($&);
     return {
       latitude: Number(friend.CurrentLocation._latitude),
       longitude: Number(friend.CurrentLocation._longitude)
@@ -104,7 +104,7 @@ const extractFriendLocation = (friend) => {
   }
   
   if (friend.CurrentLocation?.latitude != null && friend.CurrentLocation?.longitude != null) {
-    console.log('Found CurrentLocation (object)');
+    // console.log($&);
     return {
       latitude: Number(friend.CurrentLocation.latitude),
       longitude: Number(friend.CurrentLocation.longitude)
@@ -112,7 +112,7 @@ const extractFriendLocation = (friend) => {
   }
   
   if (friend.CurrentLocation?.lat != null && friend.CurrentLocation?.lng != null) {
-    console.log('Found CurrentLocation (lat/lng)');
+    // console.log($&);
     return {
       latitude: Number(friend.CurrentLocation.lat),
       longitude: Number(friend.CurrentLocation.lng)
@@ -120,7 +120,7 @@ const extractFriendLocation = (friend) => {
   }
 
   if (friend.location?.latitude != null && friend.location?.longitude != null) {
-    console.log('Found location');
+    // console.log($&);
     return {
       latitude: Number(friend.location.latitude),
       longitude: Number(friend.location.longitude)
@@ -128,7 +128,7 @@ const extractFriendLocation = (friend) => {
   }
   
   if (friend.location?.lat != null && friend.location?.lng != null) {
-    console.log('Found location (lat/lng)');
+    // console.log($&);
     return {
       latitude: Number(friend.location.lat),
       longitude: Number(friend.location.lng)
@@ -136,7 +136,7 @@ const extractFriendLocation = (friend) => {
   }
   
   if (friend.ResidenceAddress?._latitude != null && friend.ResidenceAddress?._longitude != null) {
-    console.log('Found ResidenceAddress (GeoPoint)');
+    // console.log($&);
     return {
       latitude: Number(friend.ResidenceAddress._latitude),
       longitude: Number(friend.ResidenceAddress._longitude)
@@ -144,7 +144,7 @@ const extractFriendLocation = (friend) => {
   }
   
   if (friend.ResidenceAddress?.latitude != null && friend.ResidenceAddress?.longitude != null) {
-    console.log('Found ResidenceAddress');
+    // console.log($&);
     return {
       latitude: Number(friend.ResidenceAddress.latitude),
       longitude: Number(friend.ResidenceAddress.longitude)
@@ -152,14 +152,14 @@ const extractFriendLocation = (friend) => {
   }
   
   if (friend.ResidenceAddress?.lat != null && friend.ResidenceAddress?.lng != null) {
-    console.log('Found ResidenceAddress (lat/lng)');
+    // console.log($&);
     return {
       latitude: Number(friend.ResidenceAddress.lat),
       longitude: Number(friend.ResidenceAddress.lng)
     };
   }
 
-  console.log('No valid location found for friend');
+  // console.log($&);
   return null;
 };
 
@@ -175,10 +175,10 @@ export const FriendsProvider = ({ children }) => {
   const userDataRef = useRef(null);
 
   const getUserLocation = useCallback((user) => {
-    console.log('Getting user location from user data');
+    // console.log($&);
     
     if (user.CurrentLocation?._latitude != null && user.CurrentLocation?._longitude != null) {
-      console.log('User CurrentLocation found (GeoPoint)');
+      // console.log($&);
       return {
         latitude: Number(user.CurrentLocation._latitude),
         longitude: Number(user.CurrentLocation._longitude)
@@ -186,7 +186,7 @@ export const FriendsProvider = ({ children }) => {
     }
     
     if (user.CurrentLocation?.latitude != null && user.CurrentLocation?.longitude != null) {
-      console.log('User CurrentLocation found (object)');
+      // console.log($&);
       return {
         latitude: Number(user.CurrentLocation.latitude),
         longitude: Number(user.CurrentLocation.longitude)
@@ -194,7 +194,7 @@ export const FriendsProvider = ({ children }) => {
     }
     
     if (Array.isArray(user.CurrentLocation) && user.CurrentLocation.length === 2) {
-      console.log('User CurrentLocation found (array)');
+      // console.log($&);
       return {
         latitude: Number(user.CurrentLocation[0]),
         longitude: Number(user.CurrentLocation[1])
@@ -202,7 +202,7 @@ export const FriendsProvider = ({ children }) => {
     }
     
     if (user.CurrentLocation?.lat != null && user.CurrentLocation?.lng != null) {
-      console.log('User CurrentLocation found (lat/lng)');
+      // console.log($&);
       return {
         latitude: Number(user.CurrentLocation.lat),
         longitude: Number(user.CurrentLocation.lng)
@@ -210,7 +210,7 @@ export const FriendsProvider = ({ children }) => {
     }
     
     if (user.ResidenceAddress?._latitude != null && user.ResidenceAddress?._longitude != null) {
-      console.log('User ResidenceAddress found (GeoPoint)');
+      // console.log($&);
       return {
         latitude: Number(user.ResidenceAddress._latitude),
         longitude: Number(user.ResidenceAddress._longitude)
@@ -218,7 +218,7 @@ export const FriendsProvider = ({ children }) => {
     }
     
     if (user.ResidenceAddress?.latitude != null && user.ResidenceAddress?.longitude != null) {
-      console.log('User ResidenceAddress found (object)');
+      // console.log($&);
       return {
         latitude: Number(user.ResidenceAddress.latitude),
         longitude: Number(user.ResidenceAddress.longitude)
@@ -226,28 +226,28 @@ export const FriendsProvider = ({ children }) => {
     }
     
     if (user.ResidenceAddress?.lat != null && user.ResidenceAddress?.lng != null) {
-      console.log('User ResidenceAddress found (lat/lng)');
+      // console.log($&);
       return {
         latitude: Number(user.ResidenceAddress.lat),
         longitude: Number(user.ResidenceAddress.lng)
       };
     }
     
-    console.log('No user location found');
+    // console.log($&);
     return null;
   }, []);
 
   const calculateFriendDistance = useCallback((friend, currentUserLocation) => {
-    console.log('calculateFriendDistance called for:', friend.name);
+    // console.log($&);
     
     if (!currentUserLocation) {
-      console.log('No user location provided');
+      // console.log($&);
       return 'Unknown';
     }
 
     const friendLocation = extractFriendLocation(friend);
     if (!friendLocation) {
-      console.log('No friend location found');
+      // console.log($&);
       return 'Unknown';
     }
 
@@ -258,7 +258,7 @@ export const FriendsProvider = ({ children }) => {
       friendLocation.longitude
     );
     
-    console.log('Final distance for', friend.name, ':', distance);
+    // console.log($&);
     return distance;
   }, []);
 
@@ -290,14 +290,14 @@ export const FriendsProvider = ({ children }) => {
       const friendId = friend.friendId || friend.id;
       if (!friendId) return;
 
-      console.log(`Setting up presence listener for friend: ${friendId}`);
+      // console.log($&);
       
       const unsubscribe = FirebaseService.listenToUser(friendId, (userData) => {
         if (userData) {
-          console.log(`Presence update for ${friendId}:`, {
-            status: userData.status,
-            battery: userData.Battery
-          });
+          // console.log(`Presence update for ${friendId}:`, {
+          //   status: userData.status,
+          //   battery: userData.Battery
+          // });
           
           setFriendsData((prevFriends) => 
             prevFriends.map((f) => {
@@ -338,7 +338,7 @@ export const FriendsProvider = ({ children }) => {
 
   const refreshFriends = useCallback(async () => {
     if (!userDataRef.current) {
-      console.log('No user data for refresh');
+      // console.log($&);
       return;
     }
 
@@ -346,13 +346,13 @@ export const FriendsProvider = ({ children }) => {
     if (!userId) return;
 
     try {
-      console.log('Manual refresh triggered');
+      // console.log($&);
       const currentUserLocation = getUserLocation(userDataRef.current);
       setUserLocation(currentUserLocation);
       
       await FirebaseService.getFriendsDetails([], currentUserLocation);
       
-      console.log('Manual refresh completed');
+      // console.log($&);
     } catch (error) {
       console.error('Error refreshing:', error);
       setError(error.message);
@@ -367,7 +367,7 @@ export const FriendsProvider = ({ children }) => {
         
         const jsonValue = await AsyncStorage.getItem('userData');
         if (!jsonValue) {
-          console.log('No user data found in AsyncStorage');
+          // console.log($&);
           setLoading(false);
           return;
         }
@@ -376,14 +376,14 @@ export const FriendsProvider = ({ children }) => {
         const userId = user.uid || user.id || user.userId || user.UID;
         
         if (!user.CurrentLocation && userId) {
-          console.log('CurrentLocation missing in AsyncStorage, fetching from Firebase...');
+          // console.log($&);
           
           try {
             const freshDataResult = await FirebaseService.getUserById(userId);
             if (freshDataResult.success && freshDataResult.userData) {
               user = { ...user, ...freshDataResult.userData };
               await AsyncStorage.setItem('userData', JSON.stringify(user));
-              console.log('Updated AsyncStorage with CurrentLocation from Firebase');
+              // console.log($&);
             }
           } catch (fetchError) {
             console.error('Error fetching fresh user data:', fetchError);
@@ -408,13 +408,13 @@ export const FriendsProvider = ({ children }) => {
         const currentUserLocation = getUserLocation(user);
         setUserLocation(currentUserLocation);
         
-        console.log('Setting up real-time listener for userId:', userId);
+        // console.log($&);
 
         friendsUnsubscribe.current = FirebaseService.listenToFriendsWithDetails(
           userId,
           currentUserLocation,
           (friendsWithDetails) => {
-            console.log('Received', friendsWithDetails.length, 'friends from Firebase');
+            // console.log($&);
             
             const transformedFriends = friendsWithDetails.map((friend) => {
               const distance = calculateFriendDistance(friend, currentUserLocation);
@@ -451,7 +451,7 @@ export const FriendsProvider = ({ children }) => {
             
             setupPresenceListeners(transformedFriends, currentUserLocation);
             
-            console.log('Updated with', transformedFriends.length, 'friends');
+            // console.log($&);
           }
         );
         
@@ -466,11 +466,11 @@ export const FriendsProvider = ({ children }) => {
     
     return () => {
       if (friendsUnsubscribe.current) {
-        console.log('Cleaning up friends listener');
+        // console.log($&);
         friendsUnsubscribe.current();
       }
       
-      console.log('Cleaning up presence listeners');
+      // console.log($&);
       presenceUnsubscribers.current.forEach((unsubscribe) => {
         unsubscribe();
       });

@@ -136,7 +136,7 @@ class FeedDataService {
       // In production, send report to backend for moderation
       this.sendReportToBackend(postId, reason);
       
-      console.log(`Post ${postId} reported for: ${reason}`);
+      // console.log($&);
       
       return {
         success: true,
@@ -181,7 +181,7 @@ class FeedDataService {
   async saveToBackend(post) {
     try {
       // Example: await api.post('/alerts', post);
-      console.log('Saving post to backend:', post);
+      // console.log($&);
     } catch (error) {
       console.error('Error saving post to backend:', error);
     }
@@ -190,7 +190,7 @@ class FeedDataService {
   async syncWithBackend(postId, updates) {
     try {
       // Example: await api.patch(`/alerts/${postId}`, updates);
-      console.log('Syncing post with backend:', postId, updates);
+      // console.log($&);
     } catch (error) {
       console.error('Error syncing post with backend:', error);
     }
@@ -199,7 +199,7 @@ class FeedDataService {
   async syncCommentWithBackend(postId, comment) {
     try {
       // Example: await api.post(`/alerts/${postId}/comments`, comment);
-      console.log('Syncing comment with backend:', postId, comment);
+      // console.log($&);
     } catch (error) {
       console.error('Error syncing comment with backend:', error);
     }
@@ -208,7 +208,7 @@ class FeedDataService {
   async deleteFromBackend(postId) {
     try {
       // Example: await api.delete(`/alerts/${postId}`);
-      console.log('Deleting post from backend:', postId);
+      // console.log($&);
     } catch (error) {
       console.error('Error deleting post from backend:', error);
     }
@@ -217,7 +217,7 @@ class FeedDataService {
   async sendReportToBackend(postId, reason) {
     try {
       // Example: await api.post(`/alerts/${postId}/report`, { reason });
-      console.log('Sending report to backend:', { postId, reason });
+      // console.log($&);
     } catch (error) {
       console.error('Error sending report to backend:', error);
     }

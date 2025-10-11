@@ -122,7 +122,7 @@ const calculatePartnerStats = async (walkerLoc, startLoc) => {
 
   // Function to handle destination selection with coordinates
   const handleDestinationSelect = (coordinates) => {
-    console.log('Destination coordinates received:', coordinates);
+    // console.log($&);
     setDestinationCoords(coordinates);
   };
   
@@ -134,13 +134,13 @@ const calculatePartnerStats = async (walkerLoc, startLoc) => {
   useEffect(() => {
     if (!currentWalkRequestId) return;
 
-    console.log('🚀 Setting up real acceptance listener for:', currentWalkRequestId);
+    // console.log($&);
 
     const unsubscribe = FirebaseService.listenToWalkRequestAcceptance(
       currentWalkRequestId,
       async (acceptedWalkRequest) => {
         try {
-          console.log('🎯 Walk request accepted!', acceptedWalkRequest);
+          // console.log($&);
 
           // --- NEW HANDLING: If the sender confirms the acceptance (status === 'accepted_by_both') ---
           if (acceptedWalkRequest.status === 'accepted_by_both') {
@@ -169,7 +169,7 @@ const calculatePartnerStats = async (walkerLoc, startLoc) => {
           }
 
           const accepterData = accepterResult.userData;
-          console.log('✅ Accepter data found. CurrentLocation:', accepterData.CurrentLocation);
+          // console.log($&);
 
           // ✅ Ensure the accepter has a valid CurrentLocation field
           if (!accepterData.CurrentLocation) {
@@ -217,7 +217,7 @@ const calculatePartnerStats = async (walkerLoc, startLoc) => {
     );
 
     return () => {
-      console.log('🔴 Cleaning up acceptance listener');
+      // console.log($&);
       unsubscribe();
     };
   }, [currentWalkRequestId]);
@@ -256,15 +256,15 @@ const calculatePartnerStats = async (walkerLoc, startLoc) => {
   const playNotificationSound = async (type) => {
     try {
       // You can use your existing sound playing logic here
-      console.log('🔊 Playing sound for:', type);
+      // console.log($&);
     } catch (error) {
-      console.error('🔊 Error playing sound:', error);
+      // console.error('🔊 Error playing sound:', error);
     }
   };
 
   // NEW: Handle starting partner search and set up listener
   const handleStartPartnerSearch = (requestId) => {
-    console.log('🚀 Starting partner search with request ID:', requestId);
+    // console.log($&);
     setCurrentWalkRequestId(requestId);
     setIsSearchPartner(true);
   };
@@ -282,7 +282,7 @@ const calculatePartnerStats = async (walkerLoc, startLoc) => {
   // Handle real acceptance from push notifications (keep this as backup)
   useEffect(() => {
     if (currentWalkRequest && currentWalkRequest.type === 'walk_accepted') {
-      console.log('📱 Received walk acceptance via push notification');
+      // console.log($&);
       setAcceptedWalker(currentWalkRequest.accepterData);
       setWalkerLocation(currentWalkRequest.accepterLocation);
       setIsShowingAcceptedWalker(true);
@@ -474,7 +474,7 @@ const calculatePartnerStats = async (walkerLoc, startLoc) => {
 
   // NEW: Handle confirming the walker
   const handleConfirmWalker = () => {
-    console.log('Walker confirmed:', acceptedWalker);
+    // console.log($&);
     // Here you would:
     // 1. Notify the walker that they've been selected
     // 2. Start the walk session
@@ -636,7 +636,7 @@ const calculatePartnerStats = async (walkerLoc, startLoc) => {
                   isSavedLocationAvailable={true}
                   onPress={() => {
                     // Handle selecting a saved address
-                    console.log('Selected address:', address);
+                    // console.log($&);
                   }}
                   onLongPress={() => handleEditAddress(address)}
                 />

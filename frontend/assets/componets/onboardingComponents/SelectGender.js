@@ -29,7 +29,7 @@ const SelectGender = ({ onGenderSelected }) => {
       
       // Save updated userData back to AsyncStorage
       await AsyncStorage.setItem('userData', JSON.stringify(userData));
-      console.log('Gender saved to userData:', selectedGender);
+      // console.log($&);
       
       // Notify parent component
       if (onGenderSelected) {

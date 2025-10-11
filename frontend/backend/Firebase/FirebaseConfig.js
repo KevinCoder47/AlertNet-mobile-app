@@ -30,7 +30,7 @@ const auth = getApps().length
 const db = getFirestore(app);
 const storage = getStorage(app);
 
-console.log("Storage bucket:", storage.app.options.storageBucket);
+// console.log($&);
 
 let analytics = null;
 isSupported()
@@ -40,7 +40,7 @@ isSupported()
     }
   })
   .catch((error) => {
-    console.log("Analytics not supported in this environment:", error);
+    // console.log($&);
   });
 
 export { app, auth, analytics, db, storage };

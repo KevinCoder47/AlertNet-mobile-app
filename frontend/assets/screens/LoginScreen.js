@@ -57,18 +57,18 @@ const handleLogin = async () => {
     if (user && user.uid) {
       // Get user document from Firestore
       const userData = await getUserDocument(user.uid);
-      console.log(userData);
+      // console.log($&);
       
       if (userData) {
         // Get and save push token
-        console.log('Getting push token on login...');
+        // console.log($&);
         const pushToken = await getExpoPushToken();
         if (pushToken) {
-          console.log('Push token obtained:', pushToken);
+          // console.log($&);
           await savePushToken(user.uid, pushToken);
           userData.pushToken = pushToken; // Add to userData object
         } else {
-          console.log('Push token not obtained - user may have denied permission');
+          // console.log($&);
         }
 
         // Store user data in AsyncStorage
