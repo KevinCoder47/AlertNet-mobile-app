@@ -1,8 +1,9 @@
 import { useNotifications } from '../../contexts/NotificationContext';
 import { StyleSheet, Text, View, Dimensions, TouchableOpacity, Image } from 'react-native';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import MapWithDetails from '../../screens/MapWithDetails';
+import { getUserDocument, getRequesterAvatar } from '../../../services/firestore';
 
 const { width, height } = Dimensions.get('window');
 
@@ -10,7 +11,7 @@ const WalkStartPoint = ({ setIsDestinationDone, setIsSearchPartner, setIsStartPo
   const { sendWalkRequest } = useNotifications();
 
   const handleSearch = () => {
-    console.log("Search button pressed");
+    // console.log($&);
     const walkData = {
       walkFrom: 'UJ APB Campus',
       walkTo: 'Res - Richmond 50 Rd', 
@@ -30,7 +31,7 @@ const WalkStartPoint = ({ setIsDestinationDone, setIsSearchPartner, setIsStartPo
   );
 };
 
-const WalkRequest = ({ walkData, onAccept, onDecline }) => {
+const WalkRequest = ({ walkData, onAccept, onDecline, acceptanceLoading }) => {
   const {
     walkFrom = 'UJ APB Campus',
     walkTo = 'Res - Richmond 50 Rd',
@@ -41,6 +42,33 @@ const WalkRequest = ({ walkData, onAccept, onDecline }) => {
     rating = 4.8,
     isVerified = true,
   } = walkData || {};
+
+  const [avatarUrl, setAvatarUrl] = useState(null);
+
+  useEffect(() => {
+    const fetchAvatar = async () => {
+      try {
+        // console.log($&);
+        
+        if (walkData?.requesterId) {
+          const user = await getUserDocument(walkData.requesterId);
+          // console.log($&);
+          // console.log($&);
+          
+          if (user?.imageUrl) {
+            setAvatarUrl(user.imageUrl);
+          } else {
+            // console.log($&);
+          }
+        } else {
+          // console.log($&);
+        }
+      } catch (error) {
+        console.error('Error fetching requester avatar:', error);
+      }
+    };
+    fetchAvatar();
+  }, [walkData?.requesterId]);
 
   return (
     <View style={styles.container}>
@@ -57,12 +85,16 @@ const WalkRequest = ({ walkData, onAccept, onDecline }) => {
           <View style={styles.profileSection}>
             <View style={styles.avatarContainer}>
               <View style={styles.avatarPlaceholder}>
-                <Text style={styles.avatarText}>{partnerInitials}</Text>
+                {avatarUrl ? (
+                  <Image
+                    style={styles.avatarPlaceholder}
+                    source={{ uri: avatarUrl }}
+                  />
+                ) : (
+                  <Text style={styles.avatarText}>{partnerInitials}</Text>
+                )}
               </View>
               {isVerified && (
-                // <View style={styles.verifiedBadge}>
-                //   <Ionicons name="checkmark" size={12} color="white" />
-                // </View>
                 <Image source = {require('../../icons/checkmark.png')} style={styles.verifiedBadge}/>
               )}
             </View>
@@ -90,8 +122,14 @@ const WalkRequest = ({ walkData, onAccept, onDecline }) => {
             <TouchableOpacity style={[styles.button, styles.declineButton]} onPress={onDecline}>
               <Text style={[styles.buttonText, styles.declineButtonText]}>Decline</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.button, styles.acceptButton]} onPress={onAccept}>
-              <Text style={[styles.buttonText, styles.acceptButtonText]}>Accept</Text>
+            <TouchableOpacity
+              style={[styles.button, styles.acceptButton]}
+              onPress={onAccept}
+              disabled={acceptanceLoading}
+            >
+              <Text style={[styles.buttonText, styles.acceptButtonText]}>
+                {acceptanceLoading ? 'Accepting...' : 'Accept'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>

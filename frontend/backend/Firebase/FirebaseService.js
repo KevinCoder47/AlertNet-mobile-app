@@ -43,7 +43,7 @@ export const FirebaseService = {
  */
 getAllUsersWithPushTokens: async () => {
   try {
-    console.log('Getting ALL users with push tokens...');
+    // console.log($&);
     
     const usersRef = collection(db, 'users');
     const querySnapshot = await getDocs(usersRef);
@@ -66,13 +66,13 @@ getAllUsersWithPushTokens: async () => {
           surname: userData.Surname || '',
         });
         
-        console.log(`✅ Found user: ${userData.Name} with token: ${pushToken.substring(0, 20)}...`);
+        // console.log($&);
       } else {
-        console.log(`❌ User ${userData.Name || doc.id} missing push token or phone`);
+        // console.log($&);
       }
     });
     
-    console.log(`Found ${users.length} total users with push tokens`);
+    // console.log($&);
     return users;
   } catch (error) {
     console.error('Error getting all users with push tokens:', error);
@@ -120,7 +120,7 @@ getUserData: async (userId) => {
       return { success: false, userData: null, error: 'User ID required' };
     }
     
-    console.log('Fetching fresh user data for:', userId);
+    // console.log($&);
     const userDoc = await getDoc(doc(db, 'users', userId));
     
     if (!userDoc.exists()) {
@@ -128,7 +128,7 @@ getUserData: async (userId) => {
     }
     
     const userData = userDoc.data();
-    console.log('Fresh user data fetched with CurrentLocation:', !!userData.CurrentLocation);
+    // console.log($&);
     
     return { 
       success: true, 
@@ -194,17 +194,17 @@ getUserData: async (userId) => {
    */
   getUserById: async (userId) => {
     try {
-      console.log('Fetching user data by ID:', userId);
+      // console.log($&);
       
       const userDoc = await getDoc(doc(db, 'users', userId));
       
       if (!userDoc.exists()) {
-        console.log('User document not found:', userId);
+        // console.log($&);
         return { success: false, userData: null, error: 'User not found' };
       }
       
       const userData = userDoc.data();
-      console.log('Found user data:', userData);
+      // console.log($&);
       
       return { 
         success: true, 
@@ -226,23 +226,23 @@ getUserData: async (userId) => {
    */
   getUserByPhone: async (phone) => {
     try {
-      console.log('Original phone input:', phone);
+      // console.log($&);
       
       const formattedPhone = FirebaseService.formatPhoneNumber(phone);
-      console.log('Querying for Phone ==', formattedPhone);
+      // console.log($&);
       
       const usersRef = collection(db, 'users');
       const q = query(usersRef, where('Phone', '==', formattedPhone));
       const querySnapshot = await getDocs(q);
       
       if (querySnapshot.empty) {
-        console.log('No user found with phone:', formattedPhone);
+        // console.log($&);
         return { exists: false, userData: null };
       }
       
       const userDoc = querySnapshot.docs[0];
       const userData = userDoc.data();
-      console.log('Found user by phone with complete data!');
+      // console.log($&);
       
       return { 
         exists: true, 
@@ -285,7 +285,7 @@ getUserData: async (userId) => {
       const notificationsRef = collection(db, 'notifications');
       const docRef = await addDoc(notificationsRef, notification);
       
-      console.log('Notification created with ID:', docRef.id);
+      // console.log($&);
       
       // Optional: Try to send push notification
       try {
@@ -313,7 +313,7 @@ getUserData: async (userId) => {
   listenToNotifications: (userPhone, callback) => {
     try {
       const formattedPhone = FirebaseService.formatPhoneNumber(userPhone);
-      console.log('Setting up enhanced notification listener for:', formattedPhone);
+      // console.log($&);
       
       const notificationsRef = collection(db, 'notifications');
       
@@ -343,11 +343,11 @@ getUserData: async (userId) => {
           
           // Track changes for popup triggering
           if (change.type === 'added' && !notificationData.read) {
-            console.log('New unread notification received:', notificationData.title);
+            // console.log($&);
             changes.push({ type: 'new', notification: notificationData });
             hasNewUnreadNotifications = true;
           } else if (change.type === 'modified') {
-            console.log('Notification updated:', notificationData.title, 'Read:', notificationData.read);
+            // console.log($&);
             changes.push({ type: 'updated', notification: notificationData });
           }
         });
@@ -363,7 +363,7 @@ getUserData: async (userId) => {
         // Count unread notifications from the complete list for accuracy
         const unreadCount = sortedNotifications.filter(n => !n.read && !n.deleted).length;
         
-        console.log(`Processed ${sortedNotifications.length} total notifications, ${unreadCount} unread for ${formattedPhone}`);
+        // console.log($&);
         
         // Call callback with the complete, correct data
         callback({
@@ -396,7 +396,7 @@ getUserData: async (userId) => {
    */
   markNotificationAsRead: async (notificationId) => {
     try {
-      console.log('Marking notification as read:', notificationId);
+      // console.log($&);
       
       // First verify the notification exists
       const notificationRef = doc(db, 'notifications', notificationId);
@@ -411,7 +411,7 @@ getUserData: async (userId) => {
       
       // Check if already read to avoid unnecessary updates
       if (notificationData.read) {
-        console.log('Notification already marked as read:', notificationId);
+        // console.log($&);
         return { success: true, message: 'Already read' };
       }
       
@@ -422,7 +422,7 @@ getUserData: async (userId) => {
         lastModified: serverTimestamp()
       });
       
-      console.log('Notification marked as read successfully:', notificationId);
+      // console.log($&);
       return { success: true };
     } catch (error) {
       console.error('Error marking notification as read:', error);
@@ -437,7 +437,7 @@ getUserData: async (userId) => {
    */
   markAllNotificationsAsRead: async (userPhone) => {
     try {
-      console.log('Starting bulk mark as read for:', userPhone);
+      // console.log($&);
       
       const formattedPhone = FirebaseService.formatPhoneNumber(userPhone);
       const notificationsRef = collection(db, 'notifications');
@@ -453,11 +453,11 @@ getUserData: async (userId) => {
       const querySnapshot = await getDocs(q);
       
       if (querySnapshot.empty) {
-        console.log('No unread notifications found');
+        // console.log($&);
         return { success: true, updatedCount: 0, message: 'No unread notifications' };
       }
       
-      console.log(`Found ${querySnapshot.size} unread notifications to mark as read`);
+      // console.log($&);
       
       // Use Firestore batch for better performance
       const batch = writeBatch(db);
@@ -475,7 +475,7 @@ getUserData: async (userId) => {
       // Execute batch update
       await batch.commit();
       
-      console.log(`Successfully marked ${querySnapshot.size} notifications as read`);
+      // console.log($&);
       return { success: true, updatedCount: querySnapshot.size };
     } catch (error) {
       console.error('Error marking all notifications as read:', error);
@@ -503,7 +503,7 @@ getUserData: async (userId) => {
       const querySnapshot = await getDocs(q);
       const count = querySnapshot.size;
       
-      console.log(`Unread notification count for ${formattedPhone}: ${count}`);
+      // console.log($&);
       return { success: true, count };
     } catch (error) {
       console.error('Error getting unread notification count:', error);
@@ -518,7 +518,7 @@ getUserData: async (userId) => {
    */
   deleteNotification: async (notificationId) => {
     try {
-      console.log('Soft deleting notification:', notificationId);
+      // console.log($&);
       
       const notificationRef = doc(db, 'notifications', notificationId);
       const notificationDoc = await getDoc(notificationRef);
@@ -533,7 +533,7 @@ getUserData: async (userId) => {
         lastModified: serverTimestamp()
       });
       
-      console.log('Notification soft deleted:', notificationId);
+      // console.log($&);
       return { success: true };
     } catch (error) {
       console.error('Error deleting notification:', error);
@@ -577,7 +577,7 @@ getUserData: async (userId) => {
       
       await batch.commit();
       
-      console.log(`Cleared ${querySnapshot.size} notifications`);
+      // console.log($&);
       return { success: true, deletedCount: querySnapshot.size };
     } catch (error) {
       console.error('Error clearing all notifications:', error);
@@ -609,30 +609,30 @@ getUserData: async (userId) => {
    * @returns {string} - Formatted phone number
    */
   formatPhoneNumber: (phone) => {
-    console.log('Formatting phone:', phone);
+    // console.log($&);
     
     const cleaned = phone.replace(/\D/g, '');
-    console.log('Cleaned:', cleaned);
+    // console.log($&);
     
     if (cleaned.startsWith('0') && cleaned.length === 10) {
       const formatted = '+27' + cleaned.substring(1);
-      console.log('SA local to international:', formatted);
+      // console.log($&);
       return formatted;
     }
     
     if (cleaned.startsWith('27') && cleaned.length === 11) {
       const formatted = '+' + cleaned;
-      console.log('Added + to country code:', formatted);
+      // console.log($&);
       return formatted;
     }
     
     if (phone.startsWith('+')) {
-      console.log('Already international:', phone);
+      // console.log($&);
       return phone;
     }
     
     const formatted = '+27' + cleaned;
-    console.log('Default formatting:', formatted);
+    // console.log($&);
     return formatted;
   },
 
@@ -657,9 +657,9 @@ getUserData: async (userId) => {
       const formattedSenderPhone = FirebaseService.formatPhoneNumber(senderPhone);
       const formattedRecipientPhone = FirebaseService.formatPhoneNumber(recipientPhone);
       
-      console.log('Checking existing requests between:');
-      console.log('    Sender:', formattedSenderPhone);
-      console.log('    Recipient:', formattedRecipientPhone);
+      // console.log($&);
+      // console.log($&);
+      // console.log($&);
       
       const friendRequestsRef = collection(db, 'friendRequests');
       
@@ -677,14 +677,14 @@ getUserData: async (userId) => {
         where('status', '==', 'pending')
       );
       
-      console.log('Executing queries...');
+      // console.log($&);
       const [outgoingSnapshot, incomingSnapshot] = await Promise.all([
         getDocs(q1),
         getDocs(q2)
       ]);
       
       if (!outgoingSnapshot.empty) {
-        console.log('Found outgoing request');
+        // console.log($&);
         return { 
           exists: true, 
           requestData: { id: outgoingSnapshot.docs[0].id, ...outgoingSnapshot.docs[0].data() },
@@ -693,7 +693,7 @@ getUserData: async (userId) => {
       }
       
       if (!incomingSnapshot.empty) {
-        console.log('Found incoming request');
+        // console.log($&);
         return { 
           exists: true, 
           requestData: { id: incomingSnapshot.docs[0].id, ...incomingSnapshot.docs[0].data() },
@@ -701,7 +701,7 @@ getUserData: async (userId) => {
         };
       }
       
-      console.log('No existing requests found');
+      // console.log($&);
       return { exists: false, requestData: null };
       
     } catch (error) {
@@ -715,7 +715,7 @@ getUserData: async (userId) => {
  */
 sendFriendRequest: async (friendData) => {
   try {
-    console.log('Starting enhanced friend request process...');
+    // console.log($&);
     
     const currentUser = auth.currentUser;
     const { firstName, lastName, phone, senderPhone, senderEmail, senderUserData, senderUserId } = friendData;
@@ -725,7 +725,7 @@ sendFriendRequest: async (friendData) => {
     
     // If no valid ID, fetch it from the database using phone number
     if (!senderId || senderId.startsWith('temp_')) {
-      console.log('No valid sender ID, fetching from database...');
+      // console.log($&);
       
       if (!senderPhone) {
         return { 
@@ -749,7 +749,7 @@ sendFriendRequest: async (friendData) => {
         }
         
         senderId = senderResult.userData.id;
-        console.log('Fetched sender ID from database:', senderId);
+        // console.log($&);
       } catch (fetchError) {
         console.error('Error fetching sender by phone:', fetchError);
         return {
@@ -771,19 +771,19 @@ sendFriendRequest: async (friendData) => {
     
     const userEmail = senderEmail || currentUser?.email || 'guest@alertnet.com';
     
-    console.log('=== ENHANCED SENDER DATA FETCHING ===');
+    // console.log($&);
     
     // Enhanced sender data fetching
     let senderProfileData = senderUserData;
     
     // If we have a userId, fetch complete user document
     if (!senderProfileData) {
-      console.log('Fetching sender data by userId:', senderId);
+      // console.log($&);
       try {
         const userByIdResult = await FirebaseService.getUserById(senderId);
         if (userByIdResult && userByIdResult.success && userByIdResult.userData) {
           senderProfileData = userByIdResult.userData;
-          console.log('Retrieved sender data by ID:', senderProfileData);
+          // console.log($&);
         }
       } catch (error) {
         console.warn('Error fetching user by ID:', error);
@@ -792,12 +792,12 @@ sendFriendRequest: async (friendData) => {
     
     // If still no data, try by phone
     if (!senderProfileData && senderPhone) {
-      console.log('Fetching sender data by phone:', senderPhone);
+      // console.log($&);
       try {
         const userByPhoneResult = await FirebaseService.getUserByPhone(senderPhone);
         if (userByPhoneResult && userByPhoneResult.exists && userByPhoneResult.userData) {
           senderProfileData = userByPhoneResult.userData;
-          console.log('Retrieved sender data by phone:', senderProfileData);
+          // console.log($&);
         }
       } catch (error) {
         console.warn('Error fetching user by phone:', error);
@@ -843,7 +843,7 @@ sendFriendRequest: async (friendData) => {
       };
     }
     
-    console.log('Recipient exists:', userCheck.userData.Name);
+    // console.log($&);
     
     // Check for existing requests
     const existingRequest = await FirebaseService.checkExistingFriendRequest(
@@ -892,7 +892,7 @@ sendFriendRequest: async (friendData) => {
     const friendRequestsRef = collection(db, 'friendRequests');
     const docRef = await addDoc(friendRequestsRef, friendRequest);
     
-    console.log('Friend request created with ID:', docRef.id);
+    // console.log($&);
     
     // Create notification
     const notificationResult = await FirebaseService.createNotification({
@@ -954,7 +954,7 @@ createFriendship: async (friendshipData) => {
       requestId 
     } = friendshipData;
     
-    console.log('Creating friendship between:', user1Id, 'and', user2Id);
+    // console.log($&);
     
     const user1DocRef = doc(db, 'users', user1Id);
     const user2DocRef = doc(db, 'users', user2Id);
@@ -987,7 +987,7 @@ createFriendship: async (friendshipData) => {
 
     await batch.commit();
     
-    console.log('Friendship created successfully');
+    // console.log($&);
     return { success: true };
     
   } catch (error) {
@@ -1001,7 +1001,7 @@ createFriendship: async (friendshipData) => {
  */
 acceptFriendRequest: async (requestId, currentUserPhone) => {
   try {
-    console.log('Starting friend request acceptance...');
+    // console.log($&);
     
     const requestRef = doc(db, 'friendRequests', requestId);
     const requestDoc = await getDoc(requestRef);
@@ -1067,7 +1067,7 @@ acceptFriendRequest: async (requestId, currentUserPhone) => {
       return { success: false, error: 'Sender user not found in database' };
     }
     
-    console.log('Both users validated');
+    // console.log($&);
     
     // Update request status
     await updateDoc(requestRef, {
@@ -1075,7 +1075,7 @@ acceptFriendRequest: async (requestId, currentUserPhone) => {
       acceptedAt: serverTimestamp()
     });
     
-    console.log('Request status updated to accepted');
+    // console.log($&);
     
     // Create friendship with VALID IDs
     const friendshipResult = await FirebaseService.createFriendship({
@@ -1098,7 +1098,7 @@ acceptFriendRequest: async (requestId, currentUserPhone) => {
       return { success: false, error: friendshipResult.error };
     }
     
-    console.log('Friendship created successfully');
+    // console.log($&);
     
     // Send acceptance notification
     await FirebaseService.createNotification({
@@ -1165,7 +1165,7 @@ acceptFriendRequest: async (requestId, currentUserPhone) => {
         declinedAt: serverTimestamp()
       });
       
-      console.log('Friend request declined');
+      // console.log($&);
       return { 
         success: true, 
         message: 'Friend request declined' 
@@ -1202,7 +1202,7 @@ acceptFriendRequest: async (requestId, currentUserPhone) => {
           id: doc.id,
           ...doc.data()
         }));
-        console.log(`Found ${requests.length} pending requests for ${formattedPhone}`);
+        // console.log($&);
         callback(requests);
       }, (error) => {
         console.error('Error listening to friend requests:', error);
@@ -1227,7 +1227,7 @@ acceptFriendRequest: async (requestId, currentUserPhone) => {
             return { success: true, friendsDetails: [] };
           }
       
-          console.log(`Fetching details for ${friendIds.length} friends with current locations`);
+          // console.log($&);
           
           const friendsPromises = friendIds.map(async (friendId) => {
             try {
@@ -1250,7 +1250,7 @@ acceptFriendRequest: async (requestId, currentUserPhone) => {
                   }
                 : null;
               
-              console.log(`Friend ${friendData.Name} has location:`, !!friendCurrentLocation);
+              // console.log($&);
               
               // Calculate distance (existing code)
               let distance = 'Unknown';
@@ -1333,7 +1333,7 @@ acceptFriendRequest: async (requestId, currentUserPhone) => {
       
           const friendsDetails = (await Promise.all(friendsPromises)).filter(Boolean);
           
-          console.log(`Fetched ${friendsDetails.length} friends with locations`);
+          // console.log($&);
           console.log('Friends with valid locations:', 
             friendsDetails.filter(f => f.currentLocation).length
           );
@@ -1356,7 +1356,7 @@ acceptFriendRequest: async (requestId, currentUserPhone) => {
   listenToFriends: (userPhone, callback) => {
     try {
       const formattedPhone = FirebaseService.formatPhoneNumber(userPhone);
-      console.log('Setting up friends listener for:', formattedPhone);
+      // console.log($&);
       
       const friendsRef = collection(db, 'friends');
       const q = query(
@@ -1386,7 +1386,7 @@ acceptFriendRequest: async (requestId, currentUserPhone) => {
           });
         });
         
-        console.log(`Friends list updated: ${friends.length} friends`);
+        // console.log($&);
         callback(friends);
         
       }, (error) => {
@@ -1411,7 +1411,7 @@ acceptFriendRequest: async (requestId, currentUserPhone) => {
  */
 removeFriend: async (currentUserId, friendUserId, currentUserPhone, friendPhone) => {
   try {
-    console.log('Removing friendship between:', currentUserId, 'and', friendUserId);
+    // console.log($&);
     
     const formattedCurrentPhone = FirebaseService.formatPhoneNumber(currentUserPhone);
     const formattedFriendPhone = FirebaseService.formatPhoneNumber(friendPhone);
@@ -1428,7 +1428,7 @@ removeFriend: async (currentUserId, friendUserId, currentUserPhone, friendPhone)
         friend => friend.uid !== friendUserId
       );
       batch.update(currentUserRef, { Friends: updatedFriends });
-      console.log('Removed from current user Friends array');
+      // console.log($&);
     }
     
     // 2. Remove from friend's Friends array
@@ -1441,7 +1441,7 @@ removeFriend: async (currentUserId, friendUserId, currentUserPhone, friendPhone)
         friend => friend.uid !== currentUserId
       );
       batch.update(friendUserRef, { Friends: updatedFriends });
-      console.log('Removed from friend Friends array');
+      // console.log($&);
     }
     
     // 3. Mark friend requests as removed (both directions)
@@ -1485,7 +1485,7 @@ removeFriend: async (currentUserId, friendUserId, currentUserPhone, friendPhone)
     // Commit all changes
     await batch.commit();
     
-    console.log('Friendship completely removed');
+    // console.log($&);
     return { 
       success: true, 
       message: 'Friend removed successfully' 
@@ -1508,14 +1508,14 @@ removeFriend: async (currentUserId, friendUserId, currentUserPhone, friendPhone)
         return { success: true, friendsDetails: [] };
       }
   
-      console.log(`Fetching details for ${friendIds.length} friends`);
+      // console.log($&);
       
       const friendsPromises = friendIds.map(async (friendId) => {
         try {
           const friendDoc = await getDoc(doc(db, 'users', friendId));
           
           if (!friendDoc.exists()) {
-            console.warn(`Friend not found: ${friendId}`);
+            // console.warn(`Friend not found: ${friendId}`);
             return null;
           }
           
@@ -1602,7 +1602,7 @@ removeFriend: async (currentUserId, friendUserId, currentUserPhone, friendPhone)
   
       const friendsDetails = (await Promise.all(friendsPromises)).filter(Boolean);
       
-      console.log(`Successfully fetched ${friendsDetails.length} friends`);
+      // console.log($&);
       
       return { success: true, friendsDetails };
       
@@ -1627,13 +1627,13 @@ listenToUserFriendsArray: (userId, callback) => {
       return () => {};
     }
 
-    console.log('Setting up Friends array listener for user:', userId);
+    // console.log($&);
     
     const userRef = doc(db, 'users', userId);
     
     return onSnapshot(userRef, (docSnap) => {
       if (!docSnap.exists()) {
-        console.log('User document not found:', userId);
+        // console.log($&);
         callback([]);
         return;
       }
@@ -1647,7 +1647,7 @@ listenToUserFriendsArray: (userId, callback) => {
         return;
       }
       
-      console.log(`Friends array updated: ${friendsArray.length} friends`);
+      // console.log($&);
       
       // Transform the Friends array to match the expected format
       const transformedFriends = friendsArray.map((friend, index) => {
@@ -1693,13 +1693,13 @@ listenToFriendsWithDetails: (userId, currentUserLocation, callback) => {
       return () => {};
     }
 
-    console.log('Setting up Friends listener for:', userId);
+    // console.log($&);
     
     const userRef = doc(db, 'users', userId);
     
     return onSnapshot(userRef, async (docSnap) => {
       if (!docSnap.exists()) {
-        console.log('User document not found');
+        // console.log($&);
         callback([]);
         return;
       }
@@ -1708,7 +1708,7 @@ listenToFriendsWithDetails: (userId, currentUserLocation, callback) => {
       const friendsArray = userData?.Friends || [];
       
       if (!Array.isArray(friendsArray) || friendsArray.length === 0) {
-        console.log('No friends in array');
+        // console.log($&);
         callback([]);
         return;
       }
@@ -1725,7 +1725,7 @@ listenToFriendsWithDetails: (userId, currentUserLocation, callback) => {
         return true;
       });
       
-      console.log(`Found ${uniqueFriends.length} unique friends (${friendsArray.length} total)`);
+      // console.log($&);
       
       const friendUids = uniqueFriends.map(f => f.uid);
       
@@ -1741,7 +1741,7 @@ listenToFriendsWithDetails: (userId, currentUserLocation, callback) => {
       );
       
       if (detailsResult.success) {
-        console.log(`Fetched details for ${detailsResult.friendsDetails.length} friends`);
+        // console.log($&);
         callback(detailsResult.friendsDetails);
       } else {
         console.error('Error fetching friends details:', detailsResult.error);
@@ -1766,7 +1766,7 @@ listenToFriendsWithDetails: (userId, currentUserLocation, callback) => {
  */
 getFriendsFromArray: async (userId) => {
   try {
-    console.log('Fetching Friends array for user:', userId);
+    // console.log($&);
     
     const userDoc = await getDoc(doc(db, 'users', userId));
     
@@ -1799,7 +1799,7 @@ getFriendsFromArray: async (userId) => {
       };
     }).filter(Boolean);
     
-    console.log(`Found ${friends.length} friends in Friends array`);
+    // console.log($&);
     
     return { success: true, friends };
     
@@ -1871,7 +1871,7 @@ getFriendsFromArray: async (userId) => {
       if (audioDuration) message.audioDuration = audioDuration;
 
       const docRef = await addDoc(messagesRef, message);
-      console.log('Message sent with ID:', docRef.id);
+      // console.log($&);
 
       // Send a notification to the recipient
       if (recipientPhone && senderName) {
@@ -1891,7 +1891,7 @@ getFriendsFromArray: async (userId) => {
             action: 'open_chat',
           }
         });
-        console.log(`Notification sent to ${recipientPhone} for new message.`);
+        // console.log($&);
       }
 
       return { success: true, messageId: docRef.id };
@@ -1999,7 +1999,7 @@ getFriendsFromArray: async (userId) => {
       
       await batch.commit();
       
-      console.log(`Cleared ${querySnapshot.size} messages from chat room ${chatRoomId}`);
+      // console.log($&);
       return { success: true, deletedCount: querySnapshot.size };
     } catch (error) {
       console.error(`Error clearing chat history for ${chatRoomId}:`, error);
@@ -2065,7 +2065,7 @@ getFriendsFromArray: async (userId) => {
       // Get user's friends
       const friendsResult = await FirebaseService.getFriendsForUser(userPhone);
       if (!friendsResult.success || friendsResult.friends.length === 0) {
-        console.log('No friends found for SOS notifications');
+        // console.log($&);
         return { success: false, error: 'No friends found', notificationsSent: 0 };
       }
 
@@ -2100,7 +2100,7 @@ getFriendsFromArray: async (userId) => {
 
           if (notificationResult.success) {
             notificationsSent++;
-            console.log(`SOS notification sent to ${friend.friendName}`);
+            // console.log($&);
           } else {
             console.error(`Failed to send SOS notification to ${friend.friendName}:`, notificationResult.error);
           }
@@ -2109,7 +2109,7 @@ getFriendsFromArray: async (userId) => {
         }
       }
 
-      console.log(`SOS notifications sent: ${notificationsSent}/${friendsResult.friends.length}`);
+      // console.log($&);
       
       return { 
         success: true, 
@@ -2164,7 +2164,7 @@ getFriendsFromArray: async (userId) => {
 
           if (notificationResult.success) {
             notificationsSent++;
-            console.log(`SOS resolved notification sent to ${friend.friendName}`);
+            // console.log($&);
           }
         } catch (error) {
           console.error(`Error sending SOS resolved notification to ${friend.friendName}:`, error);
@@ -2217,7 +2217,7 @@ getFriendsFromArray: async (userId) => {
 
       await batch.commit();
 
-      console.log(`Cleaned up ${querySnapshot.size} old notifications`);
+      // console.log($&);
       return { success: true, deletedCount: querySnapshot.size };
     } catch (error) {
       console.error('Error cleaning up old notifications:', error);
@@ -2277,7 +2277,7 @@ getFriendsFromArray: async (userId) => {
         timestamp: new Date(),
         status: 'pending'
       });
-      console.log('Walk request created with ID:', docRef.id);
+      // console.log($&);
       return docRef.id;
     } catch (error) {
       console.error('Error sending walk request:', error);
@@ -2291,7 +2291,7 @@ getFriendsFromArray: async (userId) => {
    */
   subscribeToWalkRequests: async () => {
     try {
-      console.log('Subscribing to walk requests topic (placeholder)');
+      // console.log($&);
       // In production, implement topic subscription based on user’s location
     } catch (error) {
       console.error('Error subscribing to walk requests:', error);
@@ -2303,6 +2303,272 @@ getFriendsFromArray: async (userId) => {
   // ========================
 
   /**
+   * Accept a walk request (by walker).
+   * Updates the walk request status to 'accepted' and sends a notification to the sender.
+   * @param {string} walkRequestId - The ID of the walk request.
+   * @param {string} walkerUserId - The userId of the walker accepting the request.
+   * @returns {Object} - { success: boolean, error?: string }
+   */
+  acceptWalkRequest: async (walkRequestId, walkerUserId) => {
+    try {
+      if (!walkRequestId || !walkerUserId) {
+        return { success: false, error: 'walkRequestId and walkerUserId required' };
+      }
+      const walkRequestRef = doc(db, 'walkRequests', walkRequestId);
+      const walkRequestDoc = await getDoc(walkRequestRef);
+      if (!walkRequestDoc.exists()) {
+        return { success: false, error: 'Walk request not found' };
+      }
+      const walkRequestData = walkRequestDoc.data();
+      // Only accept if still pending
+      if (walkRequestData.status !== 'pending') {
+        return { success: false, error: 'Walk request is not pending' };
+      }
+      // Update status to accepted and set walkerUserId
+      await updateDoc(walkRequestRef, {
+        status: 'accepted',
+        walkerUserId: walkerUserId,
+        acceptedAt: serverTimestamp()
+      });
+      // Send notification to sender (senderUserId)
+      if (walkRequestData.senderUserId) {
+        await FirebaseService.createNotification({
+          userId: walkRequestData.senderUserId,
+          recipientPhone: walkRequestData.senderPhone,
+          type: 'walk_request_pending_confirmation',
+          title: 'Walker Accepted Your Request',
+          message: 'A walker has accepted your request. Please confirm if you still need a walk.',
+          priority: 'normal',
+          data: {
+            walkRequestId: walkRequestId,
+            walkerUserId: walkerUserId,
+            action: 'confirm_walk_request'
+          }
+        });
+      }
+      return { success: true };
+    } catch (error) {
+      console.error('Error accepting walk request:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Listen to acceptance of a walk request.
+   * @param {string} walkRequestId - The ID of the walk request.
+   * @param {Function} callback - Callback function to handle updates.
+   * @returns {Function} - Unsubscribe function.
+   */
+  listenToWalkRequestAcceptance: (walkRequestId, callback) => {
+    try {
+      if (!walkRequestId) {
+        console.warn('listenToWalkRequestAcceptance called with no walkRequestId.');
+        callback(null);
+        return () => {};
+      }
+      
+      const walkRequestRef = doc(db, 'walkRequests', walkRequestId);
+      // console.log($&);
+      
+      return onSnapshot(walkRequestRef, (docSnap) => {
+        if (docSnap.exists()) {
+          const walkRequest = { id: docSnap.id, ...docSnap.data() };
+          // console.log($&);
+          
+          // Call the callback with the updated walk request data
+          callback(walkRequest);
+        } else {
+          // console.log($&);
+          callback(null);
+        }
+      }, (error) => {
+        console.error(`❌ Error listening to walk request ${walkRequestId}:`, error);
+        callback(null);
+      });
+      
+    } catch (error) {
+      console.error('💥 Error setting up walk request acceptance listener:', error);
+      return () => {};
+    }
+  },
+
+  /**
+   * Confirm a walk request (by sender, after walker accepted).
+   * Updates the walk request status to 'confirmed'.
+   * @param {string} walkRequestId - The ID of the walk request.
+   * @param {string} senderUserId - The userId of the sender confirming the request.
+   * @returns {Object} - { success: boolean, error?: string }
+   */
+  confirmWalkRequest: async (walkRequestId, senderUserId) => {
+    try {
+      if (!walkRequestId || !senderUserId) {
+        return { success: false, error: 'walkRequestId and senderUserId required' };
+      }
+      const walkRequestRef = doc(db, 'walkRequests', walkRequestId);
+      const walkRequestDoc = await getDoc(walkRequestRef);
+      if (!walkRequestDoc.exists()) {
+        return { success: false, error: 'Walk request not found' };
+      }
+      const walkRequestData = walkRequestDoc.data();
+      // Only confirm if accepted and by the correct sender
+      if (walkRequestData.status !== 'accepted') {
+        return { success: false, error: 'Walk request must be accepted before confirming' };
+      }
+      if (walkRequestData.senderUserId !== senderUserId) {
+        return { success: false, error: 'Unauthorized: Not the sender of this walk request' };
+      }
+      await updateDoc(walkRequestRef, {
+        status: 'confirmed',
+        confirmedAt: serverTimestamp()
+      });
+      // Optionally: send notification to walker
+      if (walkRequestData.walkerUserId) {
+        await FirebaseService.createNotification({
+          userId: walkRequestData.walkerUserId,
+          recipientPhone: walkRequestData.walkerPhone,
+          type: 'walk_request_confirmed',
+          title: 'Walk Request Confirmed',
+          message: 'The sender has confirmed the walk request.',
+          priority: 'normal',
+          data: {
+            walkRequestId: walkRequestId,
+            senderUserId: senderUserId,
+            action: 'walk_confirmed'
+          }
+        });
+      }
+      return { success: true };
+    } catch (error) {
+      console.error('Error confirming walk request:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Listen to walk requests for a user (sender or walker).
+   * Returns all walk requests where the user is the sender or walker, ordered by timestamp.
+   * @param {string} userId - The userId to listen for (sender or walker).
+   * @param {Function} callback - Callback function to handle updates.
+   * @returns {Function} - Unsubscribe function.
+   */
+  listenToWalkRequests: (userId, callback) => {
+    try {
+      if (!userId) {
+        console.warn('listenToWalkRequests called with no userId.');
+        callback([]);
+        return () => {};
+      }
+      const walkRequestsRef = collection(db, 'walkRequests');
+      // Listen for requests where user is sender or walker, and not cancelled or completed
+      const q = query(
+        walkRequestsRef,
+        where('status', 'in', ['pending', 'accepted', 'confirmed']),
+        // Firestore does not support 'or' queries directly, so client-side filter
+        orderBy('timestamp', 'desc'),
+        limit(50)
+      );
+      return onSnapshot(q, (snapshot) => {
+        const requests = snapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .filter(req =>
+            req.senderUserId === userId || req.walkerUserId === userId
+          );
+        callback(requests);
+      }, (error) => {
+        console.error('Error listening to walk requests:', error);
+        callback([]);
+      });
+    } catch (error) {
+      console.error('Error setting up walk request listener:', error);
+      return () => {};
+    }
+  },
+
+  /**
+   * Listen to the status of a specific walk request.
+   * @param {string} walkRequestId - The ID of the walk request.
+   * @param {Function} callback - Callback function to handle status updates.
+   * @returns {Function} - Unsubscribe function.
+   */
+  listenToWalkRequestStatus: (walkRequestId, callback) => {
+    try {
+      if (!walkRequestId) {
+        console.warn('listenToWalkRequestStatus called with no walkRequestId.');
+        callback(null);
+        return () => {};
+      }
+      const walkRequestRef = doc(db, 'walkRequests', walkRequestId);
+      return onSnapshot(walkRequestRef, (docSnap) => {
+        if (!docSnap.exists()) {
+          callback(null);
+          return;
+        }
+        const data = docSnap.data();
+        // Status could be: pending, accepted, confirmed, cancelled, completed
+        callback({ id: docSnap.id, ...data });
+      }, (error) => {
+        console.error(`Error listening to walk request status for ${walkRequestId}:`, error);
+        callback(null);
+      });
+    } catch (error) {
+      console.error('Error setting up walk request status listener:', error);
+      return () => {};
+    }
+  },
+
+  /**
+   * Get user by phone number (returns full user document).
+   * @param {string} phone - Phone number to check.
+   * @returns {Object} - { exists: boolean, userData: object|null, error?: string }
+   */
+  getUserByPhone: async (phone) => {
+    try {
+      const formattedPhone = FirebaseService.formatPhoneNumber(phone);
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('Phone', '==', formattedPhone));
+      const querySnapshot = await getDocs(q);
+      if (querySnapshot.empty) {
+        return { exists: false, userData: null };
+      }
+      const userDoc = querySnapshot.docs[0];
+      const userData = userDoc.data();
+      return {
+        exists: true,
+        userData: {
+          id: userDoc.id,
+          ...userData
+        }
+      };
+    } catch (error) {
+      console.error('Error getting user by phone:', error);
+      return { exists: false, userData: null, error: error.message };
+    }
+  },
+
+  /**
+   * Get a walker's current location by user ID.
+   * @param {string} walkerUserId - Walker's user document ID.
+   * @returns {Object} - { success: boolean, location: object|null, error?: string }
+   */
+  getWalkerLocation: async (walkerUserId) => {
+    try {
+      if (!walkerUserId) {
+        return { success: false, location: null, error: 'Walker user ID required' };
+      }
+      const userDoc = await getDoc(doc(db, 'users', walkerUserId));
+      if (!userDoc.exists()) {
+        return { success: false, location: null, error: 'Walker not found' };
+      }
+      const userData = userDoc.data();
+      const location = userData.CurrentLocation || null;
+      return { success: true, location };
+    } catch (error) {
+      console.error('Error getting walker location:', error);
+      return { success: false, location: null, error: error.message };
+    }
+  },
+
+  /**
    * Update user's Expo push token in Firestore
    * @param {string} userPhone - User's phone number
    * @param {string} pushToken - Expo push token
@@ -2311,7 +2577,7 @@ getFriendsFromArray: async (userId) => {
   updateUserPushToken: async (userPhone, pushToken) => {
     try {
       const formattedPhone = FirebaseService.formatPhoneNumber(userPhone);
-      console.log('Updating push token for:', formattedPhone);
+      // console.log($&);
       
       const usersRef = collection(db, 'users');
       const q = query(usersRef, where('Phone', '==', formattedPhone));
@@ -2328,7 +2594,7 @@ getFriendsFromArray: async (userId) => {
         pushTokenUpdatedAt: serverTimestamp(),
       });
       
-      console.log('✅ Push token updated successfully');
+      // console.log($&);
       return { success: true };
     } catch (error) {
       console.error('Error updating push token:', error);
@@ -2344,7 +2610,7 @@ getFriendsFromArray: async (userId) => {
    */
   getNearbyUsersWithTokens: async (meetupPoint) => {
     try {
-      console.log('Getting users with push tokens near:', meetupPoint);
+      // console.log($&);
       
       const usersRef = collection(db, 'users');
       const querySnapshot = await getDocs(usersRef);
@@ -2363,7 +2629,7 @@ getFriendsFromArray: async (userId) => {
         }
       });
       
-      console.log(`Found ${users.length} users with push tokens`);
+      // console.log($&);
       return users.slice(0, 10);
     } catch (error) {
       console.error('Error getting nearby users:', error);
@@ -2378,7 +2644,7 @@ getFriendsFromArray: async (userId) => {
    */
   createWalkRequest: async (walkRequestData) => {
     try {
-      console.log('Creating walk request document...', walkRequestData);
+      // console.log($&);
       
       const walkRequestsRef = collection(db, 'walkRequests');
       const docRef = await addDoc(walkRequestsRef, {
@@ -2388,7 +2654,7 @@ getFriendsFromArray: async (userId) => {
         expiresAt: new Date(Date.now() + 15 * 60 * 1000),
       });
       
-      console.log('Walk request created with ID:', docRef.id);
+      // console.log($&);
       return docRef.id; // This should return just the string ID
     } catch (error) {
       console.error('Error creating walk request:', error);
@@ -2401,7 +2667,7 @@ getFriendsFromArray: async (userId) => {
    */
   acceptWalkRequest: async (requestId, accepterPhone, senderPhone) => {
     try {
-      console.log('Accepting walk request:', requestId);
+      // console.log($&);
       const formattedAccepterPhone = FirebaseService.formatPhoneNumber(accepterPhone);
       const formattedSenderPhone = FirebaseService.formatPhoneNumber(senderPhone);
       const requestRef = doc(db, 'walkRequests', requestId);
@@ -2423,7 +2689,7 @@ getFriendsFromArray: async (userId) => {
         priority: 'high',
         data: { requestId, accepterPhone: formattedAccepterPhone, accepterName, action: 'view_walk_details' }
       });
-      console.log('Walk request accepted successfully');
+      // console.log($&);
       return { success: true };
     } catch (error) {
       console.error('Error accepting walk request:', error);
@@ -2436,14 +2702,14 @@ getFriendsFromArray: async (userId) => {
    */
   declineWalkRequest: async (requestId, declinerPhone) => {
     try {
-      console.log('Declining walk request:', requestId);
+      // console.log($&);
       const requestRef = doc(db, 'walkRequests', requestId);
       await updateDoc(requestRef, {
         status: 'declined',
         declinedBy: FirebaseService.formatPhoneNumber(declinerPhone),
         declinedAt: serverTimestamp(),
       });
-      console.log('Walk request declined');
+      // console.log($&);
       return { success: true };
     } catch (error) {
       console.error('Error declining walk request:', error);
@@ -2457,7 +2723,7 @@ getFriendsFromArray: async (userId) => {
   listenToWalkRequests: (userPhone, callback) => {
     try {
       const formattedPhone = FirebaseService.formatPhoneNumber(userPhone);
-      console.log('Setting up walk request listener for:', formattedPhone);
+      // console.log($&);
       const walkRequestsRef = collection(db, 'walkRequests');
       const q = query(
         walkRequestsRef,
@@ -2468,7 +2734,7 @@ getFriendsFromArray: async (userId) => {
       );
       return onSnapshot(q, (snapshot) => {
         const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        console.log(`Found ${requests.length} active walk requests`);
+        // console.log($&);
         callback(requests);
       }, (error) => {
         console.error('Error listening to walk requests:', error);
@@ -2500,7 +2766,7 @@ getFriendsFromArray: async (userId) => {
       });
       
       await batch.commit();
-      console.log(`Cleaned up ${querySnapshot.size} expired walk requests`);
+      // console.log($&);
     } catch (error) {
       console.error('Error cleaning up expired walk requests:', error);
     }

@@ -6,13 +6,43 @@ import { FirebaseService } from '../../backend/Firebase/FirebaseService';
 import { useNotifications } from '../contexts/NotificationContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-
 const { width, height } = Dimensions.get('window');
 
 // Replace with your actual Google Maps API key
 const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 
-const WalkStartPoint = ({ setIsDestinationDone, setIsSearchPartner, setIsStartPoint, onStartPointSelect }) => {
+// Location cleaning function
+const cleanLocationName = (location) => {
+  if (!location) return 'Destination';
+  
+  // console.log($&);
+  
+  let cleaned = location;
+  
+  // Remove common suffixes and clean up
+  const patternsToRemove = [
+    /,\s*Aukland park.*/i,
+    /,\s*Johannesburg.*/i,
+    /,\s*\d{4}.*/, // Remove postal codes (4 digits)
+    /-.*$/, // Remove everything after hyphen (like "- twinchenham road")
+  ];
+  
+  patternsToRemove.forEach(pattern => {
+    cleaned = cleaned.replace(pattern, '');
+  });
+  
+  // Split by comma and take the first part as final cleanup
+  cleaned = cleaned.split(',')[0].trim();
+  
+  // console.log($&);
+  return cleaned;
+};
+
+const WalkStartPoint = ({
+  setIsDestinationDone, setIsSearchPartner,
+  setIsStartPoint, onStartPointSelect,
+  dropoffLocation
+}) => {
   const [isSending, setIsSending] = useState(false);
   const [isDark] = useState(false);
   const [showMeetUpDropdown, setShowMeetUpDropdown] = useState(false);
@@ -22,12 +52,9 @@ const WalkStartPoint = ({ setIsDestinationDone, setIsSearchPartner, setIsStartPo
   const [showStreetViewModal, setShowStreetViewModal] = useState(false);
   const { sendWalkRequest } = useNotifications();
 
-// In your WalkStartPoint component - update handleSearch
 const handleSearch = async () => {
-  console.log("Search button pressed (latest version, FirebaseService)");
-
   if (isSending) {
-    console.log("Already sending a request, please wait...");
+    // console.log($&);
     return;
   }
 
@@ -44,7 +71,8 @@ const handleSearch = async () => {
       return;
     }
 
-    console.log('👤 Current user data:', { userId, name: userData.name, surname: userData.surname, phone: userData.phone });
+    // Clean the dropoff location
+    const cleanedDestination = cleanLocationName(dropoffLocation);
 
     // Create walk request data
     const walkRequestData = {
@@ -52,7 +80,7 @@ const handleSearch = async () => {
       requesterName: `${userData.name} ${userData.surname}`,
       requesterPhone: userData.phone,
       pickup: selectedMeetUpPoint,
-      destination: 'UJ Campus',
+      destination: cleanedDestination,
       meetupPoint: selectedMeetUpPoint,
       preferredGender: selectedGender,
       status: 'pending',
@@ -60,19 +88,20 @@ const handleSearch = async () => {
       expiresAt: new Date(Date.now() + 15 * 60 * 1000),
     };
 
-    console.log('📝 Creating walk request with data:', walkRequestData);
+    // console.log($&);
 
-    // Call FirebaseService.createWalkRequest - it should return a string ID
+    // Create walk request in Firebase
     const requestId = await FirebaseService.createWalkRequest(walkRequestData);
 
-    console.log('✅ Walk request created successfully with ID:', requestId);
+    // console.log($&);
 
     Alert.alert('Success', 'Walk request sent! Nearby users will be notified.');
-    setIsSearchPartner(true);
+
+    // Return the requestId to the parent component
+    setIsSearchPartner(requestId);
     setIsStartPoint(false);
   } catch (error) {
     console.error("💥 Error in handleSearch:", error);
-    console.error("💥 Error details:", error.message, error.stack);
     Alert.alert('Error', `Failed to send walk request: ${error.message}`);
   } finally {
     setIsSending(false);
@@ -120,7 +149,7 @@ const meetupPointCoordinates = {
 
 
 const handleMeetUpSelect = (point) => {
-  console.log("Meet-up point selected:", point);
+  // console.log($&);
   setSelectedMeetUpPoint(point);
   setShowMeetUpDropdown(false);
   
@@ -131,7 +160,7 @@ const handleMeetUpSelect = (point) => {
 };
 
   const handleGenderSelect = (gender) => {
-    console.log("Gender selected:", gender);
+    // console.log($&);
     setSelectedGender(gender);
     setShowGenderDropdown(false);
   };
@@ -160,7 +189,7 @@ const handleMeetUpSelect = (point) => {
                       { latitude: -26.1885, longitude: 28.0025 };
     
     const url = `https://maps.googleapis.com/maps/api/streetview?size=200x200&location=${coordinate.latitude},${coordinate.longitude}&fov=80&heading=70&pitch=0&key=${GOOGLE_MAPS_API_KEY}`;
-    console.log("Static StreetView URL:", url);
+    // console.log($&);
     return url;
   };
 
@@ -170,7 +199,7 @@ const handleMeetUpSelect = (point) => {
                       { latitude: -26.1885, longitude: 28.0025 };
     
     const url = `https://www.google.com/maps/embed/v1/streetview?key=${GOOGLE_MAPS_API_KEY}&location=${coordinate.latitude},${coordinate.longitude}&heading=210&pitch=10&fov=100`;
-    console.log("Embed StreetView URL:", url);
+    // console.log($&);
     return url;
   };
 
@@ -227,21 +256,21 @@ const InteractiveStreetView = ({ point }) => {
         domStorageEnabled={true}
         startInLoadingState={true}
         onLoadStart={() => {
-          console.log("WebView started loading");
+          // console.log($&);
           setIsLoading(true);
         }}
         onLoadEnd={() => {
-          console.log("WebView finished loading");
+          // console.log($&);
           setIsLoading(false);
         }}
         onError={(syntheticEvent) => {
           const { nativeEvent } = syntheticEvent;
-          console.log('WebView error: ', nativeEvent);
+          // console.log($&);
           setIsLoading(false);
         }}
         onHttpError={(syntheticEvent) => {
           const { nativeEvent } = syntheticEvent;
-          console.log('WebView HTTP error: ', nativeEvent);
+          // console.log($&);
         }}
         renderLoading={() => (
           <View style={styles.loadingContainer}>
@@ -275,7 +304,7 @@ const InteractiveStreetView = ({ point }) => {
         { backgroundColor: isDark ? '#212121' : '#eeeeeeff' }
       ]}
         onPress={() => {
-          console.log("Back button pressed");
+          // console.log($&);
           setIsDestinationDone(false);
         }}>
         <Ionicons
@@ -294,7 +323,7 @@ const InteractiveStreetView = ({ point }) => {
             { backgroundColor: isDark ? '#454545' : '#F1F1F1' }
           ]}
           onPress={() => {
-            console.log("Street View thumbnail pressed");
+            // console.log($&);
             setShowStreetViewModal(true);
           }}
         >
@@ -311,7 +340,7 @@ const InteractiveStreetView = ({ point }) => {
             <TouchableOpacity
               style={styles.changeButton}
               onPress={() => {
-                console.log("Change meet-up point button pressed");
+                // console.log($&);
                 setShowMeetUpDropdown(true);
               }}
             >
@@ -323,7 +352,7 @@ const InteractiveStreetView = ({ point }) => {
               transparent={true}
               animationType="fade"
               onRequestClose={() => {
-                console.log("Meet-up dropdown closed");
+                // console.log($&);
                 setShowMeetUpDropdown(false);
               }}
             >
@@ -331,7 +360,7 @@ const InteractiveStreetView = ({ point }) => {
                 style={styles.modalOverlay}
                 activeOpacity={1}
                 onPressOut={() => {
-                  console.log("Meet-up dropdown overlay pressed");
+                  // console.log($&);
                   setShowMeetUpDropdown(false);
                 }}
               >
@@ -358,7 +387,7 @@ const InteractiveStreetView = ({ point }) => {
             <TouchableOpacity
               style={styles.genderButton}
               onPress={() => {
-                console.log("Gender dropdown button pressed");
+                // console.log($&);
                 setShowGenderDropdown(true);
               }}
             >
@@ -372,7 +401,7 @@ const InteractiveStreetView = ({ point }) => {
               transparent={true}
               animationType="fade"
               onRequestClose={() => {
-                console.log("Gender dropdown closed");
+                // console.log($&);
                 setShowGenderDropdown(false);
               }}
             >
@@ -380,7 +409,7 @@ const InteractiveStreetView = ({ point }) => {
                 style={styles.modalOverlay}
                 activeOpacity={1}
                 onPressOut={() => {
-                  console.log("Gender dropdown overlay pressed");
+                  // console.log($&);
                   setShowGenderDropdown(false);
                 }}
               >
@@ -413,7 +442,7 @@ const InteractiveStreetView = ({ point }) => {
         transparent={false}
         animationType="slide"
         onRequestClose={() => {
-          console.log("Street View modal closed");
+          // console.log($&);
           setShowStreetViewModal(false);
         }}
       >
@@ -422,7 +451,7 @@ const InteractiveStreetView = ({ point }) => {
           <TouchableOpacity
             style={styles.closeButton}
             onPress={() => {
-              console.log("Close Street View button pressed");
+              // console.log($&);
               setShowStreetViewModal(false);
             }}
           >

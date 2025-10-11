@@ -1,8 +1,8 @@
-// components/NotificationModal.js
 import React from 'react';
 import { Modal, View } from 'react-native';
 import { useNotifications } from '../../contexts/NotificationContext';
 import WalkRequest from './WalkRequest';
+import AcceptanceLoader from '../Loaders/AcceptanceLoader'
 
 const NotificationModal = () => {
   const {
@@ -10,21 +10,26 @@ const NotificationModal = () => {
     isNotificationVisible,
     acceptWalkRequest,
     declineWalkRequest,
-    setIsNotificationVisible
+    setIsNotificationVisible,
+    acceptanceLoading,
+    setAcceptanceLoading
   } = useNotifications();
 
-  console.log('🎪 NotificationModal rendered - State:', {
+  console.log("🔍 NOTIFICATION MODAL STATE:", {
     isNotificationVisible,
     hasWalkRequest: !!currentWalkRequest,
-    walkRequest: currentWalkRequest
+    acceptanceLoading
+  });
+
+  console.log('🔍 DEBUG - NotificationModal State:', {
+    isNotificationVisible,
+    hasWalkRequest: !!currentWalkRequest,
+    acceptanceLoading
   });
 
   if (!currentWalkRequest) {
-    console.log('🎪 No currentWalkRequest - returning null');
     return null;
   }
-
-  console.log('🎪 Rendering Modal with walk request:', currentWalkRequest);
 
   return (
     <Modal
@@ -32,22 +37,29 @@ const NotificationModal = () => {
       transparent={true}
       animationType="slide"
       onRequestClose={() => {
-        console.log('🎪 Modal closed via back button');
-        setIsNotificationVisible(false);
+        // Only close if not in loading state, otherwise ignore
+        if (!acceptanceLoading) {
+          setIsNotificationVisible(false);
+          setAcceptanceLoading(false);
+        }
+        // If loading, don't allow close - user must wait
       }}
     >
       <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }}>
-        <WalkRequest
-          walkData={currentWalkRequest}
-          onAccept={() => {
-            console.log('🎪 Accept button pressed');
-            acceptWalkRequest();
-          }}
-          onDecline={() => {
-            console.log('🎪 Decline button pressed');
-            declineWalkRequest();
-          }}
-        />
+        {/* Show AcceptanceLoader when loading, otherwise show WalkRequest */}
+        {acceptanceLoading ? (
+          <AcceptanceLoader 
+            partnerName={currentWalkRequest.partnerName}
+            meetupPoint={currentWalkRequest.meetupPoint}
+          />
+        ) : (
+          <WalkRequest
+            walkData={currentWalkRequest}
+            onAccept={acceptWalkRequest}
+            onDecline={declineWalkRequest}
+            acceptanceLoading={acceptanceLoading} 
+          />
+        )}
       </View>
     </Modal>
   );

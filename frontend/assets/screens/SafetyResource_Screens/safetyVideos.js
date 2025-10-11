@@ -34,7 +34,7 @@ const SafetyVideos = ({ setIsSafetyVideos, setIsSafetyResources }) => {
   // --- CORRECTED useEffect ---
   // We only need one useEffect hook here.
   useEffect(() => {
-    console.log('My YouTube API Key is:', YOUTUBE_API_KEY); // For debugging
+    // console.log($&); // For debugging
 
     if (!YOUTUBE_API_KEY) {
       Alert.alert(
@@ -52,7 +52,7 @@ const SafetyVideos = ({ setIsSafetyVideos, setIsSafetyResources }) => {
       try {
         const response = await fetch(apiUrl);
         const data = await response.json();
-        console.log('YouTube API Response:', JSON.stringify(data, null, 2)); // More detailed logging
+        // console.log($&); // More detailed logging
 
         if (data.error) {
           // Provide more context in the error alert
@@ -85,7 +85,7 @@ const SafetyVideos = ({ setIsSafetyVideos, setIsSafetyResources }) => {
         } else {
           // Handle the case where API returns ok, but no items
           Alert.alert("No Videos Found", "The API returned a successful response, but no video details were found for the given IDs.");
-          console.log("No items found in API response for video IDs:", videoIds);
+          // console.log($&);
           setFetchedVideos([]); // Ensure it's an empty array
         }
       } catch (error) {

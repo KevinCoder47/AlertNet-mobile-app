@@ -226,7 +226,7 @@ const SafetyZones = ({ setIsSafetyZones, setIsSafetyResources }) => {
             });
           }
         } catch (error) {
-          console.log(`Failed to fetch ${query}:`, error);
+          // console.log($&);
         }
       }
 

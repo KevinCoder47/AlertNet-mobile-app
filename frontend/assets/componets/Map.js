@@ -141,24 +141,24 @@ export default function SafetyMap({userImage, friendsDetails, setFriendsDetails,
 
   // Debug logging to track friend data
   useEffect(() => {
-    console.log('=== SAFETYMAP DEBUG ===');
-    console.log('friendsDetails type:', Array.isArray(friendsDetails) ? 'array' : typeof friendsDetails);
-    console.log('friendsArray length:', friendsArray.length);
+    // console.log($&);
+    // console.log($&);
+    // console.log($&);
     
     const friendsWithLocations = friendsArray.filter(f => f.currentLocation);
-    console.log('Friends with currentLocation:', friendsWithLocations.length);
+    // console.log($&);
     
     friendsWithLocations.forEach(f => {
-      console.log(`  ${f.name}:`, {
-        lat: f.currentLocation?.latitude,
-        lng: f.currentLocation?.longitude,
-        hasImage: !!f.imageUrl || !!f.avatar
-      });
+      // console.log(`  ${f.name}:`, {
+      //   lat: f.currentLocation?.latitude,
+      //   lng: f.currentLocation?.longitude,
+      //   hasImage: !!f.imageUrl || !!f.avatar
+      // });
     });
     
     if (friendsWithLocations.length === 0 && friendsArray.length > 0) {
       console.warn('⚠️ WARNING: Friends exist but none have currentLocation!');
-      console.log('Sample friend data:', JSON.stringify(friendsArray[0], null, 2));
+      // console.log($&);
     }
   }, [friendsDetails, friendsArray]);
   
@@ -197,7 +197,7 @@ export default function SafetyMap({userImage, friendsDetails, setFriendsDetails,
       .filter(friend => friend.currentLocation)
       .map(friend => friend.currentLocation);
     
-    console.log('Adjusting map region with', friendLocations.length, 'friend locations');
+    // console.log($&);
     
     // If no friends or friends are far away, focus on user only
     if (friendLocations.length === 0) {
@@ -368,7 +368,7 @@ export default function SafetyMap({userImage, friendsDetails, setFriendsDetails,
                     source={{ uri: imageUrl }} 
                     style={styles.friendMarker}
                     onError={(error) => {
-                      console.log(`Error loading image for ${friend.name}:`, error.nativeEvent.error);
+                      // console.log($&);
                     }}
                   />
                 ) : (

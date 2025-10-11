@@ -26,7 +26,7 @@ const saveSlot = async (slot) => {
     const slots = existing ? JSON.parse(existing) : [];
     slots.push(slot);
     await AsyncStorage.setItem('scheduledSlots', JSON.stringify(slots));
-    console.log('Slot saved successfully');
+    // console.log($&);
   } catch (err) {
     console.error("Error saving slot:", err);
   }
@@ -92,7 +92,7 @@ const AddScheduledWalk = ({ setIsAddScheduledWalkVisible }) => {
 
     // Add to context (which will update storage and state)
     addSlot(newSlot);
-    console.log("Slot saved successfully!");
+    // console.log($&);
     setIsAddScheduledWalkVisible(false);
   };
 

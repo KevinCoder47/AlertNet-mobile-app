@@ -13,10 +13,10 @@ filesToPatch.forEach(filePath => {
     // Comment out getNativeComponent property declaration
     content = content.replace(/(\s+)getNativeComponent[\s\S]*?;/g, '$1//getNativeComponent;');
     fs.writeFileSync(filePath, content, 'utf8');
-    console.log(`✓ Patched: ${filePath}`);
+    // console.log($&);
   } else {
-    console.log(`✗ Not found: ${filePath}`);
+    // console.log($&);
   }
 });
 
-console.log('\nAll files patched! Now run: npx patch-package react-native-maps');
+// console.log($&);

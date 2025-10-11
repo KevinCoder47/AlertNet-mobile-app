@@ -126,7 +126,7 @@ const InAppNotificationPopup = ({ notification, onDismiss, onNavigate, onViewLoc
                          notification.data?.profilePicture || 
                          null;
   
-  console.log('Profile picture for popup:', profilePicture);
+  // console.log($&);
   
   const senderName = notification.senderName || 
                      notification.data?.senderName || 
@@ -144,10 +144,10 @@ const InAppNotificationPopup = ({ notification, onDismiss, onNavigate, onViewLoc
             source={{ uri: profilePicture }} 
             style={styles.profilePicture}
             onError={(error) => {
-              console.log('Profile picture failed to load:', error.nativeEvent.error);
+              // console.log($&);
             }}
             onLoad={() => {
-              console.log('Profile picture loaded successfully');
+              // console.log($&);
             }}
           />
         ) : (

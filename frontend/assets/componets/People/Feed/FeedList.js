@@ -72,7 +72,7 @@ const FeedList = () => {
     try {
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        console.log('Permission to access location was denied');
+        // console.log($&);
         return;
       }
 

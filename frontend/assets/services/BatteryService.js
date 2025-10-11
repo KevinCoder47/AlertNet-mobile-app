@@ -11,7 +11,7 @@ export const BatteryService = {
     try {
       const batteryLevel = await Battery.getBatteryLevelAsync();
       const percentage = Math.round(batteryLevel * 100);
-      console.log('Current battery level:', percentage + '%');
+      // console.log($&);
       return percentage;
     } catch (error) {
       console.error('Error getting battery level:', error);
@@ -44,7 +44,7 @@ export const BatteryService = {
       return () => {};
     }
 
-    console.log('Starting battery monitoring for user:', userId);
+    // console.log($&);
 
     // Initial update
     BatteryService.updateBatteryInFirebase(userId);
@@ -52,19 +52,19 @@ export const BatteryService = {
     // Subscribe to battery level changes
     const subscription = Battery.addBatteryLevelListener(({ batteryLevel }) => {
       const percentage = Math.round(batteryLevel * 100);
-      console.log('Battery level changed to:', percentage + '%');
+      // console.log($&);
       BatteryService.updateBatteryInFirebase(userId, percentage);
     });
 
     // Also update every 5 minutes as backup
     const intervalId = setInterval(() => {
-      console.log('Periodic battery update...');
+      // console.log($&);
       BatteryService.updateBatteryInFirebase(userId);
     }, 5 * 60 * 1000); // 5 minutes
 
     // Return cleanup function
     return () => {
-      console.log('Stopping battery monitoring for user:', userId);
+      // console.log($&);
       subscription.remove();
       clearInterval(intervalId);
     };
@@ -82,12 +82,12 @@ export const BatteryService = {
         ? batteryLevel 
         : await BatteryService.getCurrentBatteryLevel();
       
-      console.log(`Updating battery in Firebase for user ${userId}: ${level}%`);
+      // console.log($&);
       
       const result = await FirebaseService.updateUserBattery(userId, level);
       
       if (result.success) {
-        console.log('Battery updated successfully in Firebase');
+        // console.log($&);
         
         // Also update local AsyncStorage
         try {
@@ -97,7 +97,7 @@ export const BatteryService = {
             user.Battery = level;
             user.BatteryLastUpdated = new Date().toISOString();
             await AsyncStorage.setItem('userData', JSON.stringify(user));
-            console.log('Battery updated in AsyncStorage');
+            // console.log($&);
           }
         } catch (storageError) {
           console.warn('Error updating AsyncStorage:', storageError);

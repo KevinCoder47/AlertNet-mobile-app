@@ -27,12 +27,12 @@ export const getWalkingRoute = async (origin, destination, maxRetries = 2) => {
       
       const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${origin.latitude},${origin.longitude}&destination=${destination.latitude},${destination.longitude}&mode=walking&key=${GOOGLE_MAPS_APIKEY}&alternatives=true`;
       
-      console.log(`Attempt ${attempt}: Fetching route from`, origin, 'to', destination);
+      // console.log($&);
       
       const response = await axios.get(url, { timeout: 10000 });
       const data = response.data;
 
-      console.log('Directions API response status:', data.status);
+      // console.log($&);
       
       if (data.status === 'OK') {
         const route = data.routes[0];
@@ -55,7 +55,7 @@ export const getWalkingRoute = async (origin, destination, maxRetries = 2) => {
         };
       } else if (data.status === 'ZERO_RESULTS') {
         // Try with driving mode as fallback for walking
-        console.log('No walking route found, trying driving mode as fallback...');
+        // console.log($&);
         const drivingUrl = `https://maps.googleapis.com/maps/api/directions/json?origin=${origin.latitude},${origin.longitude}&destination=${destination.latitude},${destination.longitude}&mode=driving&key=${GOOGLE_MAPS_APIKEY}`;
         
         const drivingResponse = await axios.get(drivingUrl, { timeout: 10000 });
@@ -237,7 +237,7 @@ export const testDirectionsAPI = async () => {
   
   try {
     const route = await getWalkingRoute(testOrigin, testDestination);
-    console.log('API test successful:', route);
+    // console.log($&);
     return { success: true, data: route };
   } catch (error) {
     console.error('API test failed:', error);

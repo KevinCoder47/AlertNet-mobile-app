@@ -68,6 +68,7 @@ export default {
     plugins: [
       'expo-font',
       'expo-router',
+      "expo-asset",
       [
         'expo-location',
         {
@@ -81,6 +82,7 @@ export default {
       ],
       [
         'expo-build-properties',
+        
         {
           ios: {
             useFrameworks: 'static',

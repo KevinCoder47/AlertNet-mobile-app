@@ -19,7 +19,7 @@ Notifications.setNotificationHandler({
 export const setupNotificationListeners = (onNotificationReceived, onNotificationTapped) => {
   // Listener for notifications received while app is open
   const notificationListener = Notifications.addNotificationReceivedListener(notification => {
-    console.log('Notification received:', notification);
+    // console.log($&);
     if (onNotificationReceived) {
       onNotificationReceived(notification);
     }
@@ -27,7 +27,7 @@ export const setupNotificationListeners = (onNotificationReceived, onNotificatio
 
   // Listener for when user taps on notification
   const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
-    console.log('Notification tapped:', response);
+    // console.log($&);
     const data = response.notification.request.content.data;
     if (onNotificationTapped) {
       onNotificationTapped(data);

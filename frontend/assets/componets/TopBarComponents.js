@@ -58,7 +58,7 @@ useEffect(() => {
         <TouchableOpacity
                     onPress={() => {
               setIsUserProfile(true)
-              console.log("Profile pressed");
+              // console.log($&);
             }}>
           <ImageBackground
             source={{uri: userImage }} 

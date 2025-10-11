@@ -70,7 +70,7 @@ const Home = ({ route, handleLogout }) => {
   
   // Convert friends array to object format for SafetyMap compatibility
   const friendsDetails = React.useMemo(() => {
-    console.log('Home: Converting', friendsData.length, 'friends to object format');
+    // // console.log($&);
     return friendsData.reduce((acc, friend) => {
       const id = friend.friendId || friend.uid;
       if (id) {
@@ -82,10 +82,10 @@ const Home = ({ route, handleLogout }) => {
 
   // Log when friends data changes
   useEffect(() => {
-    console.log('Home: Friends data updated:', friendsData.length, 'friends');
-    console.log('Home: Friends with locations:', 
-      friendsData.filter(f => f.currentLocation).length
-    );
+    // // console.log($&);
+    // console.log('Home: Friends with locations:', 
+    //   friendsData.filter(f => f.currentLocation).length
+    // );
   }, [friendsData]);
 
   // State declarations
@@ -149,25 +149,25 @@ const Home = ({ route, handleLogout }) => {
   useEffect(() => {
     if (route.params?.openChatWith) {
       const personToChat = route.params.openChatWith;
-      console.log('Home.js: Received request to open chat with:', personToChat.name);
+      // console.log($&);
       handleOpenChat(personToChat);
     }
   }, [route.params?.openChatWith]);
 
   const handleOpenChat = async (personData) => {
-    console.log('DEBUG: Opening chat with raw personData:', JSON.stringify(personData, null, 2));
+    // // console.log($&);
     
     const personId = personData?.senderId || personData?.friendId || personData?.id;
-    console.log('DEBUG: Resolved personId:', personId);
+    // // console.log($&);
 
     if (personData && personId) {
       let completePersonData = personData.data || personData;
 
       if (!completePersonData.createdAt) {
-        console.log(`Incomplete user data for ${personId}, fetching full document.`);
+        // console.log($&);
         const userResult = await FirebaseService.getUserById(personId);
         if (userResult.success) {
-          console.log('Successfully fetched full user document.');
+          // console.log($&);
           completePersonData = userResult.userData;
         } else {
           console.error(`Failed to fetch full user document for ${personId}:`, userResult.error);
@@ -178,7 +178,7 @@ const Home = ({ route, handleLogout }) => {
       const phone = completePersonData.phone || completePersonData.Phone || null;
       const profilePicture = completePersonData.profilePicture || completePersonData.imageUrl || completePersonData.ImageURL || completePersonData.avatar || null;
       
-      console.log('Profile picture for chat:', profilePicture);
+      // console.log($&);
       
       setChatTarget({
         id: personId,
@@ -202,7 +202,7 @@ const Home = ({ route, handleLogout }) => {
 
     const initializeUserFCM = async () => {
       try {
-        console.log('Initializing FCM for user:', userData.name);
+        // console.log($&);
         await SOSService.initializeFCM(userData.userId);
       } catch (error) {
         console.error('Error initializing FCM for user:', error);
@@ -286,7 +286,7 @@ const Home = ({ route, handleLogout }) => {
           });
         }
       } catch (error) {
-        console.error("Error requesting background location:", error);
+        // console.error("Error requesting background location:", error);
       }
     };
     
@@ -305,14 +305,14 @@ const Home = ({ route, handleLogout }) => {
     }
 
     FirebaseService.updateUserStatus(userId, { status: 'online' });
-    console.log(`✨ User ${userId} is now online.`);
+    // console.log($&);
 
     const handleAppStateChange = async (nextAppState) => {
       if (nextAppState === 'active') {
-        console.log('📱 App is active.');
+        // console.log($&);
         await FirebaseService.updateUserStatus(userId, { status: 'online' });
       } else if (nextAppState === 'background' || nextAppState === 'inactive') {
-        console.log('📱 App is in background.');
+        // console.log($&);
         if (activePopup) {
           dismissPopup();
         }
@@ -326,7 +326,7 @@ const Home = ({ route, handleLogout }) => {
     const subscription = AppState.addEventListener('change', handleAppStateChange);
     
     return () => {
-      console.log(`🚪 Cleaning up presence for user ${userId}.`);
+      // console.log($&);
       if (userId) {
         FirebaseService.updateUserStatus(userId, { 
           status: 'offline',
@@ -391,7 +391,7 @@ const Home = ({ route, handleLogout }) => {
         
         if (userDataJSON) {
           const userData = JSON.parse(userDataJSON);
-          console.log("User data loaded:", userData.name);
+          // console.log($&);
           setUserData(userData);
           
           if (userData.imageUrl) {
@@ -450,7 +450,7 @@ const Home = ({ route, handleLogout }) => {
   };
 
   const handleImageError = () => {
-    console.log('Image failed to load');
+    // console.log($&);
     setImageError(true);
     
     if (cachedImagePath) {
@@ -474,7 +474,7 @@ const Home = ({ route, handleLogout }) => {
 
   const handleBarCodeScanned = ({ type, data }) => {
     setIsScanning(false);
-    console.log(`QR Code scanned! Type: ${type}, Data: ${data}`);
+    // console.log($&);
     
     try {
       const parsedData = JSON.parse(data);
@@ -839,7 +839,7 @@ const Home = ({ route, handleLogout }) => {
           <InAppNotificationPopup
             notification={activePopup}
             onDismiss={() => {
-              console.log('🔕 Dismissing popup from view only.');
+              // console.log($&);
               dismissPopup();
             }}
             onNavigate={() => {

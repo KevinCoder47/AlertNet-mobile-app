@@ -111,7 +111,7 @@ const LocationViewer = ({
   // Listen for real-time location updates from Firebase
   useEffect(() => {
     if (!senderId) {
-      console.log("LocationViewer: No senderId provided, real-time updates disabled.");
+      // console.log($&);
       return;
     }
 
@@ -121,7 +121,7 @@ const LocationViewer = ({
       if (docSnap.exists()) {
         const userData = docSnap.data();
         if (userData.currentLocation) {
-          console.log("Live location update received:", userData.currentLocation);
+          // console.log($&);
           setLiveLocation(userData.currentLocation);
           setLiveLocationLastUpdated(new Date()); // Record when we received the update
 
@@ -138,7 +138,7 @@ const LocationViewer = ({
           }
         }
       } else {
-        console.log("LocationViewer: Sender document not found for real-time updates.");
+        // console.log($&);
       }
     }, (error) => {
       console.error("Error listening to location updates:", error);

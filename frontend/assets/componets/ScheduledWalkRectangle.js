@@ -30,7 +30,7 @@ const ScheduledWalkRectangle = ({ slot, progress = 0 }) => {
     const clearAllData = async () => {
   // try {
   //   await AsyncStorage.clear();
-  //   console.log('✅ AsyncStorage cleared');
+  //   // console.log($&);
   // } catch (e) {
   //   console.error('❌ Failed to clear AsyncStorage:', e);
   // }

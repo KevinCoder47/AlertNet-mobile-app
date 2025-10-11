@@ -69,7 +69,7 @@ const OfflineMapUsageExample = () => {
     const result = await getMapHistory(mapId);
     if (result.success) {
       setMapHistory(result.history);
-      console.log('Map History:', result.history);
+      // console.log($&);
     }
   };
 
@@ -77,7 +77,7 @@ const OfflineMapUsageExample = () => {
   const handleGetCompleteMapData = async (mapId) => {
     const result = await getCompleteMapData(mapId);
     if (result.success) {
-      console.log('Complete Map Data:', result.data);
+      // console.log($&);
       Alert.alert('Complete Data Retrieved', 'Check console for full details');
     }
   };
