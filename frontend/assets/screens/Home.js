@@ -1,4 +1,4 @@
-import { StyleSheet, View, Dimensions, Image, TouchableOpacity, Text } from 'react-native';
+import { StyleSheet, View, Dimensions, Image, TouchableOpacity, Text, KeyboardAvoidingView, Platform } from 'react-native';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Map from '../componets/Map';
 import TopBar from '../componets/TopBar';
@@ -43,6 +43,7 @@ import LocationViewer from './LocationViewer';
 import ChatProfile from './chatProfile';
 import ChatScreen from './ChatScreen';
 import ChatBot from '../componets/ChatBot';
+import { BlurView } from 'expo-blur';
 
 const { width, height } = Dimensions.get('window');
 
@@ -832,27 +833,46 @@ const Home = ({ route, handleLogout }) => {
           />
         </View>
         
-        {/* Floating Chatbot Button - Always visible on map */}
-        {!isChatBotOpen && !IsNotification && (
+        {/* Floating Chatbot Button - Hidden when People bar or helpline page are open */}
+        {!isChatBotOpen && !IsNotification && !isPeopleActive && !isNotHome && (
+        <BlurView intensity={80} tint="light" style={styles.chatButton}>
           <TouchableOpacity
-            style={styles.chatButton}
+            style={styles.chatButtonInner}
             onPress={() => setIsChatBotOpen(true)}
             activeOpacity={0.8}
           >
-            <Ionicons name="chatbubbles" size={26} color="#fff" />
+            <Ionicons name="chatbubbles" size={26} color="#FF6600" />
           </TouchableOpacity>
-        )}
+        </BlurView>
+      )}
 
-        {/* Floating Chatbot Overlay */}
-        {isChatBotOpen && (
-          <View style={styles.chatBotOverlay}>
-            <View style={styles.chatBotContainer}>
-              <View style={styles.chatBotContent}>
-                <ChatBot setIsChatBot={setIsChatBotOpen} isFloating={true} />
+          {/* Floating Chatbot Overlay - Hidden when People bar or helpline page are open */}
+          {isChatBotOpen && !isPeopleActive && !isNotHome && (
+            <KeyboardAvoidingView 
+              style={styles.chatBotOverlay}
+              behavior={Platform.OS === "ios" ? "padding" : "height"}
+            >
+              <View style={styles.chatBotContainer}>
+                <View style={styles.chatBotContent}>
+                  <ChatBot 
+                    setIsChatBot={setIsChatBotOpen} 
+                    isFloating={true}
+                    userId={userData?.userId}
+                    userLocation={userLocation}
+                    userEmail={userData?.Email || userData?.email || ""}
+                    myPhone={userData?.Phone || userData?.phone || ""}
+                    userData={userData}
+                    onActivateSOS={(sosSessionId) => {
+                      console.log('Home: Received SOS activation from chatbot, session:', sosSessionId);
+                      setActiveSosSessionId(sosSessionId);
+                      setIsChatBotOpen(false);
+                      setIsSOS(true);
+                    }}
+                  />
+                </View>
               </View>
-            </View>
-          </View>
-        )}
+            </KeyboardAvoidingView>
+          )}
         
         {IsNotification && (
           <NotificationsPopup
@@ -920,21 +940,28 @@ const styles = StyleSheet.create({
   },
   chatButton: {
     position: "absolute",
-    bottom: 180,
+    bottom: 150,
     left: 25,
     width: 60,
     height: 60,
-    backgroundColor: "#FF6600",
     borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
+    overflow: 'hidden',
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
+    shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 10,
     zIndex: 9999,
   },
+
+  chatButtonInner: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 102, 0, 0.2)',
+  },
+
   chatBotOverlay: {
     position: 'absolute',
     bottom: 140,
@@ -943,7 +970,6 @@ const styles = StyleSheet.create({
     height: height * 0.55,
     zIndex: 1001,
   },
-
   chatBotContainer: {
     flex: 1,
     backgroundColor: 'rgba(26, 26, 26, 0.75)',
