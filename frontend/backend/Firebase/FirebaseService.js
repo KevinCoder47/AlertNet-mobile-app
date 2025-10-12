@@ -2445,6 +2445,31 @@ getFriendsFromArray: async (userId) => {
   },
 
   /**
+   * Update walk request status
+   * @param {string} requestId - Walk request document ID
+   * @param {string} status - New status ('accepted_by_both', 'active', 'completed')
+   * @returns {Promise<Object>} - { success: boolean, error?: string }
+   */
+updateWalkRequestStatus: async (requestId, status, additionalData = {}) => {
+  try {
+    const walkRequestRef = doc(db, 'walkRequests', requestId);
+    const updateData = {
+      status: status,
+      lastUpdated: serverTimestamp(),
+      ...additionalData
+    };
+    
+    await updateDoc(walkRequestRef, updateData);
+    
+    console.log(`✅ Walk request ${requestId} updated to:`, status);
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating walk request status:', error);
+    return { success: false, error: error.message };
+  }
+},
+
+  /**
    * Listen to walk requests for a user (sender or walker).
    * Returns all walk requests where the user is the sender or walker, ordered by timestamp.
    * @param {string} userId - The userId to listen for (sender or walker).

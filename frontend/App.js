@@ -16,6 +16,10 @@ import NotificationHandler from './assets/componets/NotificationHandler';
 import NotificationModal from './assets/componets/notifications/NotificationModal';
 import DeepLinkHandler from './assets/componets/DeepLinkHandler';
 import AcceptanceLoader from './assets/componets/Loaders/AcceptanceLoader';
+import WalkingMap from './assets/componets/WalkingMapComponents/WalkingMap';
+import WalkDetails from './assets/componets/WalkingMapComponents/WalkDetails';
+import PartnerEstimatedDetails from './assets/componets/WalkingMapComponents/PartnerEstimatedDetails';
+import LocatePartner from './assets/componets/LocatePartner';
 
 
 
@@ -98,7 +102,8 @@ return (
                 <AppNavigator /> 
                 <NotificationModal /> 
                 
-                
+
+              
                 <StatusBar style="auto" />
               </View>
             </FriendsProvider>

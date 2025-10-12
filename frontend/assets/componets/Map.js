@@ -7,7 +7,6 @@ import UserMapMarker from './UserMapMarker';
 import AndroidMarker from './AndroidMarker';
 import { useMapContext } from '../contexts/MapContext';
 import { getUserDocument } from '../../services/firestore';
-import Constants from 'expo-constants';
 
 const MAP_STYLES = {
   light: [
@@ -116,9 +115,6 @@ export default function SafetyMap({userImage, friendsDetails, setFriendsDetails,
   const { colors } = useTheme();
   const [location, setLocation] = useState(null);
   const [mapReady, setMapReady] = useState(false);
-  
-  // Check if running in Expo Go
-  const isExpoGo = Constants.appOwnership === 'expo';
 
   // Platform-specific configuration
   const isAndroid = Platform.OS === 'android';
@@ -141,12 +137,7 @@ export default function SafetyMap({userImage, friendsDetails, setFriendsDetails,
 
   // Debug logging to track friend data
   useEffect(() => {
-    // console.log($&);
-    // console.log($&);
-    // console.log($&);
-    
     const friendsWithLocations = friendsArray.filter(f => f.currentLocation);
-    // console.log($&);
     
     friendsWithLocations.forEach(f => {
       // console.log(`  ${f.name}:`, {
@@ -158,7 +149,6 @@ export default function SafetyMap({userImage, friendsDetails, setFriendsDetails,
     
     if (friendsWithLocations.length === 0 && friendsArray.length > 0) {
       console.warn('⚠️ WARNING: Friends exist but none have currentLocation!');
-      // console.log($&);
     }
   }, [friendsDetails, friendsArray]);
   
@@ -196,8 +186,6 @@ export default function SafetyMap({userImage, friendsDetails, setFriendsDetails,
     const friendLocations = friendsArray
       .filter(friend => friend.currentLocation)
       .map(friend => friend.currentLocation);
-    
-    // console.log($&);
     
     // If no friends or friends are far away, focus on user only
     if (friendLocations.length === 0) {
@@ -289,19 +277,6 @@ export default function SafetyMap({userImage, friendsDetails, setFriendsDetails,
     };
   }, [userLocation]);
 
-  if (isExpoGo) {
-    return (
-      <View style={styles.expoGoFallback}>
-        <Text style={styles.fallbackText}>
-          Google Maps is not available in Expo Go.
-        </Text>
-        <Text style={styles.fallbackText}>
-          Please use a development build for full functionality.
-        </Text>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
       {/* Main Map View */}
@@ -368,7 +343,7 @@ export default function SafetyMap({userImage, friendsDetails, setFriendsDetails,
                     source={{ uri: imageUrl }} 
                     style={styles.friendMarker}
                     onError={(error) => {
-                      // console.log($&);
+                      // console.log('Error loading friend image:', error);
                     }}
                   />
                 ) : (
@@ -426,17 +401,5 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 20,
     fontWeight: 'bold',
-  },
-  expoGoFallback: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f0f0f0',
-    padding: 20,
-  },
-  fallbackText: {
-    textAlign: 'center',
-    marginBottom: 10,
-    color: '#333',
   },
 });

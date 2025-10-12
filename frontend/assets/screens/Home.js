@@ -12,7 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Alert, Linking, AppState } from 'react-native';
 import { serverTimestamp } from 'firebase/firestore';
 // import * as FileSystem from 'expo-file-system/legacy';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Crypto from 'expo-crypto';
 import { getUserDocument } from '../../services/firestore';
 import * as Location from 'expo-location';
@@ -87,6 +87,15 @@ const Home = ({ route, handleLogout }) => {
     //   friendsData.filter(f => f.currentLocation).length
     // );
   }, [friendsData]);
+
+  // NotificationContext walk partner state
+  const { 
+    acceptedWalkRequest, 
+    setAcceptedWalkRequest,
+    currentWalkRequest 
+  } = useNotifications();
+
+  const [autoNavigateToWalkPartner, setAutoNavigateToWalkPartner] = useState(false);
 
   // State declarations
   const [isNotHome, setIsNotHome] = useState(false);
@@ -499,9 +508,40 @@ const Home = ({ route, handleLogout }) => {
     }
   };
 
+  // Auto-navigate to WalkPartner when walk is accepted by both
+  useEffect(() => {
+    console.log('🏠 [Home] Checking acceptedWalkRequest:', acceptedWalkRequest);
+    
+    if (acceptedWalkRequest && acceptedWalkRequest.status === 'accepted_by_both') {
+      console.log('🏠 [Home] Receiver walk confirmed, auto-navigating to WalkPartner');
+      
+      setAutoNavigateToWalkPartner(true);
+      setIsWalkPartner(true);
+    }
+  }, [acceptedWalkRequest]);
+
+  // Reset auto-navigate on leaving WalkPartner
+  useEffect(() => {
+    if (!isWalkPartner) {
+      setAutoNavigateToWalkPartner(false);
+    }
+  }, [isWalkPartner]);
+
   // Conditional screen renders
   if (isWalkPartner) {
-    return <WalkPartner setIsWalkPartner={setIsWalkPartner} userImage={userImage} />;
+    return (
+      <WalkPartner 
+        setIsWalkPartner={(value) => {
+          setIsWalkPartner(value);
+          if (!value && acceptedWalkRequest) {
+            setAcceptedWalkRequest(null);
+          }
+        }} 
+        userImage={userImage}
+        isReceiverWalk={autoNavigateToWalkPartner}
+        initialAcceptedWalkRequest={autoNavigateToWalkPartner ? acceptedWalkRequest : null}
+      />
+    );
   }
 
   if (isUserProfile) {
