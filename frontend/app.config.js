@@ -25,6 +25,8 @@ export default {
       infoPlist: {
         NSLocationWhenInUseUsageDescription:
           'This app uses your location for the SOS feature and to verify functionality during tests.',
+        NSLocationAlwaysAndWhenInUseUsageDescription:
+          'AlertNet uses your location in the background to keep your friends updated during an emergency SOS session, even when the app is closed.',
         LSApplicationQueriesSchemes: ['youtube', 'https'],
       },
     },
@@ -69,6 +71,8 @@ export default {
         {
           locationWhenInUsePermission:
             'This app uses your location for the SOS feature and to verify functionality during tests.',
+          locationAlwaysAndWhenInUsePermission:
+            'AlertNet uses your location in the background to keep your friends updated during an emergency SOS session, even when the app is closed.',
         },
       ],
     ],

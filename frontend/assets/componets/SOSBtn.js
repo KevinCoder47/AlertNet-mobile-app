@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View, TouchableOpacity, Dimensions, Alert } from 'react-native'
 import React, {useState} from 'react'
 import { SOSService } from '../services/SOSService'
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
 const SOSBtn = ({ onPress, isSOSPreview, setIsSOSPreview }) => {
@@ -28,9 +29,22 @@ const SOSBtn = ({ onPress, isSOSPreview, setIsSOSPreview }) => {
         }
         
         try {
+          // MODIFIED: Get user data from storage before initiating SOS.
+          // This ensures we have a valid user ID and other details.
+          const userDataString = await AsyncStorage.getItem('userData');
+          if (!userDataString) {
+            throw new Error("You must be logged in to use SOS. Please sign in again.");
+          }
+          const userData = JSON.parse(userDataString);
+          const userId = userData.uid || userData.id || userData.userId;
+
+          if (!userId) {
+            throw new Error("Your user session is invalid. Please sign in again.");
+          }
+
           // This new function returns almost instantly with the session ID.
           // The heavy work of sending notifications happens in the background.
-          const sessionId = await SOSService.initiateSOSSession();
+          const sessionId = await SOSService.initiateSOSSession('manual', userData);
           
           // Navigate to the SOS page immediately.
           // The SOSPage will show the real-time progress of alerts being sent.

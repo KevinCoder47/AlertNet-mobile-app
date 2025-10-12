@@ -250,18 +250,19 @@ export class SOSFirebaseService {
   }
 
   // Send SOS notifications to friends - MAIN METHOD
-  static async sendSOSNotifications(location, message = null, sosSessionId = null) {
+  static async sendSOSNotifications(location, message = null, sosSessionId = null, userData) {
     try {
-      const currentUser = auth.currentUser;
-      if (!currentUser) {
-        console.error('SOS Service: No current user for SOS notification');
-        return { success: false, error: 'User not authenticated' };
+      const userId = userData?.uid || userData?.id || userData?.userId;
+      const userEmail = userData?.email || userData?.Email;
+
+      if (!userId) {
+        throw new Error('User ID not found in provided user data.');
       }
 
-      console.log('SOS Service: Sending SOS notifications for user:', currentUser.uid);
+      console.log('SOS Service: Sending SOS notifications for user:', userId);
 
       // Get user's friends
-      const friends = await SOSFirebaseService.getUserFriends(currentUser.uid);
+      const friends = await SOSFirebaseService.getUserFriends(userId);
       if (friends.length === 0) {
         console.log('SOS Service: No friends found for SOS notification');
         return { success: true, notificationsSent: 0, message: 'No friends to notify' };
@@ -293,8 +294,8 @@ export class SOSFirebaseService {
       }
 
       // Get current user data for the notification
-      const currentUserRef = doc(db, 'users', currentUser.uid);
-      const currentUserDoc = await getDoc(currentUserRef);
+      // Use passed-in userData first, then fetch if needed as a fallback.
+      const currentUserDoc = await getDoc(doc(db, 'users', userId));
       const currentUserData = currentUserDoc.exists() ? currentUserDoc.data() : {};
       const firstName = currentUserData.name || currentUserData.Name || currentUserData.FirstName || '';
       const lastName = currentUserData.surname || currentUserData.Surname || currentUserData.LastName || '';
@@ -317,9 +318,9 @@ export class SOSFirebaseService {
       
       // Store SOS notification in Firestore for each friend
       const sosData = {
-        senderId: currentUser.uid,
+        senderId: userId,
         senderName: userName,
-        senderEmail: currentUser.email,
+        senderEmail: userEmail,
         message: notificationBody,
         location: location || null,
         createdAt: new Date(),
@@ -363,7 +364,7 @@ export class SOSFirebaseService {
           isUrgent: true,
           priority: 'high',
           data: {
-            senderId: currentUser.uid,
+            senderId: userId,
             senderName: userName,
             profilePicture: profilePicture,
             location: location || null,
@@ -394,7 +395,7 @@ export class SOSFirebaseService {
             body: notificationBody,
             data: {
               type: 'sos',
-              senderId: currentUser.uid,
+              senderId: userId,
               senderName: userName,
               location: location ? JSON.stringify(location) : null,
               timestamp: new Date().toISOString(),
@@ -541,16 +542,30 @@ export class SOSFirebaseService {
   // SOS REAL-TIME ACTIVITY LOG
   // ========================
 
+  // ADDED: A reliable way to get the current user, even during app initialization.
+  static getCurrentUser() {
+    return new Promise((resolve, reject) => {
+      const unsubscribe = auth.onAuthStateChanged(user => {
+        unsubscribe(); // Stop listening after we get the first result
+        if (user) {
+          resolve(user);
+        } else {
+          // Reject if no user is found after the initial check.
+          reject(new Error("User not authenticated"));
+        }
+      });
+    });
+  }
+
   // FIXED: Removed trailing comma that was causing syntax error
   static async createSOSSession(sessionData) {
     try {
-      const currentUser = auth.currentUser;
-      if (!currentUser) throw new Error('User not authenticated');
+      // MODIFIED: Directly use the sessionData object which now contains all required info.
+      const userId = sessionData.userId;
+      if (!userId) throw new Error('User ID is missing from session data.');
 
       const sessionRef = await addDoc(collection(db, 'sosSessions'), {
-        userId: currentUser.uid,
-        userName: currentUser.displayName || 'Unknown',
-        ...sessionData,
+        ...sessionData, // The entire sessionData object is now saved.
         status: 'active',
         createdAt: new Date() // Added timestamp for better tracking
       });
