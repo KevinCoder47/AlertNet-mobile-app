@@ -2,11 +2,11 @@ import 'dotenv/config';
 
 export default {
   expo: {
-    name: 'frontend',
-    slug: 'frontend',
+    name: 'AlertNet',
+    slug: 'alertnet',
     version: '1.0.0',
     orientation: 'portrait',
-    icon: './assets/icon.png',
+    icon: './assets/images/logo-v2.png',
     userInterfaceStyle: 'automatic',
     newArchEnabled: false,
     scheme: 'alertnet', // Add this line for custom URL scheme

@@ -10,16 +10,6 @@ const PartnerMarker = ({ partner }) => {
 
   return (
     <View style={styles.container}>
-      {/* Avatar Circle */}
-      <View style={styles.avatarContainer}>
-        <View style={styles.avatarBorder}>
-          <Image 
-            source={avatarSource} 
-            style={styles.avatar}
-          />
-        </View>
-      </View>
-
       {/* Floating Info View */}
       <View style={styles.infoContainer}>
         <Text style={styles.locationText}>{partnerName}</Text>
@@ -33,6 +23,16 @@ const PartnerMarker = ({ partner }) => {
           </Text>
         </View>
       </View>
+
+      {/* Avatar Circle */}
+      <View style={styles.avatarContainer}>
+        <View style={styles.avatarBorder}>
+          <Image 
+            source={avatarSource} 
+            style={styles.avatar}
+          />
+        </View>
+      </View>
     </View>
   )
 }
@@ -41,12 +41,10 @@ export default PartnerMarker
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'flex-start',
+    alignItems: 'center',
   },
   avatarContainer: {
-    zIndex: 2,
+    zIndex: 200,
   },
   avatarBorder: {
     width: 48,
@@ -69,8 +67,7 @@ const styles = StyleSheet.create({
     borderRadius: 21,
   },
   infoContainer: {
-    marginLeft: 12,
-    marginTop: 8,
+    marginBottom: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
     backgroundColor: '#FFFFFF',

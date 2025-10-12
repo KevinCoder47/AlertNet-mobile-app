@@ -123,6 +123,10 @@ const MapWithDetails = ({
       { featureType: "water", elementType: "geometry", stylers: [{ color: "#000000" }] }
     ]
   };
+  useEffect(() => {
+  console.log('Partner Location:', partnerLocation);
+  console.log('Is Select Partner Mode:', isSelectPartner);
+}, [partnerLocation, isSelectPartner]);
 
   // Auto-fit map when in select partner mode
   useEffect(() => {
@@ -336,16 +340,26 @@ const MapWithDetails = ({
         {isSelectPartner ? (
           <>
             {/* Partner Marker */}
-            {partnerLocation && (
-              <Marker
-                coordinate={partnerLocation}
-                title="Walk Partner"
-                description="Your walk partner"
-                zIndex={997}
-              >
-                <PartnerMarker partner={partnerData} />
-              </Marker>
-            )}
+{partnerLocation && (
+  <>
+    {/* Simple marker for debugging */}
+    <Marker
+      coordinate={partnerLocation}
+      title="Debug Partner Location"
+      pinColor="blue"
+    />
+    {/* Your custom marker */}
+    <Marker
+      coordinate={partnerLocation}
+      title="Walk Partner"
+      description="Your walk partner"
+      zIndex={997}
+      tracksViewChanges={true}
+    >
+      <PartnerMarker partner={partnerData} />
+    </Marker>
+  </>
+)}
 
             {/* Meetup Point Marker (Start Point) */}
             {startPoint && (
