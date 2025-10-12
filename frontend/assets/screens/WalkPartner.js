@@ -20,6 +20,8 @@ import SelectWalker from '../componets/SelectWalker'
 import { FirebaseService } from '../../backend/Firebase/FirebaseService';
 import WalkingMap from '../componets/WalkingMapComponents/WalkingMap';
 import WalkDetails from '../componets/WalkingMapComponents/WalkDetails';
+import PartnerEstimatedDetails from '../componets/WalkingMapComponents/PartnerEstimatedDetails';
+import LocatePartner from '../componets/LocatePartner';
 
 // Firestore imports for walk request listener
 import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
@@ -163,6 +165,8 @@ const WalkPartner = ({
   const [destinationCoords, setDestinationCoords] = useState(null);
   const [startPointCoords, setStartPointCoords] = useState({ latitude: -26.1872365, longitude: 28.0124719 });
   const [originalWalkRequest, setOriginalWalkRequest] = useState(null);
+  const [showPartnerUpdate, setShowPartnerUpdate] = useState(false);
+  const [findPartnerView, setFindPartnerView] = useState(false);
   
   
   // NEW STATES FOR ACCEPTED WALKER
@@ -863,9 +867,19 @@ useEffect(() => {
               onRecenter={handleRecenterMap}
               onMoreOptions={handleMoreOptions}
               onEmergency={handleEmergency}
+              setShowPartnerUpdate = {setShowPartnerUpdate}
             />
           </>
         )}
+
+        {isWalkActive && showPartnerUpdate && (
+          <PartnerEstimatedDetails
+            setShowPartnerUpdate={setShowPartnerUpdate}
+            setFindPartnerView={setFindPartnerView}
+          />
+        )}
+
+
 
         {/* Show MapWithDetails in background when showing accepted walker or in map mode */}
         {(isTapWhere || isShowingAcceptedWalker) && !isWalkActive && (
@@ -1036,6 +1050,12 @@ useEffect(() => {
         initialLocationName={editingLocationType}
         editingAddress={editingAddress}
       />
+
+              {isWalkActive && findPartnerView && (
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 2000 }}>
+            <LocatePartner setFindPartnerView={setFindPartnerView} />
+          </View>
+        )}
     </View>
   )
 }

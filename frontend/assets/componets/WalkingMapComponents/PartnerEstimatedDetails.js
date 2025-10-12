@@ -2,11 +2,13 @@ import { StyleSheet, Text, View, TouchableOpacity, Image } from 'react-native'
 import React from 'react'
 import { Ionicons } from '@expo/vector-icons';
 
-const PartnerEstimatedDetails = () => {
+const PartnerEstimatedDetails = ({setShowPartnerUpdate, setFindPartnerView}) => {
   return (
     <View style={styles.container}>
       <View style={styles.closeAndHelpContainer}>
-              <TouchableOpacity style={{padding: 5}}>
+        <TouchableOpacity
+          onPress={() => setShowPartnerUpdate(false)}
+          style={{ padding: 5 }}>
                    <Ionicons name="close" size={20} color="black" />
        </TouchableOpacity >
               <TouchableOpacity style={{padding: 5}}>
@@ -29,7 +31,12 @@ const PartnerEstimatedDetails = () => {
           {/* partner details and message icon */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 25 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <Image source={require('../../images/profile-pictures/14.jpg')} style={{ width: 42, height: 42, borderRadius: 25 }} />
+              <TouchableOpacity onPress={() => {
+                // setShowPartnerUpdate(false);
+                setFindPartnerView(true);
+              }}>
+                  <Image source={require('../../images/profile-pictures/default.jpg')} style={{ width: 50, height: 50, borderRadius: 25 }} />
+              </TouchableOpacity>
               <View>
                       <Text style={{ fontSize: 10, color: 'black', fontWeight: '400', paddingTop: 5 }}>YOUR PARTNER</Text>
                         <Text style={{ fontSize: 14, color: 'black', fontWeight: '700', paddingTop: 5 }}>John Doe</Text> 

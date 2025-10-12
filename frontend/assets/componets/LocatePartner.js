@@ -11,7 +11,7 @@ const scale = (size) => (width / 375) * size;
 const verticalScale = (size) => (height / 812) * size;
 const moderateScale = (size, factor = 0.5) => size + (scale(size) - size) * factor;
 
-const LocatePartner = () => {
+const LocatePartner = ({setFindPartnerView}) => {
   const [primaryColor, setPrimaryColor] = useState('#F57527');
   const [isNavigateView, setIsNavigateView] = useState(true);
   const [userLocation, setUserLocation] = useState(null);
@@ -308,7 +308,10 @@ const LocatePartner = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: primaryColor }]}>
-      <TouchableOpacity style={styles.backBtn} onPress={() => {}}>
+      <TouchableOpacity style={styles.backBtn} onPress={() =>
+      { 
+        setFindPartnerView(false);
+      }}>
         <Ionicons name="close" size={moderateScale(24)} color="white" />
       </TouchableOpacity>
 
@@ -369,6 +372,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: Platform.OS === 'ios' ? verticalScale(90) : verticalScale(60),
     paddingLeft: scale(20),
+    
   },
   backBtn: {
     position: 'absolute',
