@@ -41,7 +41,8 @@ const cleanLocationName = (location) => {
 const WalkStartPoint = ({
   setIsDestinationDone, setIsSearchPartner,
   setIsStartPoint, onStartPointSelect,
-  dropoffLocation
+  dropoffLocation,
+  destinationCoords
 }) => {
   const [isSending, setIsSending] = useState(false);
   const [isDark] = useState(false);
@@ -54,7 +55,6 @@ const WalkStartPoint = ({
 
 const handleSearch = async () => {
   if (isSending) {
-    // console.log($&);
     return;
   }
 
@@ -71,29 +71,47 @@ const handleSearch = async () => {
       return;
     }
 
-    // Clean the dropoff location
+    // Clean the dropoff location for display
     const cleanedDestination = cleanLocationName(dropoffLocation);
 
-    // Create walk request data
+    // Get the start point coordinates
+    const startPointCoords = meetupPointCoordinates[selectedMeetUpPoint];
+
+    // CREATE walk request data with PROPER destination coordinates
     const walkRequestData = {
+      // Basic request info
       requesterId: userId,
       requesterName: `${userData.name} ${userData.surname}`,
       requesterPhone: userData.phone,
+      senderName: `${userData.name} ${userData.surname}`,
+      senderPhone: userData.phone,
+      
+      // Location information
       pickup: selectedMeetUpPoint,
-      destination: cleanedDestination,
       meetupPoint: selectedMeetUpPoint,
+      toDestination: cleanedDestination, // This should be "Horizon Heights"
+      
+      // Coordinates - FIX: Use actual destination coordinates
+      startPoint: startPointCoords,
+      destination: destinationCoords || {
+        latitude: -26.1848342, // Replace with actual coordinates
+        longitude: 28.0028492
+      },
+      
+      // Additional required fields
       preferredGender: selectedGender,
       status: 'pending',
       createdAt: new Date(),
-      expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes
+      lastUpdated: new Date()
     };
 
-    // console.log($&);
+    console.log('📝 Creating walk request with data:', walkRequestData);
 
     // Create walk request in Firebase
     const requestId = await FirebaseService.createWalkRequest(walkRequestData);
 
-    // console.log($&);
+    console.log('✅ Walk request created with ID:', requestId);
 
     Alert.alert('Success', 'Walk request sent! Nearby users will be notified.');
 

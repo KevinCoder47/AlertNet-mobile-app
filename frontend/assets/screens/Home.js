@@ -313,7 +313,7 @@ const Home = ({ route, handleLogout }) => {
             });
           }
         } catch (error) {
-          console.error("Error requesting background location:", error);
+          // console.error("Error requesting background location:", error);
         }
       };
       

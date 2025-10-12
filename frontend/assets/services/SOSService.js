@@ -231,7 +231,7 @@ class SOSServiceClass {
 
       // console.log($&);
     } catch (error) {
-      console.error('SOS Background Task: A critical error occurred:', error);
+      // console.error('SOS Background Task: A critical error occurred:', error);
       await SOSFirebaseService.addLogToSOSSession(sosSessionId, `A critical error occurred during notification dispatch: ${error.message}`, 'critical_error');
     }
   }
@@ -265,11 +265,11 @@ class SOSServiceClass {
           );
         }
       } else {
-        console.warn('SOS Background Task: SMS not available on this device.');
+        // console.warn('SOS Background Task: SMS not available on this device.');
         await SOSFirebaseService.addLogToSOSSession(sosSessionId, 'SMS not available on this device', 'error');
       }
     } catch (smsError) {
-      console.error('SOS Background Task: SMS Error:', smsError);
+      // console.error('SOS Background Task: SMS Error:', smsError);
       await SOSFirebaseService.addLogToSOSSession(sosSessionId, `SMS to contacts failed: ${smsError.message}`, 'error');
     }
   }

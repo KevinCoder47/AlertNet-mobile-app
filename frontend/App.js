@@ -18,14 +18,24 @@ import DeepLinkHandler from './assets/componets/DeepLinkHandler';
 import AcceptanceLoader from './assets/componets/Loaders/AcceptanceLoader';
 import WalkingMap from './assets/componets/WalkingMapComponents/WalkingMap';
 import WalkDetails from './assets/componets/WalkingMapComponents/WalkDetails';
-import PartnerEstimatedDetails from './assets/componets/WalkingMapComponents/PartnerEstimatedDetails';
 import LocatePartner from './assets/componets/LocatePartner';
 
 
 
 export default function App() {
   const batteryCleanupRef = useRef(null);
-  
+  const DummywalkDetails = {
+    startLocation: {
+      latitude: 37.7749,
+      longitude: -122.4194,
+    },
+    destination: {
+      latitude: 37.7949,
+      longitude: -122.3994,
+    },
+    partnerLocation: { latitude: -26.2060, longitude: 28.0490 },
+    meetUpPoint: { latitude: -26.2046, longitude: 28.0478 }
+  }
 
   useEffect(() => {
     const initializeFCM = async () => {
@@ -101,9 +111,8 @@ return (
               <View style={styles.container}>
                 <AppNavigator /> 
                 <NotificationModal /> 
-                
 
-              
+               
                 <StatusBar style="auto" />
               </View>
             </FriendsProvider>

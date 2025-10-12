@@ -64,7 +64,7 @@ export const reverseGeocode = async (latitude, longitude) => {
     
     return result;
   } catch (error) {
-    console.error('Geocoding failed:', error);
+    // console.error('Geocoding failed:', error);
     
     // Try fallback provider
     try {
@@ -77,7 +77,7 @@ export const reverseGeocode = async (latitude, longitude) => {
       
       return fallbackResult;
     } catch (fallbackError) {
-      console.error('Fallback geocoding also failed:', fallbackError);
+      // console.error('Fallback geocoding also failed:', fallbackError);
       
       // Return approximate location
       return {
@@ -122,7 +122,7 @@ const reverseGeocodeNominatim = async (lat, lon) => {
 
     return parseNominatimResponse(data);
   } catch (error) {
-    console.error('Nominatim request failed:', error.message);
+    // console.error('Nominatim request failed:', error.message);
     throw error;
   }
 };
@@ -164,7 +164,7 @@ const reverseGeocodePhoton = async (lat, lon) => {
       formattedAddress: props.name || `${props.city || 'Unknown location'}`
     };
   } catch (error) {
-    console.error('Photon request failed:', error.message);
+    // console.error('Photon request failed:', error.message);
     throw error;
   }
 };

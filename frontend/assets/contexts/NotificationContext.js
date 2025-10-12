@@ -167,7 +167,7 @@ const [acceptedWalkRequest, setAcceptedWalkRequest] = useState(null);
               const walkData = {
                 requestId: change.doc.id,
                 walkFrom: walkRequest.pickup || walkRequest.walkFrom,
-                walkTo: walkRequest.destination || walkRequest.walkTo,
+                walkTo: walkRequest.toDestination || walkRequest.walkTo,
                 time: '5 mins', // You might want to calculate this based on distance
                 partnerName: walkRequest.requesterName,
                 partnerInitials: getInitials(walkRequest.requesterName),
@@ -231,7 +231,7 @@ useEffect(() => {
       const confirmedWalkRequest = {
         requestId: currentWalkRequestId,
         walkFrom: data.pickup || data.walkFrom,
-        walkTo: data.destination || data.walkTo,
+        walkTo: data.toDestination || data.walkTo,
         meetupPoint: data.meetupPoint,
         startPoint: data.startPoint || data.pickup || data.walkFrom,
         destination: data.destination || data.walkTo,
