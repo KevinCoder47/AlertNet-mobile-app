@@ -14,12 +14,20 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../contexts/ColorContext';
 
-const getBatteryIconName = (batteryPercentStr = '100%') => {
-  const percent = parseInt(batteryPercentStr, 10);
-  if (isNaN(percent)) return 'battery-dead';
+const getBatteryIconName = (batteryPercentStr) => {
+  // Handle both "35%" format and just "35"
+  const cleanPercent = typeof batteryPercentStr === 'string' 
+    ? batteryPercentStr.replace('%', '').trim()
+    : String(batteryPercentStr || '');
+  
+  const percent = parseInt(cleanPercent, 10);
+  
+  // Return valid Ionicons battery icon names
+  if (Number.isNaN(percent)) return 'battery-dead';
+  
   if (percent >= 80) return 'battery-full';
   if (percent >= 50) return 'battery-half';
-  if (percent >= 20) return 'battery-low';
+  if (percent >= 20) return 'battery-half'; // For 35%, this will be used
   return 'battery-dead';
 };
 

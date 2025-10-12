@@ -15,16 +15,18 @@ export default {
       backgroundColor: '#ffffff',
     },
     ios: {
-      // MODIFIED: Removed LSApplicationQueriesSchemes from here.
       config: {
         googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY,
       },
       supportsTablet: true,
       bundleIdentifier: 'alertnet.co.za',
-      // MODIFIED: Added LSApplicationQueriesSchemes to the correct location inside infoPlist.
       infoPlist: {
         NSLocationWhenInUseUsageDescription:
           'This app uses your location for the SOS feature and to verify functionality during tests.',
+        NSMicrophoneUsageDescription:
+          'AlertNet needs microphone access to detect voice emergency keywords like "help" and "danger" for instant emergency response.',
+        NSSpeechRecognitionUsageDescription:
+          'AlertNet uses speech recognition to listen for emergency keywords in the background, providing hands-free safety monitoring.',
         NSLocationAlwaysAndWhenInUseUsageDescription:
           'AlertNet uses your location in the background to keep your friends updated during an emergency SOS session, even when the app is closed.',
         LSApplicationQueriesSchemes: ['youtube', 'https'],
@@ -41,8 +43,13 @@ export default {
         backgroundColor: '#ffffff',
       },
       package: 'alertnet.co.za',
-      // ADDED: This entire 'queries' block is new.
-      // It's required for Android 11+ to open external links.
+      permissions: [
+        'RECORD_AUDIO',
+        'INTERNET',
+        'ACCESS_NETWORK_STATE',
+        'ACCESS_FINE_LOCATION',
+        'ACCESS_COARSE_LOCATION',
+      ],
       queries: {
         intent: [
           {
@@ -71,8 +78,13 @@ export default {
         {
           locationWhenInUsePermission:
             'This app uses your location for the SOS feature and to verify functionality during tests.',
-          locationAlwaysAndWhenInUsePermission:
-            'AlertNet uses your location in the background to keep your friends updated during an emergency SOS session, even when the app is closed.',
+        },
+      ],
+      [
+        '@react-native-voice/voice',
+        {
+          microphonePermission: 'AlertNet needs microphone access to detect voice emergency keywords like "help" and "danger".',
+          speechRecognitionPermission: 'AlertNet uses speech recognition for hands-free emergency detection and safety monitoring.',
         },
       ],
     ],
