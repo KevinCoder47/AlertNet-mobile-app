@@ -14,6 +14,7 @@ import {
 } from "firebase/firestore";
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
+import * as Application from 'expo-application';
 import { FirebaseService } from './FirebaseService';
 
 export class SOSFirebaseService {
@@ -38,6 +39,12 @@ export class SOSFirebaseService {
       // Check if we're on a physical device
       if (!Constants.isDevice) {
         console.warn('Must use physical device for push notifications');
+        return null;
+      }
+
+      // Check if we're in Expo Go on Android, where remote notifications are not supported.
+      if (Platform.OS === 'android' && !Application.androidId) {
+        console.warn('Push notifications are not supported in Expo Go on Android. Please use a development build.');
         return null;
       }
 
@@ -150,139 +157,149 @@ export class SOSFirebaseService {
 
   // Get user's friends list
   static async getUserFriends(userId) {
-    try {
-      // console.log($&);
-      
-      // Method 1: Try from friends collection (new format)
-      const friendsQuery = query(
-        collection(db, 'friends'),
-        where('userId', '==', userId),
-        where('status', '==', 'active')
-      );
-      const friendsSnapshot = await getDocs(friendsQuery);
-      
-      if (!friendsSnapshot.empty) {
-        const friends = friendsSnapshot.docs.map(doc => ({
-          uid: doc.data().friendId,
-          name: doc.data().friendName,
-          email: doc.data().friendEmail,
-          phone: doc.data().friendPhone
-        }));
-        // console.log($&);
-        return friends;
-      }
+  try {
+    console.log('🔍 [getUserFriends] Starting for userId:', userId);
+    
+    // Method 1: Try from friends collection (new format)
+    const friendsQuery = query(
+      collection(db, 'friends'),
+      where('userId', '==', userId),
+      where('status', '==', 'active')
+    );
+    const friendsSnapshot = await getDocs(friendsQuery);
+    
+    if (!friendsSnapshot.empty) {
+      const friends = friendsSnapshot.docs.map(doc => ({
+        uid: doc.data().friendId,
+        name: doc.data().friendName,
+        email: doc.data().friendEmail,
+        phone: doc.data().friendPhone
+      }));
+      console.log('✅ [getUserFriends] Found friends in friends collection:', friends.length);
+      return friends;
+    }
 
-      // Method 2: Try from user document
-      const userRef = doc(db, 'users', userId);
-      const userDoc = await getDoc(userRef);
+    // Method 2: Try from user document Friends array
+    const userRef = doc(db, 'users', userId);
+    const userDoc = await getDoc(userRef);
 
-      if (!userDoc.exists()) {
-        // console.log($&);
-        return [];
-      }
-
-      const userData = userDoc.data();
-      
-      // Check if friends is an array (new format)
-      if (Array.isArray(userData.friends)) {
-        // console.log($&);
-        return userData.friends;
-      }
-      
-      // Check if Friends is an object (old format)
-      if (userData.Friends && typeof userData.Friends === 'object') {
-        const friendIds = Object.keys(userData.Friends).filter(friendId => 
-          userData.Friends[friendId] === true || 
-          userData.Friends[friendId] === 'accepted'
-        );
-        // console.log($&);
-        return friendIds; // Return IDs for further processing
-      }
-
-      return [];
-    } catch (error) {
-      console.error('SOS Service: Error getting user friends:', error);
+    if (!userDoc.exists()) {
+      console.warn('⚠️ [getUserFriends] User document not found:', userId);
       return [];
     }
+
+    const userData = userDoc.data();
+    
+    // Check if friends is an array (new format)
+    if (Array.isArray(userData.Friends)) {
+      console.log('📋 [getUserFriends] Found Friends array, items:', userData.Friends.length);
+      
+      // CRITICAL FIX: Extract UIDs from objects
+      const friendIds = userData.Friends.map((friend, index) => {
+        if (typeof friend === 'string') {
+          console.log(`  [${index}] Friend is string ID: ${friend}`);
+          return friend;
+        } else if (friend && friend.uid) {
+          console.log(`  [${index}] Friend object has uid: ${friend.uid}`);
+          return friend.uid;
+        } else if (friend && friend.id) {
+          console.log(`  [${index}] Friend object has id: ${friend.id}`);
+          return friend.id;
+        } else {
+          console.warn(`  [${index}] ❌ Cannot extract ID from friend:`, friend);
+          return null;
+        }
+      }).filter(id => id !== null);
+      
+      console.log('✅ [getUserFriends] Extracted friend IDs:', friendIds);
+      return friendIds;
+    }
+    
+    // Check if Friends is an object (old format)
+    if (userData.Friends && typeof userData.Friends === 'object' && !Array.isArray(userData.Friends)) {
+      console.log('📦 [getUserFriends] Found Friends object (old format)');
+      
+      const friendIds = Object.keys(userData.Friends).filter(friendId => 
+        userData.Friends[friendId] === true || 
+        userData.Friends[friendId] === 'accepted'
+      );
+      
+      console.log('✅ [getUserFriends] Extracted friend IDs from object:', friendIds);
+      return friendIds;
+    }
+
+    console.warn('⚠️ [getUserFriends] No friends found in any format');
+    return [];
+    
+  } catch (error) {
+    console.error('❌ [getUserFriends] Error getting user friends:', error);
+    return [];
   }
+}
 
   // Get notification data (token and phone) for friends
   static async getFriendsNotificationData(friendIds) {
-    try {
-      if (!friendIds || friendIds.length === 0) {
-        console.log('SOS Service: No friend IDs provided to getFriendsNotificationData');
-        return [];
-      }
-
-      console.log(`SOS Service: Processing ${friendIds.length} friend IDs`);
-      
-      // DIAGNOSTIC: Log what we're trying to query
-      console.log('SOS Service: Friend IDs to query:', friendIds);
-
-      const tokens = [];
-      const CHUNK_SIZE = 30; // Firestore 'in' query limit is 30
-
-      // Process friend IDs in chunks to stay within query limits
-      for (let i = 0; i < friendIds.length; i += CHUNK_SIZE) {
-        const chunk = friendIds.slice(i, i + CHUNK_SIZE);
-        
-        // Extract valid IDs - handle both object and string formats
-        const idsToQuery = chunk.map(friendId => {
-          if (typeof friendId === 'string') {
-            console.log(`SOS Service: Friend ID is string: ${friendId}`);
-            return friendId;
-          } else if (typeof friendId === 'object' && friendId.uid) {
-            console.log(`SOS Service: Friend ID extracted from object.uid: ${friendId.uid}`);
-            return friendId.uid;
-          } else if (typeof friendId === 'object' && friendId.id) {
-            console.log(`SOS Service: Friend ID extracted from object.id: ${friendId.id}`);
-            return friendId.id;
-          } else {
-            console.warn(`SOS Service: Cannot extract ID from friend object:`, friendId);
-            return null;
-          }
-        }).filter(id => id);
-
-        if (idsToQuery.length === 0) {
-          console.log('SOS Service: No valid IDs in this chunk, skipping');
-          continue;
-        }
-
-        console.log(`SOS Service: Querying for ${idsToQuery.length} users in chunk ${Math.floor(i / CHUNK_SIZE) + 1}`);
-
-        const q = query(collection(db, 'users'), where('__name__', 'in', idsToQuery));
-        const querySnapshot = await getDocs(q);
-
-        console.log(`SOS Service: Query returned ${querySnapshot.size} results`);
-
-        querySnapshot.forEach(userDoc => {
-          const userData = userDoc.data();
-          const friendData = {
-            token: userData.fcmToken || null,
-            userId: userDoc.id,
-            name: userData.name || userData.Name || 'Friend',
-            email: userData.email || userData.Email,
-            phone: userData.phone || userData.Phone || userData.phoneNumber,
-          };
-          
-          console.log(`SOS Service: Found friend data:`, {
-            name: friendData.name,
-            userId: friendData.userId,
-            hasToken: !!friendData.token,
-            phone: friendData.phone
-          });
-          
-          tokens.push(friendData);
-        });
-      }
-      
-      // console.log($&);
-      return tokens;
-    } catch (error) {
-      console.error('SOS Service: Error getting friends notification data:', error);
+  try {
+    if (!friendIds || friendIds.length === 0) {
+      console.warn('⚠️ [getFriendsNotificationData] No friend IDs provided');
       return [];
     }
+
+    console.log(`📍 [getFriendsNotificationData] Processing ${friendIds.length} friend IDs`);
+    console.log('   Friend IDs:', friendIds);
+    
+    const tokens = [];
+    const CHUNK_SIZE = 30;
+
+    // Process friend IDs in chunks
+    for (let i = 0; i < friendIds.length; i += CHUNK_SIZE) {
+      const chunk = friendIds.slice(i, i + CHUNK_SIZE);
+      console.log(`   📦 Processing chunk ${Math.floor(i / CHUNK_SIZE) + 1}: ${chunk.length} IDs`);
+      
+      // Validate IDs are strings
+      const idsToQuery = chunk
+        .map(id => {
+          if (typeof id === 'string') return id;
+          console.warn(`   ❌ Invalid ID type (${typeof id}):`, id);
+          return null;
+        })
+        .filter(id => id && !id.startsWith('temp_'));
+
+      if (idsToQuery.length === 0) {
+        console.log('   ⚠️ No valid IDs in this chunk');
+        continue;
+      }
+
+      console.log(`   🔍 Querying for ${idsToQuery.length} users`);
+      
+      const q = query(collection(db, 'users'), where('__name__', 'in', idsToQuery));
+      const querySnapshot = await getDocs(q);
+
+      console.log(`   ✅ Query returned ${querySnapshot.size} results`);
+
+      querySnapshot.forEach(userDoc => {
+        const userData = userDoc.data();
+        const friendData = {
+          token: userData.fcmToken || userData.ExpoPushToken || null,
+          userId: userDoc.id,
+          name: userData.name || userData.Name || 'Friend',
+          email: userData.email || userData.Email,
+          phone: userData.phone || userData.Phone || userData.phoneNumber,
+        };
+        
+        console.log(`      👤 Found friend: ${friendData.name} (${friendData.userId}) - hasToken: ${!!friendData.token}`);
+        tokens.push(friendData);
+      });
+    }
+    
+    console.log(`✅ [getFriendsNotificationData] Total friends with data: ${tokens.length}`);
+    return tokens;
+    
+  } catch (error) {
+    console.error('❌ [getFriendsNotificationData] Error:', error);
+    return [];
   }
+}
 
   // Send SOS notifications to friends - MAIN METHOD
   static async sendSOSNotifications(location, message = null, sosSessionId = null, userData) {

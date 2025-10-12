@@ -235,7 +235,7 @@ export default function SafetyResources({
           }
         },
         {
-          icon: <MaterialIcons name="support-agent" size={18} color="#fff" />,
+          icon: <FontAwesome5 name="user-friends" size={16} color="#fff" />,
           text: "Emergency contact",
           keywords: ["emergency", "contact", "support", "help", "agent"],
           onPress: () => {
@@ -461,10 +461,11 @@ export default function SafetyResources({
                   </View>
                   <TouchableOpacity style={styles.helpIcon} activeOpacity={0.7}>
                     <View style={dynamicStyles.helpIconCircle}>
-                      <Text style={[styles.questionMark, { 
-                        fontSize: getScaledFontSize(18),
-                        color: colors.text 
-                      }]}>?</Text>
+                      <Feather 
+                        name="help-circle" 
+                        size={getScaledFontSize(20)} 
+                        color={colors.text} 
+                      />
                     </View>
                   </TouchableOpacity>
                 </View>

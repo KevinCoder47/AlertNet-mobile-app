@@ -166,12 +166,12 @@ class SOSServiceClass {
    * @param {object} userData - The authenticated user's data object.
    * @returns {Promise<string>} The ID of the created SOS session.
    */
-  static async initiateSOSSession(triggeredBy = 'manual') {
+  static async initiateSOSSession(triggeredBy = 'manual', userData) {
     // console.log($&);
     // 1. Get location first, as it's critical for all notifications.
     const location = await this.getCurrentLocation();
 
-    // 2. Create the SOS session in Firestore, passing the user data.
+    // 2. Create the SOS session in Firestore.
     // MODIFIED: Pass the userId and userName from the userData object.
     // This was the missing piece causing the "User not authenticated" error.
     const sessionResult = await SOSFirebaseService.createSOSSession({
@@ -193,7 +193,7 @@ class SOSServiceClass {
 
     // 4. Dispatch all notifications in the background.
     // We DO NOT await this. This is "fire-and-forget".
-    this.dispatchNotificationsInBackground(sosSessionId, location);
+    this.dispatchNotificationsInBackground(sosSessionId, location, userData);
     // console.log($&);
 
     // 5. Return the session ID to the UI immediately.
@@ -207,7 +207,7 @@ class SOSServiceClass {
    * @param {object} location - The user's location coordinates.
    * @param {object} userData - The authenticated user's data object.
    */
-  static async dispatchNotificationsInBackground(sosSessionId, location) {
+  static async dispatchNotificationsInBackground(sosSessionId, location, userData) {
     // console.log($&);
     try {
       // Call police and log the event

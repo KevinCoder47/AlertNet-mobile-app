@@ -176,13 +176,8 @@ const Home = ({ route, handleLogout }) => {
     }
   }, [route.params?.openChatWith]);
 
-<<<<<<< HEAD
   const handleOpenChat = async (personData, from) => {
     console.log('DEBUG: Opening chat with raw personData:', JSON.stringify(personData, null, 2));
-=======
-  const handleOpenChat = async (personData) => {
-    // // console.log($&);
->>>>>>> 626e3c10c78c35faee4169104691b731119fc4ff
     
     const personId = personData?.senderId || personData?.friendId || personData?.id;
     // // console.log($&);
@@ -320,7 +315,6 @@ const Home = ({ route, handleLogout }) => {
         } catch (error) {
           console.error("Error requesting background location:", error);
         }
-<<<<<<< HEAD
       };
       
       requestBackgroundPermission();
@@ -329,20 +323,7 @@ const Home = ({ route, handleLogout }) => {
         Location.stopLocationUpdatesAsync('backgroundLocationTask');
       };
     }
-  }, [userData?.userId]); // Now depends on having a valid user ID
-=======
-      } catch (error) {
-        // console.error("Error requesting background location:", error);
-      }
-    };
-    
-    requestBackgroundPermission();
-    
-    return () => {
-      Location.stopLocationUpdatesAsync('backgroundLocationTask');
-    };
-  }, []);
->>>>>>> 626e3c10c78c35faee4169104691b731119fc4ff
+  }, [userData?.userId]);
 
   // User presence management
   useEffect(() => {
