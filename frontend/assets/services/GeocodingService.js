@@ -48,7 +48,7 @@ export const reverseGeocode = async (latitude, longitude) => {
   const cached = geocodeCache.get(cacheKey);
   
   if (cached && (Date.now() - cached.timestamp) < CACHE_EXPIRY) {
-    console.log('Returning cached location for:', cacheKey);
+    // console.log($&);
     return cached.data;
   }
 
@@ -455,7 +455,7 @@ export const formatLocationForDisplay = (location) => {
  */
 export const clearGeocodeCache = () => {
   geocodeCache.clear();
-  console.log('Geocode cache cleared');
+  // console.log($&);
 };
 
 /**

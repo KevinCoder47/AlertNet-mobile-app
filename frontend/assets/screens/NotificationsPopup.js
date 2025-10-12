@@ -7,7 +7,6 @@ import {
   Modal,
   Dimensions,
   ScrollView,
-  SafeAreaView,
   TextInput,
   Animated,
   Vibration,
@@ -24,6 +23,7 @@ import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { FirebaseService } from '../../backend/Firebase/FirebaseService';
 import { useFontSize } from '../contexts/FontSizeContext';
 import { useTheme } from '../contexts/ColorContext';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width, height } = Dimensions.get('window');
 

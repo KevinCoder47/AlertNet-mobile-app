@@ -60,7 +60,7 @@ export class SOSFirebaseService {
         projectId: Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId,
       });
 
-      console.log('FCM Token:', token.data);
+      // console.log($&);
       return token.data;
     } catch (error) {
       console.error('Error getting FCM token:', error);
@@ -79,7 +79,7 @@ export class SOSFirebaseService {
         fcmTokenUpdated: new Date()
       });
       
-      console.log('FCM token stored successfully');
+      // console.log($&);
       return true;
     } catch (error) {
       console.error('Error storing FCM token:', error);
@@ -112,19 +112,19 @@ export class SOSFirebaseService {
   static setupNotificationListener() {
     // Handle notifications when app is in foreground
     const foregroundListener = Notifications.addNotificationReceivedListener(notification => {
-      console.log('Notification received in foreground:', notification);
+      // console.log($&);
       // Handle the notification (show alert, update UI, etc.)
     });
 
     // Handle notification interactions (when user taps notification)
     const interactionListener = Notifications.addNotificationResponseReceivedListener(response => {
-      console.log('Notification interaction:', response);
+      // console.log($&);
       const data = response.notification.request.content.data;
       
       if (data.type === 'sos') {
         // Handle SOS notification tap
         // Navigate to appropriate screen or show SOS details
-        console.log('SOS notification tapped:', data);
+        // console.log($&);
       }
     });
 
@@ -151,36 +151,54 @@ export class SOSFirebaseService {
   // Get user's friends list
   static async getUserFriends(userId) {
     try {
-      console.log('SOS Service: Getting friends for user from user document:', userId);
+      // console.log($&);
+      
+      // Method 1: Try from friends collection (new format)
+      const friendsQuery = query(
+        collection(db, 'friends'),
+        where('userId', '==', userId),
+        where('status', '==', 'active')
+      );
+      const friendsSnapshot = await getDocs(friendsQuery);
+      
+      if (!friendsSnapshot.empty) {
+        const friends = friendsSnapshot.docs.map(doc => ({
+          uid: doc.data().friendId,
+          name: doc.data().friendName,
+          email: doc.data().friendEmail,
+          phone: doc.data().friendPhone
+        }));
+        // console.log($&);
+        return friends;
+      }
 
-      // The single source of truth for friends is the `Friends` array in the user's document.
-      // This is the same source used by the People tab, ensuring consistency.
+      // Method 2: Try from user document
       const userRef = doc(db, 'users', userId);
       const userDoc = await getDoc(userRef);
 
       if (!userDoc.exists()) {
-        console.log('SOS Service: User document not found');
+        // console.log($&);
         return [];
       }
 
       const userData = userDoc.data();
       
-      // Use the 'Friends' (capital F) array, which is the correct format used elsewhere.
-      if (Array.isArray(userData.Friends)) {
-        console.log(`SOS Service: Found ${userData.Friends.length} friends in 'Friends' array.`);
-        
-        // DIAGNOSTIC: Log the structure of the first 2 friends
-        if (userData.Friends.length > 0) {
-          console.log('SOS Service: Friend data structure samples:');
-          userData.Friends.slice(0, 2).forEach((friend, index) => {
-            console.log(`  Friend ${index}:`, JSON.stringify(friend, null, 2));
-          });
-        }
-        
-        return userData.Friends;
+      // Check if friends is an array (new format)
+      if (Array.isArray(userData.friends)) {
+        // console.log($&);
+        return userData.friends;
+      }
+      
+      // Check if Friends is an object (old format)
+      if (userData.Friends && typeof userData.Friends === 'object') {
+        const friendIds = Object.keys(userData.Friends).filter(friendId => 
+          userData.Friends[friendId] === true || 
+          userData.Friends[friendId] === 'accepted'
+        );
+        // console.log($&);
+        return friendIds; // Return IDs for further processing
       }
 
-      console.log('SOS Service: No "Friends" array found in user document.');
       return [];
     } catch (error) {
       console.error('SOS Service: Error getting user friends:', error);
@@ -258,13 +276,7 @@ export class SOSFirebaseService {
         });
       }
       
-      console.log(`SOS Service: Found notification data for ${tokens.length} friends out of ${friendIds.length} requested.`);
-      
-      if (tokens.length < friendIds.length) {
-        console.warn(`SOS Service: MISMATCH - Requested ${friendIds.length} friends but only found ${tokens.length} in database`);
-        console.warn('SOS Service: This means some friend UIDs in the Friends array do not exist in the users collection');
-      }
-      
+      // console.log($&);
       return tokens;
     } catch (error) {
       console.error('SOS Service: Error getting friends notification data:', error);
@@ -282,16 +294,16 @@ export class SOSFirebaseService {
         throw new Error('User ID not found in provided user data.');
       }
 
-      console.log('SOS Service: Sending SOS notifications for user:', userId);
+      // console.log($&);
 
       // Get user's friends
       const friends = await SOSFirebaseService.getUserFriends(userId);
       if (friends.length === 0) {
-        console.log('SOS Service: No friends found for SOS notification');
+        // console.log($&);
         return { success: true, notificationsSent: 0, message: 'No friends to notify' };
       }
 
-      console.log('SOS Service: Found friends for SOS:', friends.length);
+      // console.log($&);
 
       // Extract friend IDs (handle both object and string formats)
       const friendIds = friends.map((friend, index) => {
@@ -315,7 +327,7 @@ export class SOSFirebaseService {
       });
 
       if (friendIds.length === 0) {
-        console.log('SOS Service: No valid friend IDs found after extraction');
+        // console.log($&);
         return { success: true, notificationsSent: 0, message: 'No valid friend IDs found' };
       }
 
@@ -325,7 +337,7 @@ export class SOSFirebaseService {
       const friendsWithData = await SOSFirebaseService.getFriendsNotificationData(friendIds);
       
       if (friendsWithData.length === 0) {
-        console.log('SOS Service: No friends found in the database.');
+        // // console.log($&);
         return { 
           success: true, 
           notificationsSent: 0, 
@@ -378,7 +390,7 @@ export class SOSFirebaseService {
         })
       );
       await Promise.all(firestorePromises);
-      console.log(`SOS Service: Logged SOS event for ${friendsWithData.length} friends in Firestore.`);
+      // console.log($&);
 
       // 2. Create in-app notifications and log to activity stream
       const notificationAndLogPromises = friendsWithData.map(async (friend) => {
@@ -417,7 +429,7 @@ export class SOSFirebaseService {
       });
 
       await Promise.all(notificationAndLogPromises);
-      console.log(`SOS Service: Created in-app notifications and logs for friends.`);
+      // console.log($&);
 
       // 3. Send batch push notifications ONLY to friends with a token
       const tokensForPush = friendsWithData.map(f => f.token).filter(Boolean);
@@ -459,9 +471,9 @@ export class SOSFirebaseService {
           console.warn(`SOS Service: ${failureMessage}`, result.responses);
         }
 
-        console.log(`SOS Service: Batch push notifications sent: ${notificationsSent}/${tokensForPush.length}`);
+        // console.log($&);
       } else {
-        console.log('SOS Service: No friends had FCM tokens for push notifications.');
+        // console.log($&);
       }
 
       return {
@@ -503,7 +515,7 @@ export class SOSFirebaseService {
       const querySnapshot = await getDocs(q);
       
       if (querySnapshot.empty) {
-        console.log('SOS Service: No recipients found for this SOS session. Ending session.');
+        // console.log($&);
         await this.endSOSSession(sessionId);
         return { success: true, notifiedCount: 0, message: "Session ended. No one to notify." };
       }
@@ -541,7 +553,7 @@ export class SOSFirebaseService {
       });
 
       await Promise.all(inAppPromises);
-      console.log(`Created in-app 'safe' notifications for ${recipientsWithData.length} friends.`);
+      // console.log($&);
 
       if (tokens.length > 0) {
         // 5. Call a cloud function to send the "safe" push notification
@@ -565,7 +577,7 @@ export class SOSFirebaseService {
           const errorText = await response.text();
           console.warn(`"All Safe" broadcast failed: ${errorText}`);
         } else {
-          console.log(`"All Safe" broadcast sent to ${tokens.length} friends.`);
+          // console.log($&);
         }
       }
 

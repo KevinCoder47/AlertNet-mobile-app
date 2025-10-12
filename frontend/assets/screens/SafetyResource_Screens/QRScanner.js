@@ -16,7 +16,7 @@ export default function QRScanner({ setIsScanning, onQRScanned }) {
 
   const handleBarCodeScanned = ({ type, data }) => {
     setScanned(true);
-    console.log(`QR Code scanned! Type: ${type}, Data: ${data}`);
+    // console.log($&);
     
     try {
       const parsedData = JSON.parse(data);

@@ -1,6 +1,7 @@
-import { StyleSheet, View, Text, Dimensions, TouchableOpacity, Image, Animated, Easing } from 'react-native'
+import { StyleSheet, View, Text, Dimensions, TouchableOpacity, Image, Animated, Easing, Alert } from 'react-native';
 import React, { useRef, useEffect, useState } from 'react'
 import { useTheme } from '../contexts/ColorContext'
+import { useNotifications } from '../contexts/NotificationContext' 
 import WalkPartnerSearchBar from '../componets/WalkPartnerSearchBar'
 import SavedLocation from '../componets/SavedLocation'
 import TimeSlots from './TimeSlots'
@@ -14,17 +15,94 @@ import PartnerSearch from '../componets/Loaders/PartnerSearch'
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import AddNewAddress from '../componets/AddNewAddress'
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import GeneralLoader from '../componets/Loaders/GeneralLoarder'
+import GeneralLoader from '../componets/Loaders/GeneralLoarder';
+import SelectWalker from '../componets/SelectWalker'
+import { FirebaseService } from '../../backend/Firebase/FirebaseService';
+import WalkingMap from '../componets/WalkingMapComponents/WalkingMap';
+import WalkDetails from '../componets/WalkingMapComponents/WalkDetails';
+
+// Firestore imports for walk request listener
+import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { db } from '../../backend/Firebase/FirebaseConfig';
 
 const { width, height } = Dimensions.get('window')
 
-const WalkPartner = ({ setIsWalkPartner, userImage }) => {
+const WalkPartner = ({ 
+  setIsWalkPartner, 
+  userImage, 
+  isReceiverWalk = false,
+  initialAcceptedWalkRequest = null 
+}) => {
+  // Handle immediate walk start for receiver
+  useEffect(() => {
+    if (isReceiverWalk && initialAcceptedWalkRequest) {
+      console.log('🚶‍♂️ [WalkPartner] Starting immediate receiver walk');
+      handleImmediateReceiverWalkStart(initialAcceptedWalkRequest);
+    }
+  }, [isReceiverWalk, initialAcceptedWalkRequest]);
+
+  // Handler for immediate receiver walk start
+  const handleImmediateReceiverWalkStart = async (walkRequest) => {
+    try {
+      console.log('🚶‍♂️ [WalkPartner] Immediate receiver walk data:', walkRequest);
+
+      const userDataString = await AsyncStorage.getItem('userData');
+      const userDataObj = userDataString ? JSON.parse(userDataString) : null;
+
+      // FIX: Use proper string locations, not coordinate objects
+      const walkData = {
+        // Use string locations for display
+        fromLocation: walkRequest.pickup || 'Your Location', // This is a string like "APB Campus West Entrance"
+        toLocation: 'Destination', // Use a generic string since we don't have destination name
+        fromAddress: '',
+        toAddress: '',
+        totalDistance: 'Calculating...',
+        estimatedDuration: 'Calculating...',
+        nextTurnDistance: '250 m',
+        nextStreet: 'Head to meetup point',
+        partnerId: walkRequest.requesterId,
+        partnerName: walkRequest.requesterName || 'Walk Partner',
+        partnerPhone: walkRequest.requesterPhone,
+        // Use coordinate objects for map
+        startPoint: walkRequest.startPoint, // This is {latitude, longitude}
+        destination: walkRequest.destination, // This is {latitude, longitude}
+        meetupPoint: walkRequest.meetupPoint,
+        startedAt: walkRequest.confirmedAt || new Date().toISOString(),
+        requestId: walkRequest.requestId,
+        receiverId: userDataObj?.id,
+        receiverName: userDataObj ? `${userDataObj.Name || ''} ${userDataObj.Surname || ''}`.trim() : 'You'
+      };
+
+      console.log('✅ [WalkPartner] Immediate receiver walk data prepared:', walkData);
+
+      setActiveWalkData(walkData);
+      setIsWalkActive(true);
+      setIsSearchPartner(false);
+      setIsShowingAcceptedWalker(false);
+
+      console.log('✅ [WalkPartner] Immediate receiver walk started successfully!');
+
+    } catch (error) {
+      console.error('❌ Error starting immediate receiver walk:', error);
+      Alert.alert('Error', 'Failed to start walk. Please try again.');
+      setIsWalkPartner(false);
+    }
+  };
   const { colors, isDark } = useTheme();
+  const { 
+    currentWalkRequest, 
+    isNotificationVisible,
+    acceptWalkRequest,
+    declineWalkRequest,
+    acceptedWalkRequest,
+    setAcceptedWalkRequest
+  } = useNotifications();
+
   const [isAddScheduledWalkVisible, setIsAddScheduledWalkVisible] = useState(false);
   const [isTapWhere, setISTapWhere] = useState(false);
   const [userLocation, setUserLocation] = useState(null);
   const [locationName, setLocationName] = useState('');
-  const apiKey = Constants.expoConfig?.extra?.GOOGLE_MAPS_API_KEY;
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY;;
   const [isDestinationDone, setIsDestinationDone] = useState(false)
   const [isStartPointDone, setIsStartPointDone] = useState(false)
   const [isStartPoint, setIsStartPoint] = useState(false);
@@ -36,16 +114,262 @@ const WalkPartner = ({ setIsWalkPartner, userImage }) => {
   const [dropoffLocation, setDropoffLocation] = useState('');
   const [destinationCoords, setDestinationCoords] = useState(null);
   const [startPointCoords, setStartPointCoords] = useState({ latitude: -26.1872365, longitude: 28.0124719 });
+  const [originalWalkRequest, setOriginalWalkRequest] = useState(null);
   
-    // Function to handle destination selection with coordinates
-const handleDestinationSelect = (coordinates) => {
-  console.log('Destination coordinates received:', coordinates);
-  setDestinationCoords(coordinates);
+  // NEW STATES FOR ACCEPTED WALKER
+  const [acceptedWalker, setAcceptedWalker] = useState(null);
+  const [isShowingAcceptedWalker, setIsShowingAcceptedWalker] = useState(false);
+  const [walkerLocation, setWalkerLocation] = useState(null);
+  const [currentWalkRequestId, setCurrentWalkRequestId] = useState(null);
+  // Partner stats (distance, ETA)
+  const [partnerStats, setPartnerStats] = useState(null);
+  // NEW: Active walk state
+  const [isWalkActive, setIsWalkActive] = useState(false);
+  // NEW: Active walk data state
+  const [activeWalkData, setActiveWalkData] = useState(null);
+  // Calculate ETA and distance between two lat/lng points using Google Maps Directions API
+  // Returns { distance: "...", eta: "..." }
+const calculatePartnerStats = async (walkerLoc, startLoc) => {
+  if (!walkerLoc || !startLoc || !apiKey) return null;
+  
+  try {
+    // Format the coordinates for the API request
+    const origins = `${walkerLoc.latitude},${walkerLoc.longitude}`;
+    const destinations = `${startLoc.latitude},${startLoc.longitude}`;
+    
+    // Build the request URL for the Distance Matrix API
+    const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${origins}&destinations=${destinations}&mode=walking&key=${apiKey}`;
+    
+    const response = await fetch(url);
+    const data = await response.json();
+    
+    // Check if the request and the first element were successful
+    if (data.rows && data.rows[0].elements[0].status === 'OK') {
+      const element = data.rows[0].elements[0];
+      return {
+        distance: element.distance.text, 
+        eta: element.duration.text       
+      };
+    }
+    return null;
+  } catch (e) {
+    console.error('Failed to calculate partner stats:', e);
+    return null;
+  }
 };
+  useEffect(() => {
+  console.log('🔍 State changes:', {
+    isWalkActive,
+    hasActiveWalkData: !!activeWalkData,
+    acceptedWalkRequest: acceptedWalkRequest?.status,
+    isSearchPartner,
+    isShowingAcceptedWalker
+  });
+}, [isWalkActive, activeWalkData, acceptedWalkRequest, isSearchPartner, isShowingAcceptedWalker]);
+
+  // Recalculate ETA and distance when partner or locations change
+  useEffect(() => {
+    const doCalc = async () => {
+      if (
+        acceptedWalker &&
+        walkerLocation &&
+        currentWalkRequest &&
+        currentWalkRequest.startPoint
+      ) {
+        const walkerLoc =
+          walkerLocation.latitude && walkerLocation.longitude
+            ? walkerLocation
+            : null;
+        const startLoc =
+          currentWalkRequest.startPoint.latitude && currentWalkRequest.startPoint.longitude
+            ? currentWalkRequest.startPoint
+            : null;
+        if (walkerLoc && startLoc) {
+          const stats = await calculatePartnerStats(walkerLoc, startLoc);
+          setPartnerStats(stats);
+        } else {
+          setPartnerStats(null);
+        }
+      } else {
+        setPartnerStats(null);
+      }
+    };
+    doCalc();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [acceptedWalker, walkerLocation, currentWalkRequest]);
+
+  // Function to handle destination selection with coordinates
+  const handleDestinationSelect = (coordinates) => {
+    // console.log($&);
+    setDestinationCoords(coordinates);
+  };
   
   const handleStartPointSelect = (coords) => {
-  setStartPointCoords(coords);
-};
+    setStartPointCoords(coords);
+  };
+
+  // NEW: Listen for walk request acceptance using real Firestore listener
+  useEffect(() => {
+    if (!currentWalkRequestId) return;
+
+    // console.log($&);
+
+    const unsubscribe = FirebaseService.listenToWalkRequestAcceptance(
+      currentWalkRequestId,
+      async (acceptedWalkRequest) => {
+        try {
+          // Store the original walk request if not already set
+          if (!originalWalkRequest) {
+            setOriginalWalkRequest(acceptedWalkRequest);
+          }
+
+          // --- NEW HANDLING: If the sender confirms the acceptance (status === 'accepted_by_both') ---
+          if (acceptedWalkRequest.status === 'accepted_by_both') {
+            // If you have a loading state for acceptance, stop it here
+            if (typeof setAcceptanceLoading === 'function') {
+              setAcceptanceLoading(false);
+            }
+            // You may want to update UI or navigate to the active walk screen here
+            return;
+          }
+
+          // Get accepter's phone number
+          const accepterPhone = acceptedWalkRequest.acceptedBy;
+          if (!accepterPhone) {
+            console.error('❌ No accepter phone found in accepted walk request');
+            return;
+          }
+
+          // Fetch accepter's user data
+          const accepterResult = await FirebaseService.getUserByPhone(accepterPhone);
+          if (!accepterResult.exists || !accepterResult.userData) {
+            console.error('❌ Could not fetch accepter data for:', accepterPhone);
+            // Fallback to basic accepter info
+            showFallbackAcceptedWalker(accepterPhone, acceptedWalkRequest);
+            return;
+          }
+
+          const accepterData = accepterResult.userData;
+          // console.log($&);
+
+          // ✅ Ensure the accepter has a valid CurrentLocation field
+          if (!accepterData.CurrentLocation) {
+            console.warn('⚠️ Accepter has no CurrentLocation set. Falling back.');
+            showFallbackAcceptedWalker(accepterPhone, acceptedWalkRequest);
+            return;
+          }
+
+          // ✅ Extract the coordinates from the user's CurrentLocation field
+          const walkerCoords = accepterData.CurrentLocation; // Expected format: { latitude, longitude }
+
+          // Use the extracted location to calculate partner stats
+          const stats = await calculatePartnerStats(walkerCoords, startPointCoords);
+
+          // Create accepted walker object
+          const acceptedWalkerData = {
+            id: accepterData.id,
+            name: `${accepterData.Name || ''} ${accepterData.Surname || ''}`.trim() || 'Walk Partner',
+            rating: accepterData.rating || 4.5,
+            bio: accepterData.bio || "I'm available to walk with you!",
+            availability: "Available Now",
+            gender: accepterData.Gender || "Not specified",
+            walksCompleted: accepterData.walksCompleted || 0,
+            universityYear: accepterData.year || "Not specified",
+            isVerified: accepterData.isVerified || false,
+            phone: accepterPhone,
+            location: walkerCoords,
+            eta: stats?.eta,
+            distance: stats?.distance,
+            avatarSource: accepterData.ImageURL ? { uri: accepterData.ImageURL } : undefined
+          };
+
+          // ✅ Update state with the walker's location
+          setAcceptedWalker(acceptedWalkerData);
+          setWalkerLocation(walkerCoords); // Crucial for displaying the marker
+          setIsShowingAcceptedWalker(true);
+          setIsSearchPartner(false);
+
+        } catch (error) {
+          console.error('💥 Error processing accepted walk request:', error);
+          // Fallback to showing basic acceptance
+          showFallbackAcceptedWalker(acceptedWalkRequest.acceptedBy, acceptedWalkRequest);
+        }
+      }
+    );
+
+    return () => {
+      // console.log($&);
+      unsubscribe();
+    };
+  }, [currentWalkRequestId, originalWalkRequest]);
+
+  // Fallback function if accepter data can't be fetched (new version)
+  const showFallbackAcceptedWalker = (accepterPhone, walkRequest) => {
+    const meetupCoordinates = {
+      'APB Campus West Entrance': { latitude: -26.1872365, longitude: 28.0124719 },
+      // Add all your meetup points
+    };
+    
+    const meetupPoint = walkRequest.meetupPoint || walkRequest.pickup;
+    const location = meetupCoordinates[meetupPoint] || startPointCoords;
+
+    const fallbackAcceptedWalker = {
+      id: 'accepted-' + accepterPhone,
+      name: 'Walk Partner',
+      rating: 4.5,
+      bio: "I've accepted your walk request! Let's walk together.",
+      availability: "Available Now", 
+      gender: "Not specified",
+      walksCompleted: 0,
+      universityYear: "Not specified",
+      isVerified: false,
+      phone: accepterPhone,
+      location: location
+    };
+    
+    setAcceptedWalker(fallbackAcceptedWalker);
+    setWalkerLocation(location);
+    setIsShowingAcceptedWalker(true);
+    setIsSearchPartner(false);
+  };
+
+  // Function to play notification sound
+  const playNotificationSound = async (type) => {
+    try {
+      // You can use your existing sound playing logic here
+      // console.log($&);
+    } catch (error) {
+      // console.error('🔊 Error playing sound:', error);
+    }
+  };
+
+  // NEW: Handle starting partner search and set up listener
+  const handleStartPartnerSearch = (requestId) => {
+    // console.log($&);
+    setCurrentWalkRequestId(requestId);
+    setIsSearchPartner(true);
+  };
+
+  // Remove the simulation useEffect - we don't want simulated acceptances anymore
+  // useEffect(() => {
+  //   const handleAcceptedWalker = async () => {
+  //     if (isSearchPartner) {
+  //       // REMOVED: No more simulation
+  //     }
+  //   };
+  //   handleAcceptedWalker();
+  // }, [isSearchPartner]);
+
+  // Handle real acceptance from push notifications (keep this as backup)
+  useEffect(() => {
+    if (currentWalkRequest && currentWalkRequest.type === 'walk_accepted') {
+      // console.log($&);
+      setAcceptedWalker(currentWalkRequest.accepterData);
+      setWalkerLocation(currentWalkRequest.accepterLocation);
+      setIsShowingAcceptedWalker(true);
+      setIsSearchPartner(false);
+    }
+  }, [currentWalkRequest]);
 
   // Animation values
   const opacityAnim = useRef(new Animated.Value(0)).current;
@@ -187,28 +511,25 @@ const handleDestinationSelect = (coordinates) => {
   }, []);
 
   // Reverse geocoding function
-const reverseGeocode = async (coords) => {
-  try {
-    const addressList = await Location.reverseGeocodeAsync(coords);
-    if (addressList.length > 0) {
-      // Format the address based on the available fields
-      const address = addressList[0];
-      // Construct a formatted address string from the components
-      const formattedAddress = [
-        address.street,
-        address.city,
-        address.region,
-        address.postalCode,
-        address.country
-      ].filter(part => part != null).join(', ');
-      return formattedAddress || "Unknown location";
+  const reverseGeocode = async (coords) => {
+    try {
+      const addressList = await Location.reverseGeocodeAsync(coords);
+      if (addressList.length > 0) {
+        const address = addressList[0];
+        const formattedAddress = [
+          address.street,
+          address.city,
+          address.region,
+          address.postalCode,
+          address.country
+        ].filter(part => part != null).join(', ');
+        return formattedAddress || "Unknown location";
+      }
+    } catch (error) {
+      console.error('Expo reverse geocode failed:', error);
     }
-  } catch (error) {
-    console.error('Expo reverse geocode failed:', error);
-    // Consider a fallback to Google's API here if needed
-  }
-  return "Unknown location";
-};
+    return "Unknown location";
+  };
 
   // Get user location for map center
   useEffect(() => {
@@ -232,6 +553,216 @@ const reverseGeocode = async (coords) => {
     setLocationName(address);
   };
 
+// FIXED: Handle confirming the walker with improved data for receiver
+const handleConfirmWalker = async () => {
+  console.log('✅ Sender confirming walker:', acceptedWalker?.name);
+
+  const walkRequestData = originalWalkRequest;
+
+  if (!walkRequestData) {
+    Alert.alert('Error', 'Walk request data not found');
+    return;
+  }
+
+  try {
+    // Get sender's user data
+    const userDataString = await AsyncStorage.getItem('userData');
+    const userDataObj = userDataString ? JSON.parse(userDataString) : null;
+
+    // Prepare walk data for sender
+    const walkData = {
+      // Use string locations for display
+      fromLocation: walkRequestData.walkFrom || 'Your Location',
+      toLocation: walkRequestData.walkTo || 'Destination',
+      fromAddress: '',
+      toAddress: '',
+      totalDistance: partnerStats?.distance || 'Calculating...',
+      estimatedDuration: partnerStats?.eta || 'Calculating...',
+      nextTurnDistance: '250 m',
+      nextStreet: 'Head to meetup point',
+      partnerId: acceptedWalker.id,
+      partnerName: acceptedWalker.name,
+      partnerPhone: acceptedWalker.phone,
+      // Use coordinate objects for map
+      startPoint: startPointCoords,
+      destination: destinationCoords,
+      meetupPoint: walkRequestData.meetupPoint,
+      startedAt: new Date().toISOString(),
+      requestId: currentWalkRequestId,
+      senderId: userDataObj?.id,
+      senderName: userDataObj ? `${userDataObj.Name || ''} ${userDataObj.Surname || ''}`.trim() : 'Walk Partner',
+      senderPhone: userDataObj?.phone
+    };
+
+    console.log('📦 Sender walk data prepared:', walkData);
+
+    // Update Firebase with additional data for receiver
+    if (currentWalkRequestId) {
+      const updateData = {
+        status: 'accepted_by_both',
+        confirmedAt: new Date().toISOString(),
+        // Include coordinate data that receiver will need
+        startPoint: startPointCoords,
+        destination: destinationCoords,
+        senderName: userDataObj ? `${userDataObj.Name || ''} ${userDataObj.Surname || ''}`.trim() : 'Walk Partner',
+        requesterName: userDataObj ? `${userDataObj.Name || ''} ${userDataObj.Surname || ''}`.trim() : 'Walk Partner',
+        senderPhone: userDataObj?.phone,
+        // Keep the original string locations for display
+        pickup: walkRequestData.walkFrom || 'Your Location'
+      };
+
+      console.log('📤 Updating Firestore with:', updateData);
+
+      await FirebaseService.updateWalkRequestStatus(
+        currentWalkRequestId,
+        'accepted_by_both',
+        updateData
+      );
+    }
+
+    // Set states for sender
+    setActiveWalkData(walkData);
+    setIsShowingAcceptedWalker(false);
+    setIsWalkActive(true);
+
+    // Alert.alert('Walk Started! 🚶', `You're now walking with ${acceptedWalker.name}`);
+
+  } catch (error) {
+    console.error('❌ Error confirming walker:', error);
+    Alert.alert('Error', 'Failed to start walk. Please try again.');
+  }
+};
+  useEffect(() => {
+  console.log('🔍 acceptedWalkRequest changed:', acceptedWalkRequest);
+  console.log('🔍 Current states:', {
+    isWalkActive,
+    hasActiveWalkData: !!activeWalkData,
+    isSearchPartner,
+    isShowingAcceptedWalker
+  });
+}, [acceptedWalkRequest, isWalkActive, activeWalkData]);
+
+// Updated regular receiver walk start (simplified and consistent with immediate walk start)
+useEffect(() => {
+  const handleReceiverWalkStart = async () => {
+    console.log('🚶‍♂️ [Receiver] Checking acceptedWalkRequest:', acceptedWalkRequest);
+    
+    // Only process if not already walking and request is confirmed
+    if (!isWalkActive && acceptedWalkRequest && acceptedWalkRequest.status === 'accepted_by_both') {
+      console.log('🚶‍♂️ [Receiver] Starting walk from accepted request');
+
+      try {
+        // Get receiver's user data
+        const userDataString = await AsyncStorage.getItem('userData');
+        const userDataObj = userDataString ? JSON.parse(userDataString) : null;
+
+        // Prepare walk data for receiver
+        const walkData = {
+          // String locations for display
+          fromLocation: acceptedWalkRequest.pickup || 'Your Location',
+          toLocation: 'Destination',
+          fromAddress: '',
+          toAddress: '',
+          totalDistance: 'Calculating...',
+          estimatedDuration: 'Calculating...',
+          nextTurnDistance: '250 m',
+          nextStreet: 'Head to meetup point',
+          partnerId: acceptedWalkRequest.requesterId,
+          partnerName: acceptedWalkRequest.requesterName || 'Walk Partner',
+          partnerPhone: acceptedWalkRequest.requesterPhone,
+          // Coordinates for map
+          startPoint: acceptedWalkRequest.startPoint,
+          destination: acceptedWalkRequest.destination,
+          meetupPoint: acceptedWalkRequest.meetupPoint,
+          startedAt: acceptedWalkRequest.confirmedAt || new Date().toISOString(),
+          requestId: acceptedWalkRequest.requestId,
+          receiverId: userDataObj?.id,
+          receiverName: userDataObj ? `${userDataObj.Name || ''} ${userDataObj.Surname || ''}`.trim() : 'You'
+        };
+
+        console.log('✅ [Receiver] Walk data prepared from accepted request:', {
+          fromLocation: walkData.fromLocation,
+          toLocation: walkData.toLocation,
+          startPoint: walkData.startPoint,
+          destination: walkData.destination
+        });
+
+        // Set active walk states
+        setActiveWalkData(walkData);
+        setIsWalkActive(true);
+        setIsSearchPartner(false);
+        setIsShowingAcceptedWalker(false);
+
+        console.log('✅ [Receiver] Walk started successfully from accepted request');
+
+      } catch (error) {
+        console.error('❌ Error starting receiver walk from accepted request:', error);
+      }
+    }
+  };
+
+  handleReceiverWalkStart();
+}, [acceptedWalkRequest, isWalkActive]);
+
+  const handleRecenterMap = () => {
+    console.log('Recenter map');
+  };
+
+  const handleMoreOptions = () => {
+    Alert.alert(
+      'Walk Options',
+      'Choose an action',
+      [
+        { text: 'Share Location', onPress: () => console.log('Share location') },
+        { text: 'End Walk', onPress: handleEndWalk, style: 'destructive' },
+        { text: 'Cancel', style: 'cancel' }
+      ]
+    );
+  };
+
+  const handleEmergency = () => {
+    Alert.alert(
+      '🚨 Emergency',
+      'Are you in danger?',
+      [
+        {
+          text: 'Send SOS',
+          onPress: () => {
+            console.log('SOS triggered');
+          },
+          style: 'destructive'
+        },
+        { text: 'Cancel', style: 'cancel' }
+      ]
+    );
+  };
+
+  const handleEndWalk = () => {
+    Alert.alert(
+      'End Walk?',
+      'Are you sure you want to end this walk?',
+      [
+        {
+          text: 'End Walk',
+          onPress: () => {
+            setIsWalkActive(false);
+            setActiveWalkData(null);
+            setAcceptedWalker(null);
+            Alert.alert('Walk Ended', 'Your walk has been completed.');
+          },
+          style: 'destructive'
+        },
+        { text: 'Cancel', style: 'cancel' }
+      ]
+    );
+  };
+
+  // NEW: Handle swiping to next (if you have multiple accepters)
+  const handleSwipeToNext = () => {
+    // For now, we'll just close since we only have one
+    setIsShowingAcceptedWalker(false);
+  };
+
   return (
     <View style={{ flex: 1 }}>
       <Animated.View 
@@ -244,8 +775,43 @@ const reverseGeocode = async (coords) => {
           }
         ]}
       >
-        {/* Title and back button - shown only when not in map mode */}
-        {!isTapWhere && (
+        {/* Show WalkingMap when walk is active */}
+        {isWalkActive && activeWalkData && (
+          <>
+            <WalkingMap 
+              startPoint={activeWalkData.startPoint}
+              destination={activeWalkData.destination}
+              userLocation={userLocation}
+            />
+            <WalkDetails 
+              walkData={activeWalkData}
+              partnerData={acceptedWalker}
+              onEndWalk={handleEndWalk}
+              onRecenter={handleRecenterMap}
+              onMoreOptions={handleMoreOptions}
+              onEmergency={handleEmergency}
+            />
+          </>
+        )}
+
+        {/* Show MapWithDetails in background when showing accepted walker or in map mode */}
+        {(isTapWhere || isShowingAcceptedWalker) && !isWalkActive && (
+          <MapWithDetails 
+            isTapWhere={isTapWhere || isShowingAcceptedWalker} 
+            userLocation={userLocation} 
+            setUserLocation={setUserLocation} 
+            destination={destinationCoords}
+            startPoint={startPointCoords}
+            userImage={userImage}
+            isSearching={isSearchPartner}
+            isSelectPartner={isShowingAcceptedWalker}
+            partnerLocation={walkerLocation}
+            partnerData={acceptedWalker}
+          />
+        )}
+
+        {/* Title and back button - shown only when not in map mode, not showing accepted walker, and not in active walk */}
+        {!isTapWhere && !isShowingAcceptedWalker && !isWalkActive && (
           <View style={styles.titleBack}>
             <Text style={[{ color: colors.text, fontSize: 25 }, styles.textBold]}>Plan your walk</Text>
             
@@ -262,8 +828,8 @@ const reverseGeocode = async (coords) => {
           </View>
         )}
 
-        {/* Search bar */}
-        {!isDestinationDone && (
+        {/* Search bar - hidden when showing accepted walker or when walk is active */}
+        {!isDestinationDone && !isShowingAcceptedWalker && !isWalkActive && (
           <View style={{ 
             marginTop: isTapWhere ? height * 0.13 : 20,
             zIndex: 100,
@@ -273,52 +839,56 @@ const reverseGeocode = async (coords) => {
             right: 0,
             paddingHorizontal: 20,
           }}>
-        <WalkPartnerSearchBar 
-          isTapWhere={isTapWhere} 
-          setISTapWhere={setISTapWhere}
-          locationName={locationName}
-          setIsDestinationDone={setIsDestinationDone}
-          setIsStartPointDone={setIsStartPointDone}
-          setIsStartPoint={setIsStartPoint}
-          onBackPress={isTapWhere ? () => setISTapWhere(false) : undefined}
-          dropoffLocation={dropoffLocation}
-          setDropoffLocation={setDropoffLocation}
-          onDestinationSelect={handleDestinationSelect}
-        />
-          </View>
-        )}
-
-        {/* Map view when isTapWhere is true */}
-        {isTapWhere && (
-          <MapWithDetails 
-            isTapWhere={isTapWhere} 
-            userLocation={userLocation} 
-            setUserLocation={setUserLocation} 
-            destination={destinationCoords}
-            startPoint={startPointCoords}
-            userImage = {userImage}
-          />
-        )}
-
-        {(isDestinationDone && isStartPoint) && (
-          <View style={styles.floatingView}>
-            <WalkStartPoint 
-              setIsDestinationDone={setIsDestinationDone} 
-              setIsSearchPartner={setIsSearchPartner} 
+            <WalkPartnerSearchBar 
+              isTapWhere={isTapWhere} 
+              setISTapWhere={setISTapWhere}
+              locationName={locationName}
+              setIsDestinationDone={setIsDestinationDone}
+              setIsStartPointDone={setIsStartPointDone}
               setIsStartPoint={setIsStartPoint}
-              onStartPointSelect={handleStartPointSelect} // Add this prop
+              onBackPress={isTapWhere ? () => setISTapWhere(false) : undefined}
+              dropoffLocation={dropoffLocation}
+              setDropoffLocation={setDropoffLocation}
+              onDestinationSelect={handleDestinationSelect}
             />
           </View>
         )}
 
-        {isSearchPartner && (
+        {/* Walk start point - hidden when showing accepted walker or when walk is active */}
+        {(isDestinationDone && isStartPoint && !isShowingAcceptedWalker && !isWalkActive) && (
+          <View style={styles.floatingView}>
+            <WalkStartPoint 
+              setIsDestinationDone={setIsDestinationDone} 
+              setIsSearchPartner={handleStartPartnerSearch} // Updated to pass request ID
+              setIsStartPoint={setIsStartPoint}
+              onStartPointSelect={handleStartPointSelect} 
+              dropoffLocation={dropoffLocation}
+            />
+          </View>
+        )}
+
+        {/* Partner search loader - hidden when showing accepted walker or when walk is active */}
+        {isSearchPartner && !isShowingAcceptedWalker && !isWalkActive && (
           <View style={styles.floatingView}>
             <PartnerSearch />
           </View>
         )}
 
-        {/* Main content - shown only when not in map mode */}
-        {!isTapWhere && (
+        {/* SelectWalker component - shown when a partner accepts */}
+        {isShowingAcceptedWalker && acceptedWalker && (
+          <View style={styles.selectWalkerContainer}>
+            <SelectWalker 
+              partner={acceptedWalker}
+              partnerStats={partnerStats}
+              onConfirm={handleConfirmWalker}
+              onSwipe={handleSwipeToNext}
+              onClose={() => setIsShowingAcceptedWalker(false)}
+            />
+          </View>
+        )}
+
+        {/* Main content - shown only when not in map mode, not showing accepted walker, and not in active walk */}
+        {!isTapWhere && !isShowingAcceptedWalker && !isWalkActive && (
           <>
             {/* Saved location shortcuts */}
             <View style = {{marginLeft: width * 0.05, marginTop: height * 0.02, gap: 20}}>
@@ -354,7 +924,7 @@ const reverseGeocode = async (coords) => {
                   isSavedLocationAvailable={true}
                   onPress={() => {
                     // Handle selecting a saved address
-                    console.log('Selected address:', address);
+                    // console.log($&);
                   }}
                   onLongPress={() => handleEditAddress(address)}
                 />
@@ -370,10 +940,10 @@ const reverseGeocode = async (coords) => {
             {/* New walk schedule component */}
             {isAddScheduledWalkVisible && (
               <View style = {{position: 'absolute', zIndex: 100, width, height}}>
-              <AddScheduledWalk 
+                <AddScheduledWalk 
                   onClose={() => setIsAddScheduledWalkVisible(false)} 
                   setIsAddScheduledWalkVisible={setIsAddScheduledWalkVisible}
-              />
+                />
               </View>
             )}
           </>
@@ -440,5 +1010,12 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 20,
     alignSelf: 'center'
+  },
+  // NEW: Styles for SelectWalker container
+  selectWalkerContainer: {
+    position: 'absolute',
+    bottom: 20,
+    alignSelf: 'center',
+    zIndex: 1000,
   }
 })

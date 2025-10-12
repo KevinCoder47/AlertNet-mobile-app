@@ -45,7 +45,7 @@ export const sendWalkRequest = functions.https.onCall(async (data, context) => {
     };
 
     const response = await admin.messaging().send(message);
-    console.log('✅ FCM message sent successfully:', response);
+    // console.log($&);
     return { success: true, messageId: response };
   } catch (error) {
     console.error('❌ Error sending FCM message:', error);

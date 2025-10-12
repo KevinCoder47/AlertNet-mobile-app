@@ -435,19 +435,19 @@ const FeatureDisplayScreen = ({onComplete, setOnboardingComplete, setIsLoggedIn}
       </View>
       
       {/* Hide pagination on GetStarted screen (index 3) */}
-      {currentIndex < 3 && (
-        <View style={styles.pagination}>
-          {features.slice(0, 3).map((_, i) => (
-            <View
-              key={i}
-              style={[
-                styles.dot,
-                i === currentIndex ? styles.activeDot : null
-              ]}
-            />
-          ))}
-        </View>
-      )}
+{currentIndex < 3 && (
+  <View style={styles.pagination}>
+    {features.slice(0, 4).map((_, i) => (
+      <View
+        key={i}
+        style={[
+          styles.dot,
+          i === currentIndex ? styles.activeDot : null
+        ]}
+      />
+    ))}
+  </View>
+)}
     </View>
   );
 };

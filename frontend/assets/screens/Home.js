@@ -11,6 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { Alert, Linking, AppState } from 'react-native';
 import { serverTimestamp } from 'firebase/firestore';
+// import * as FileSystem from 'expo-file-system/legacy';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Crypto from 'expo-crypto';
 import { getUserDocument } from '../../services/firestore';
@@ -24,7 +25,7 @@ import { FirebaseService } from '../../backend/Firebase/FirebaseService';
 import QRCodeScanner from './QRCodeScanner';
 import SOSPage from './SOS';
 import QrCode from './QrCode';
-import SafetyResources from '../screens/SafetyResource_Screens/SafetyResources';
+import SafetyResources from './SafetyResource_Screens/SafetyResources';
 import TestSOS from './SafetyResource_Screens/TestSOS';
 import LiveLocation from './SafetyResource_Screens/LiveLocation';
 import VoiceTrigger from './SafetyResource_Screens/VoiceTrigger';
@@ -71,7 +72,7 @@ const Home = ({ route, handleLogout }) => {
   
   // Convert friends array to object format for SafetyMap compatibility
   const friendsDetails = React.useMemo(() => {
-    console.log('Home: Converting', friendsData.length, 'friends to object format');
+    // // console.log($&);
     return friendsData.reduce((acc, friend) => {
       const id = friend.friendId || friend.uid;
       if (id) {
@@ -83,11 +84,20 @@ const Home = ({ route, handleLogout }) => {
 
   // Log when friends data changes
   useEffect(() => {
-    console.log('Home: Friends data updated:', friendsData.length, 'friends');
-    console.log('Home: Friends with locations:', 
-      friendsData.filter(f => f.currentLocation).length
-    );
+    // // console.log($&);
+    // console.log('Home: Friends with locations:', 
+    //   friendsData.filter(f => f.currentLocation).length
+    // );
   }, [friendsData]);
+
+  // NotificationContext walk partner state
+  const { 
+    acceptedWalkRequest, 
+    setAcceptedWalkRequest,
+    currentWalkRequest 
+  } = useNotifications();
+
+  const [autoNavigateToWalkPartner, setAutoNavigateToWalkPartner] = useState(false);
 
   // State declarations
   const [isNotHome, setIsNotHome] = useState(false);
@@ -155,7 +165,7 @@ const Home = ({ route, handleLogout }) => {
   useEffect(() => {
     if (route.params?.openChatWith) {
       const personToChat = route.params.openChatWith;
-      console.log('Home.js: Received request to open chat with:', personToChat.name);
+      // console.log($&);
       handleOpenChat(personToChat);
       // If opened via navigation, record the source
       if (route.params.from) {
@@ -166,20 +176,25 @@ const Home = ({ route, handleLogout }) => {
     }
   }, [route.params?.openChatWith]);
 
+<<<<<<< HEAD
   const handleOpenChat = async (personData, from) => {
     console.log('DEBUG: Opening chat with raw personData:', JSON.stringify(personData, null, 2));
+=======
+  const handleOpenChat = async (personData) => {
+    // // console.log($&);
+>>>>>>> 626e3c10c78c35faee4169104691b731119fc4ff
     
     const personId = personData?.senderId || personData?.friendId || personData?.id;
-    console.log('DEBUG: Resolved personId:', personId);
+    // // console.log($&);
 
     if (personData && personId) {
       let completePersonData = personData.data || personData;
 
       if (!completePersonData.createdAt) {
-        console.log(`Incomplete user data for ${personId}, fetching full document.`);
+        // console.log($&);
         const userResult = await FirebaseService.getUserById(personId);
         if (userResult.success) {
-          console.log('Successfully fetched full user document.');
+          // console.log($&);
           completePersonData = userResult.userData;
         } else {
           console.error(`Failed to fetch full user document for ${personId}:`, userResult.error);
@@ -190,7 +205,7 @@ const Home = ({ route, handleLogout }) => {
       const phone = completePersonData.phone || completePersonData.Phone || null;
       const profilePicture = completePersonData.profilePicture || completePersonData.imageUrl || completePersonData.ImageURL || completePersonData.avatar || null;
       
-      console.log('Profile picture for chat:', profilePicture);
+      // console.log($&);
       
       if (from) {
         setChatOpenedFrom(from);
@@ -218,7 +233,7 @@ const Home = ({ route, handleLogout }) => {
 
     const initializeUserFCM = async () => {
       try {
-        console.log('Initializing FCM for user:', userData.name);
+        // console.log($&);
         await SOSService.initializeFCM(userData.userId);
       } catch (error) {
         console.error('Error initializing FCM for user:', error);
@@ -305,6 +320,7 @@ const Home = ({ route, handleLogout }) => {
         } catch (error) {
           console.error("Error requesting background location:", error);
         }
+<<<<<<< HEAD
       };
       
       requestBackgroundPermission();
@@ -314,6 +330,19 @@ const Home = ({ route, handleLogout }) => {
       };
     }
   }, [userData?.userId]); // Now depends on having a valid user ID
+=======
+      } catch (error) {
+        // console.error("Error requesting background location:", error);
+      }
+    };
+    
+    requestBackgroundPermission();
+    
+    return () => {
+      Location.stopLocationUpdatesAsync('backgroundLocationTask');
+    };
+  }, []);
+>>>>>>> 626e3c10c78c35faee4169104691b731119fc4ff
 
   // User presence management
   useEffect(() => {
@@ -323,14 +352,14 @@ const Home = ({ route, handleLogout }) => {
     }
 
     FirebaseService.updateUserStatus(userId, { status: 'online' });
-    console.log(`✨ User ${userId} is now online.`);
+    // console.log($&);
 
     const handleAppStateChange = async (nextAppState) => {
       if (nextAppState === 'active') {
-        console.log('📱 App is active.');
+        // console.log($&);
         await FirebaseService.updateUserStatus(userId, { status: 'online' });
       } else if (nextAppState === 'background' || nextAppState === 'inactive') {
-        console.log('📱 App is in background.');
+        // console.log($&);
         if (activePopup) {
           dismissPopup();
         }
@@ -344,7 +373,7 @@ const Home = ({ route, handleLogout }) => {
     const subscription = AppState.addEventListener('change', handleAppStateChange);
     
     return () => {
-      console.log(`🚪 Cleaning up presence for user ${userId}.`);
+      // console.log($&);
       if (userId) {
         FirebaseService.updateUserStatus(userId, { 
           status: 'offline',
@@ -409,7 +438,7 @@ const Home = ({ route, handleLogout }) => {
         
         if (userDataJSON) {
           const userData = JSON.parse(userDataJSON);
-          console.log("User data loaded:", userData.name);
+          // console.log($&);
           setUserData(userData);
           
           if (userData.imageUrl) {
@@ -468,7 +497,7 @@ const Home = ({ route, handleLogout }) => {
   };
 
   const handleImageError = () => {
-    console.log('Image failed to load');
+    // console.log($&);
     setImageError(true);
     
     if (cachedImagePath) {
@@ -492,7 +521,7 @@ const Home = ({ route, handleLogout }) => {
 
   const handleBarCodeScanned = ({ type, data }) => {
     setIsScanning(false);
-    console.log(`QR Code scanned! Type: ${type}, Data: ${data}`);
+    // console.log($&);
     
     try {
       const parsedData = JSON.parse(data);
@@ -517,9 +546,40 @@ const Home = ({ route, handleLogout }) => {
     }
   };
 
+  // Auto-navigate to WalkPartner when walk is accepted by both
+  useEffect(() => {
+    console.log('🏠 [Home] Checking acceptedWalkRequest:', acceptedWalkRequest);
+    
+    if (acceptedWalkRequest && acceptedWalkRequest.status === 'accepted_by_both') {
+      console.log('🏠 [Home] Receiver walk confirmed, auto-navigating to WalkPartner');
+      
+      setAutoNavigateToWalkPartner(true);
+      setIsWalkPartner(true);
+    }
+  }, [acceptedWalkRequest]);
+
+  // Reset auto-navigate on leaving WalkPartner
+  useEffect(() => {
+    if (!isWalkPartner) {
+      setAutoNavigateToWalkPartner(false);
+    }
+  }, [isWalkPartner]);
+
   // Conditional screen renders
   if (isWalkPartner) {
-    return <WalkPartner setIsWalkPartner={setIsWalkPartner} userImage={userImage} />;
+    return (
+      <WalkPartner 
+        setIsWalkPartner={(value) => {
+          setIsWalkPartner(value);
+          if (!value && acceptedWalkRequest) {
+            setAcceptedWalkRequest(null);
+          }
+        }} 
+        userImage={userImage}
+        isReceiverWalk={autoNavigateToWalkPartner}
+        initialAcceptedWalkRequest={autoNavigateToWalkPartner ? acceptedWalkRequest : null}
+      />
+    );
   }
 
   if (isUserProfile) {
@@ -917,7 +977,7 @@ const Home = ({ route, handleLogout }) => {
           <InAppNotificationPopup
             notification={activePopup}
             onDismiss={() => {
-              console.log('🔕 Dismissing popup from view only.');
+              // console.log($&);
               dismissPopup();
             }}
             onNavigate={() => {

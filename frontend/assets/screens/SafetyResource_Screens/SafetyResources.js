@@ -65,7 +65,7 @@ export default function SafetyResources({
 
   // Entrance animation when component mounts
   useEffect(() => {
-    console.log("SafetyResources Clicked from:", previousScreen);
+    // console.log($&);
     Animated.spring(pan, {
       toValue: { x: 0, y: 0 },
       useNativeDriver: true,
@@ -76,7 +76,7 @@ export default function SafetyResources({
 
   // Handle QR code scanning result
   const handleQRScanned = (scannedUserId, scannedSosId) => {
-    console.log('QR Code scanned - UserID:', scannedUserId, 'SOS ID:', scannedSosId);
+    // console.log($&);
     
     // Close the scanner and safety resources
     setShowQRScanner(false);
@@ -143,7 +143,7 @@ export default function SafetyResources({
           text: "Scan SOS QR Code",
           keywords: ["qr", "code", "scan", "sos", "emergency", "scanner"],
           onPress: () => {
-            console.log("QR Scanner Clicked");
+            // console.log($&);
             setShowQRScanner(true);
           }
         }

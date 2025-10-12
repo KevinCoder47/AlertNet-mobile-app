@@ -14,6 +14,9 @@ module.exports = function (api) {
           allowUndefined: true,
         },
       ],
+      '@babel/plugin-transform-export-namespace-from', 
+      // Remove the line: 'react-native-worklets/plugin',
+      'react-native-reanimated/plugin', // Make sure this is last
     ],
   };
 };

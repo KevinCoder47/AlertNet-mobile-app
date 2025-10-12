@@ -116,34 +116,34 @@ class VoiceRecognitionService {
 
   static async checkVoiceAvailability() {
     try {
-      console.log('Checking voice availability...');
-      console.log('Voice object:', Voice);
-      console.log('Voice.start function:', typeof Voice.start);
+      // console.log($&);
+      // console.log($&);
+      // console.log($&);
       
       // Check if Voice module is properly linked
       if (Voice && typeof Voice.start === 'function') {
-        console.log('Voice module found, checking availability...');
+        // console.log($&);
         const available = await Voice.isAvailable();
-        console.log('Voice.isAvailable() result:', available);
+        // console.log($&);
         
         this.voiceAvailable = available;
         this.simulationMode = !available;
         
         if (available) {
-          console.log('✅ Real voice recognition is available!');
+          // console.log($&);
         } else {
-          console.log('❌ Voice recognition not available on this device');
+          // console.log($&);
         }
         
         return available;
       } else {
-        console.log('❌ Voice module not properly linked or installed');
+        // console.log($&);
         this.voiceAvailable = false;
         this.simulationMode = true;
         return false;
       }
     } catch (error) {
-      console.log('❌ Voice availability check failed:', error.message);
+      // console.log($&);
       this.voiceAvailable = false;
       this.simulationMode = true;
       return false;
@@ -164,7 +164,7 @@ class VoiceRecognitionService {
       const voiceAvailable = await this.checkVoiceAvailability();
       
       if (voiceAvailable) {
-        console.log('Using real speech recognition');
+        // console.log($&);
         // Setup voice recognition callbacks
         Voice.onSpeechStart = this.onSpeechStart;
         Voice.onSpeechEnd = this.onSpeechEnd;
@@ -173,7 +173,7 @@ class VoiceRecognitionService {
         
         await this.startSpeechRecognition();
       } else {
-        console.log('Using simulation mode for voice recognition');
+        // console.log($&);
         this.startSimulationMode();
       }
       
@@ -212,7 +212,7 @@ class VoiceRecognitionService {
       this.speechRecognitionActive = false;
       
       // Fallback to simulation mode
-      console.log('Falling back to simulation mode');
+      // console.log($&);
       this.simulationMode = true;
       this.voiceAvailable = false;
       this.startSimulationMode();
@@ -222,14 +222,14 @@ class VoiceRecognitionService {
   static startSimulationMode() {
     if (!this.isListening) return;
     
-    console.log('Simulation mode: Checking for safeword...');
+    // console.log($&);
     setTimeout(() => {
       if (this.isListening && this.simulationMode) {
         // 15% chance of detection for demo
         const randomDetection = Math.random() < 0.15;
         
         if (randomDetection) {
-          console.log(`Simulation: Safeword "${this.currentSafeword}" detected!`);
+          // console.log($&);
           this.triggerSafewordSOS();
         } else {
           // Continue simulation
@@ -240,11 +240,11 @@ class VoiceRecognitionService {
   }
 
   static onSpeechStart = () => {
-    console.log('Speech recognition started');
+    // console.log($&);
   };
 
   static onSpeechEnd = () => {
-    console.log('Speech recognition ended');
+    // console.log($&);
     VoiceRecognitionService.speechRecognitionActive = false;
     
     // Restart recognition if still listening
@@ -257,19 +257,19 @@ class VoiceRecognitionService {
     const results = event.value;
     if (results && results.length > 0) {
       const spokenText = results[0].toLowerCase();
-      console.log('Speech recognized:', spokenText);
+      // console.log($&);
       
       // Check if safeword is detected
       if (VoiceRecognitionService.currentSafeword && 
           spokenText.includes(VoiceRecognitionService.currentSafeword)) {
-        console.log(`Safeword "${VoiceRecognitionService.currentSafeword}" detected!`);
+        // console.log($&);
         VoiceRecognitionService.triggerSafewordSOS();
       }
     }
   };
 
   static onSpeechError = (error) => {
-    console.log('Speech recognition error:', error);
+    // console.log($&);
     VoiceRecognitionService.speechRecognitionActive = false;
     
     // Restart recognition if still listening
@@ -285,7 +285,7 @@ class VoiceRecognitionService {
         return { success: false, error: 'No safeword configured' };
       }
 
-      console.log(`Testing voice trigger with safeword: "${safeword}"`);
+      // console.log($&);
       const result = await this.triggerSafewordSOS();
       
       return {
@@ -301,7 +301,7 @@ class VoiceRecognitionService {
 
   static async triggerSafewordSOS() {
     try {
-      console.log('Safeword detected - triggering SOS');
+      // console.log($&);
       
       // Stop voice monitoring
       this.stopVoiceMonitoring();
