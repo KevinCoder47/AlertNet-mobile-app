@@ -17,6 +17,7 @@ import {
   TouchableWithoutFeedback,
   Pressable,
   Linking,
+  Platform,
 } from 'react-native';
 import { useNotifications } from '../contexts/NotificationContext';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
@@ -50,7 +51,7 @@ const tabCategories = {
   system: ['info', 'beta', 'subscription', 'updates', 'reports', 'welcome']
 };
 
-const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpenChat, markNotificationAsRead, markAllNotificationsAsRead, clearAllNotifications }) => {
+const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpenChat, markNotificationAsRead, markAllNotificationsAsRead, clearAllNotifications, navigation }) => {
   const { getScaledFontSize } = useFontSize();
   const themeContext = useTheme();
   const colors = themeContext.colors;
@@ -108,23 +109,28 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
         }
         
         const transformedNotifications = notifications.map(n => {
-          const isUrgent = n.priority === 'high' || n.isUrgent === true;
+          // A fire alert is always urgent.
+          const isUrgent = n.priority === 'high' || n.isUrgent === true || n.type === 'fire_alert';
           const timestamp = n.createdAt?.toDate ? n.createdAt.toDate().getTime() : Date.now();
           
           return {
               id: n.id,
               type: n.type,
               category: n.data?.category || 'general',
-              name: n.data?.senderName || n.title,
+              // For fire alerts, the sender's name is 'posterName'
+              name: n.type === 'fire_alert' ? n.data?.posterName : (n.data?.senderName || n.title),
               message: n.message, // This is the main message content
               time: formatTimeAgo(timestamp),
               timestamp: timestamp,
+              // For fire alerts, the senderId is nested in data.posterId
+              senderId: n.type === 'fire_alert' ? n.data?.posterId : n.data?.senderId,
               status: n.read ? 'read' : 'new',
               isUrgent: isUrgent,
               location: n.data?.location || null,
-              phone: n.data?.senderPhone || null,
-              senderId: n.data?.senderId || null,
-              profilePicture: n.data?.profilePicture || null,
+              // Fire alerts don't seem to have a phone number in the data, so we'll keep it null
+              phone: n.data?.senderPhone || null, 
+              // For fire alerts, the profile picture is 'posterAvatar'
+              profilePicture: n.type === 'fire_alert' ? n.data?.posterAvatar : n.data?.profilePicture,
               data: n.data, // Pass the whole data object for actions
           };
         });
@@ -385,34 +391,48 @@ const handleDecline = async (notification) => {
   };
 
   // Quick actions for notifications
-  const handleQuickAction = (notification, action) => {
+  const handleQuickAction = async (notification, action) => {
     Vibration.vibrate(50);
     
     switch (action) {
       case 'call':
         if (notification.phone) {
           const phoneNumber = `tel:${notification.phone}`;
-          Linking.canOpenURL(phoneNumber)
-            .then(supported => {
-              if (supported) {
-                Linking.openURL(phoneNumber);
-              } else {
-                Alert.alert('Call Failed', 'Unable to make phone calls on this device.');
-              }
-            });
+          try {
+            const supported = await Linking.canOpenURL(phoneNumber);
+            if (supported) {
+              await Linking.openURL(phoneNumber);
+            } else {
+              Alert.alert('Call Failed', 'Unable to make phone calls on this device.');
+            }
+          } catch (error) {
+            console.error('An error occurred', error);
+            Alert.alert('Error', 'Could not open the phone app.');
+          }
         }
         break;
       case 'respond':
         if (onOpenChat) {
-          const personData = {
-            id: notification.senderId,
-            senderId: notification.senderId,
-            name: notification.name,
-            phone: notification.phone,
-            profilePicture: notification.profilePicture,
-            data: notification.data,
-          };
-          onOpenChat(personData, 'NotificationsPopup'); // Pass the origin
+          // For fire alerts, the senderId (posterId) is not in the notification payload.
+          // The correct ID is nested inside `notification.data.posterId`.
+          const isFireAlert = notification.type === 'fire_alert';
+          const senderId = isFireAlert ? notification.data?.posterId : notification.senderId;
+
+          if (senderId) {
+            const personData = {
+              id: senderId,
+              senderId: senderId,
+              name: isFireAlert ? notification.data?.posterName : notification.name,
+              profilePicture: isFireAlert ? notification.data?.posterAvatar : notification.profilePicture,
+              data: notification.data, // Pass along other relevant data
+            };
+            onOpenChat(personData, 'NotificationsPopup');
+          } else {
+            // Fallback for other notifications that might not have a senderId at the top level
+            // but might have it in the data payload.
+            onOpenChat(notification, 'NotificationsPopup');
+          }
+
           setIsNotification(false);
         } else {
           Alert.alert('Quick Response', 'Response sent!');
@@ -606,19 +626,13 @@ const handleDecline = async (notification) => {
             isRead && styles.readNotification,
             isSelected && styles.selectedNotification
           ]}
-          onPress={() => {
-            if (isSelectionMode) { // If in selection mode, toggle selection
+          onPress={isSelectionMode || (isFriendRequest && !isRead) ? () => {
+            if (isSelectionMode) {
               toggleSelection(notification.id);
-            } else if (isFriendRequest && !isRead) { // If it's an unread friend request, expand it
-              // Toggle expansion for friend requests
+            } else if (isFriendRequest && !isRead) {
               setExpandedNotificationId(prevId => prevId === notification.id ? null : notification.id);
-            } else { // For any other case (read notifications, non-friend-requests)
-              // Mark as read if it's not already
-              if (!isRead) {
-                handleMarkAsRead(notification.id);
-              }
             }
-          }}
+          } : null}
           onLongPress={() => {
             setIsSelectionMode(true);
             toggleSelection(notification.id);
@@ -800,12 +814,20 @@ const handleDecline = async (notification) => {
                 <Text style={styles.menuItemText}>Filters & Sort</Text>
               </TouchableOpacity>
               
-              <TouchableOpacity style={styles.menuItem}>
+              <TouchableOpacity style={styles.menuItem} onPress={() => {
+                setShowMenu(false);
+                setIsNotification(false);
+                navigation.navigate('Settings');
+              }}>
                 <Icon name="cog" size={20} color={colors.text} />
                 <Text style={styles.menuItemText}>Settings</Text>
               </TouchableOpacity>
               
-              <TouchableOpacity style={styles.menuItem}>
+              <TouchableOpacity style={styles.menuItem} onPress={() => {
+                setShowMenu(false);
+                setIsNotification(false);
+                navigation.navigate('Settings');
+              }}>
                 <Icon name="help-circle" size={20} color={colors.text} />
                 <Text style={styles.menuItemText}>Help</Text>
               </TouchableOpacity>
