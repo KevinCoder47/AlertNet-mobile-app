@@ -625,7 +625,7 @@ const handleConfirmWalker = async () => {
     setIsShowingAcceptedWalker(false);
     setIsWalkActive(true);
 
-    Alert.alert('Walk Started! 🚶', `You're now walking with ${acceptedWalker.name}`);
+    // Alert.alert('Walk Started! 🚶', `You're now walking with ${acceptedWalker.name}`);
 
   } catch (error) {
     console.error('❌ Error confirming walker:', error);

@@ -255,9 +255,9 @@ useEffect(() => {
       setIsNotificationVisible(false);
 
       if (isReceiver) {
-        Alert.alert('Walk Confirmed! 🎉', 'The sender has confirmed. Your walk is starting!');
+        // Alert.alert('Walk Confirmed! 🎉', 'The sender has confirmed. Your walk is starting!');
       } else if (isSender) {
-        Alert.alert('Walk Confirmed! 🎉', 'Your walking partner has accepted and confirmed the walk!');
+        // Alert.alert('Walk Confirmed! 🎉', 'Your walking partner has accepted and confirmed the walk!');
       }
 
     } else if (data.status === 'cancelled') {
