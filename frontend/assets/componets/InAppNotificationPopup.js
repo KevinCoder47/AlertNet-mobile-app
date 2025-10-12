@@ -82,15 +82,9 @@ const InAppNotificationPopup = ({ notification, onDismiss, onNavigate, onViewLoc
   };
 
   const handleAccept = async (e) => {
-    e.stopPropagation(); // Prevent the main press from firing
-    if (notification?.requestId && onAcceptFriendRequest) {
-      const result = await onAcceptFriendRequest(notification.requestId);
-      if (result.success) {
-        Alert.alert('Friend Added!', `${notification.senderName} is now your friend.`);
-      } else {
-        Alert.alert('Error', result.error || 'Could not accept friend request.');
-      }
-      handleDismiss();
+    e.stopPropagation();
+    if (notification?.data?.requestId && onAcceptFriendRequest) {  // ✅
+      const result = await onAcceptFriendRequest(notification.data.requestId);
     }
   };
 

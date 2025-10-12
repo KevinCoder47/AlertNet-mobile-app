@@ -385,13 +385,13 @@ const getDisplayName = (notification) => {
   // Accept friend request
   const handleAcceptFriendRequest = async (requestId) => {
     try {
-      const userPhone = userData?.phone || userData?.phoneNumber;
-      if (!userPhone) {
+      if (!userData) {
         Alert.alert('Error', 'User phone number not found');
         return;
       }
 
-      const result = await FirebaseService.acceptFriendRequest(requestId, userPhone);
+      // Pass the entire userData object for complete information
+      const result = await FirebaseService.acceptFriendRequest(requestId, userData);
       
       if (result.success) {
         Alert.alert('Success', result.message);
@@ -665,9 +665,7 @@ const getDisplayName = (notification) => {
   const renderNotificationPanel = () => {
     if (!showNotifications) return null;
     
-    return (
-      <View style={styles.notificationPanel}>
-        <View style={styles.panelHeader}>
+    return <View style={styles.notificationPanel}><View style={styles.panelHeader}>
           <Text style={styles.panelTitle}>Notifications</Text>
           <View style={styles.panelActions}>
             {unreadCount > 0 && (
@@ -682,18 +680,10 @@ const getDisplayName = (notification) => {
               onPress={() => setShowNotifications(false)}
               style={styles.closeButton}
             >
-              <Ionicons name="close" size={24} color={isDark ? '#fff' : '#333'} />
-            </TouchableOpacity>
-          </View>
-        </View>
+              <Ionicons name="close" size={24} color={isDark ? '#fff' : '#333'} /></TouchableOpacity>
+          </View></View>
         
-        {notifications.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Ionicons 
-              name="notifications-outline" 
-              size={64} 
-              color={isDark ? '#666' : '#ccc'} 
-            />
+        {notifications.length === 0 ? <View style={styles.emptyState}><Ionicons name="notifications-outline" size={64} color={isDark ? '#666' : '#ccc'} />
             <Text style={styles.emptyText}>No notifications yet</Text>
           </View>
         ) : (
@@ -703,9 +693,7 @@ const getDisplayName = (notification) => {
             keyExtractor={(item) => item.id}
             showsVerticalScrollIndicator={false}
             style={styles.notificationList}
-          />
-        )}
-      </View>
+          />)}</View>
     );
   };
 
