@@ -13,7 +13,8 @@ const WalkDetails = ({
   onEndWalk,
   onRecenter,
   onMoreOptions,
-  onEmergency
+  onEmergency,
+  setShowPartnerUpdate
 }) => {
   const { isDark } = useTheme();
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -303,7 +304,7 @@ const WalkDetails = ({
           </TouchableOpacity>
 
           {/* partner icon */}
-          <TouchableOpacity style ={styles.partnerPic}>
+          <TouchableOpacity style ={styles.partnerPic} onPress={() => {setShowPartnerUpdate(true)}}>
             <Image source={avatarSource}
               style={{width: '100%', height: '100%'}}
             />

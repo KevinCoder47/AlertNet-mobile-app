@@ -10,6 +10,7 @@ import * as Location from 'expo-location';
 import { Magnetometer } from 'expo-sensors';
 import { useTheme } from '../../contexts/ColorContext';
 import PartnerMarker from '../PartnerMarker';
+import { Ionicons } from '@expo/vector-icons';
 
 const MAP_STYLES = {
   light: [
@@ -472,12 +473,14 @@ const WalkingMap = ({
         {meetUpPoint && (
           <Marker
             coordinate={meetUpPoint}
-            anchor={{ x: 0.5, y: 1 }}
-            title="Meetup Point"
+            title="Start Point"
+            zIndex={998}
           >
-            <View style={styles.meetupMarker}>
-              <View style={styles.meetupMarkerPin} />
-              <View style={styles.meetupMarkerCircle} />
+            <View style={[{ alignItems: 'center', justifyContent: 'center' }]}>
+              <View style={[{ width: 50, height: 50, borderRadius: 30, alignItems: 'center', justifyContent: 'center', backgroundColor: isDark ? '#4CAF50' : '#66BB6A', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 2, elevation: 4 }]}>
+                <Ionicons name="flag" size={16} color="white" />
+              </View>
+              <View style={[{ width: 0, height: 0, backgroundColor: 'transparent', borderStyle: 'solid', borderLeftWidth: 6, borderRightWidth: 6, borderTopWidth: 6, borderLeftColor: 'transparent', borderRightColor: 'transparent', borderTopColor: isDark ? '#4CAF50' : '#66BB6A', marginTop: -2 }]} />
             </View>
           </Marker>
         )}
