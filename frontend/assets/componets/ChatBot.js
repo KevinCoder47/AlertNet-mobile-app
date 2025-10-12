@@ -254,10 +254,8 @@ const ChatBot = ({
         
         try {
           const result = await processFriendRequest(
-            parameters,
-            myPhone,
-            userEmail,
-            userId
+            parameters, // Contains recipient info from user's text
+            userData // Pass the whole userData object
           );
           
           setMessages(prev => [...prev, {

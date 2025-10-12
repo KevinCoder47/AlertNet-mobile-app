@@ -1155,14 +1155,25 @@ const declineWalkRequest = async () => {
     }
   };
 
-  const acceptFriendRequest = async (requestId) => {
+    const acceptFriendRequest = async (requestId) => {
     try {
-      const userPhone = userData?.phone || userData?.phoneNumber;
+      if (!userData) {
+        throw new Error('User data not found. Please log in again.');
+      }
+      
+      // Get phone from multiple possible field names
+      const userPhone = userData?.phone || userData?.phoneNumber || userData?.Phone;
       if (!userPhone) {
         throw new Error('User phone number not found');
       }
-
-      const result = await FirebaseService.acceptFriendRequest(requestId, userPhone);
+      
+      // Pass the ENTIRE userData object, not just the phone
+      const result = await FirebaseService.acceptFriendRequest(requestId, {
+        ...userData,
+        phone: userPhone,  // Ensure phone is consistent
+        userId: userData?.userId || userData?.id,
+      });
+      
       return result;
     } catch (error) {
       console.error('Error accepting friend request:', error);
@@ -1244,12 +1255,12 @@ const declineWalkRequest = async () => {
       unsubscribeNotifications.current();
     }
     
-    if (notificationListener.current) {
-      Notifications.removeNotificationSubscription(notificationListener.current);
+    if (notificationListener.current && typeof notificationListener.current.remove === 'function') {
+      notificationListener.current.remove();
     }
     
-    if (responseListener.current) {
-      Notifications.removeNotificationSubscription(responseListener.current);
+    if (responseListener.current && typeof responseListener.current.remove === 'function') {
+      responseListener.current.remove();
     }
   };
 
