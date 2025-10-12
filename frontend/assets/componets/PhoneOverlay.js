@@ -83,11 +83,23 @@ const PhoneOverlay = ({ visible, onClose }) => {
     }
     setError('');
     setCheckingNumber(true);
-
+    
+    // Get current user's data from AsyncStorage
+    const userDataString = await AsyncStorage.getItem('userData');
+    if (!userDataString) {
+      setError('Could not identify you. Please log in again.');
+      setCheckingNumber(false);
+      return;
+    }
+    const userData = JSON.parse(userDataString);
+ 
     const result = await FirebaseService.sendFriendRequest({
       firstName,
       lastName,
-      phone
+      phone, // This is the recipient's phone
+      senderPhone: userData.phone || userData.phoneNumber, // Add sender's phone
+      senderEmail: userData.email,
+      senderUserId: userData.userId,
     });
 
     setCheckingNumber(false);
@@ -305,5 +317,3 @@ const getStyles = (isDark) =>
   });
 
 export default PhoneOverlay;
-
-

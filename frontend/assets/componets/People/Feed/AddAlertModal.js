@@ -1,4 +1,3 @@
-// components/AddAlertModal.js
 import React, { useState, useRef } from 'react';
 import {
   Modal,
@@ -12,15 +11,19 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../contexts/ColorContext';
 import CategorySelection, { categories } from './CategorySelection';
 import LocationSelector from './LocationSelector';
 import MediaSelector from './MediaSelector';
-import { validatePostData, sanitizeText } from '../../../../utilities/helpers'
+import { validatePostData, sanitizeText } from '../../../../utilities/helpers';
 
-const AddAlertModal = ({ visible, onClose, onAddPost, userLocation }) => {
+import { AlertFeedService } from '../../../services/alertFeedService';
+import { auth } from '../../../../backend/Firebase/FirebaseConfig';
+
+const AddAlertModal = ({ visible, onClose, onAddPost, userLocation, userData }) => {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [location, setLocation] = useState('');
   const [coordinates, setCoordinates] = useState(null);
@@ -31,6 +34,7 @@ const AddAlertModal = ({ visible, onClose, onAddPost, userLocation }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [isPosting, setIsPosting] = useState(false);
 
   const scrollViewRef = useRef(null);
   const descriptionRef = useRef(null);
@@ -50,6 +54,7 @@ const AddAlertModal = ({ visible, onClose, onAddPost, userLocation }) => {
     setSearchQuery('');
     setSearchResults([]);
     setIsSearching(false);
+    setIsPosting(false);
   };
 
   const handleLocationSet = (coords, locationString) => {
@@ -67,7 +72,6 @@ const AddAlertModal = ({ visible, onClose, onAddPost, userLocation }) => {
 
     setIsSearching(true);
     try {
-      // Using Nominatim (OpenStreetMap) geocoding API
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`
       );
@@ -91,12 +95,10 @@ const AddAlertModal = ({ visible, onClose, onAddPost, userLocation }) => {
   const handleSearchChange = (text) => {
     setSearchQuery(text);
     
-    // Clear previous timeout
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
     
-    // Debounce search
     searchTimeoutRef.current = setTimeout(() => {
       searchLocation(text);
     }, 500);
@@ -133,7 +135,7 @@ const AddAlertModal = ({ visible, onClose, onAddPost, userLocation }) => {
     }, 300);
   };
 
-  const handlePost = () => {
+  const handlePost = async () => {
     const postData = {
       selectedCategory,
       description: sanitizeText(description),
@@ -142,25 +144,113 @@ const AddAlertModal = ({ visible, onClose, onAddPost, userLocation }) => {
 
     const validation = validatePostData(postData);
     if (!validation.isValid) {
-      alert(validation.error);
+      Alert.alert('Validation Error', validation.error);
       return;
     }
 
-    const selectedCategoryData = categories.find(cat => cat.id === selectedCategory);
-    
-    const newPost = {
-      name: postAnonymously ? 'Anonymous' : 'You',
-      alertType: selectedCategoryData?.name || 'General Alert',
-      coordinates: coordinates,
-      description: sanitizeText(description),
-      avatar: postAnonymously ? null : require('../../../images/Kuhle.jpg'),
-      ...(selectedMedia && selectedMedia.type === 'image' ? { image: { uri: selectedMedia.uri } } : {}),
-      ...(selectedMedia && selectedMedia.type === 'video' ? { video: { uri: selectedMedia.uri } } : {}),
-    };
+    try {
+      setIsPosting(true);
+      
+      // CRITICAL FIX: Extract userId properly with multiple fallbacks
+      const currentUser = auth.currentUser;
+      
+      // Try to get userId from multiple sources
+      let userId = userData?.userId || 
+                   userData?.uid || 
+                   userData?.id || 
+                   currentUser?.uid;
 
-    onAddPost(newPost);
-    resetForm();
-    onClose();
+      // Validate userId
+      if (!userId || userId.startsWith('temp_')) {
+        console.error('❌ Invalid or missing userId:', userId);
+        Alert.alert(
+          'Error', 
+          'Unable to identify your account. Please log in again.',
+          [{ text: 'OK' }]
+        );
+        setIsPosting(false);
+        return;
+      }
+
+      // Extract other user data with fallbacks
+      const userName = userData?.fullName || 
+                       userData?.name || 
+                       userData?.Name ||
+                       currentUser?.displayName || 
+                       'User';
+                       
+      const userPhone = userData?.phone || 
+                       userData?.Phone || 
+                       userData?.phoneNumber ||
+                       currentUser?.phoneNumber || 
+                       null;
+      
+      const userEmail = userData?.email || 
+                       userData?.Email || 
+                       currentUser?.email || 
+                       null;
+      
+      const userAvatar = userData?.avatar || 
+                        userData?.imageUrl || 
+                        userData?.ImageURL ||
+                        currentUser?.photoURL || 
+                        null;
+
+      console.log('🔍 Creating alert with user data:', {
+        userId,
+        userName,
+        userPhone: userPhone || 'No phone provided',
+        userEmail,
+        hasAvatar: !!userAvatar,
+        isAnonymous: postAnonymously
+      });
+
+      // Prepare alert data for Firebase
+      const alertData = {
+        selectedCategory,
+        description: sanitizeText(description),
+        coordinates,
+        mediaUri: selectedMedia?.uri || null,
+        mediaType: selectedMedia?.type || null,
+        postAnonymously,
+        userId: userId, // ✅ Now guaranteed to be valid
+        userPhone: userPhone,
+        userName: postAnonymously ? 'Anonymous' : userName,
+        userAvatar: postAnonymously ? null : userAvatar,
+        userEmail: userEmail
+      };
+
+      console.log('📤 Sending to Firebase:', {
+        userId: alertData.userId,
+        userName: alertData.userName,
+        hasAvatar: !!alertData.userAvatar,
+        isAnonymous: alertData.postAnonymously
+      });
+
+      // Create alert in Firebase
+      const result = await AlertFeedService.createAlert(alertData);
+
+      if (result.success) {
+        console.log('✅ Alert created successfully:', result.alertId);
+        
+        if (onAddPost && result.alert) {
+          onAddPost(result.alert);
+        }
+        
+        resetForm();
+        onClose();
+        
+        Alert.alert('Success', 'Alert posted successfully!');
+      } else {
+        console.error('❌ Failed to create alert:', result.error);
+        Alert.alert('Error', result.error || 'Failed to post alert. Please try again.');
+      }
+    } catch (error) {
+      console.error('❌ Error posting alert:', error);
+      Alert.alert('Error', 'An error occurred while posting your alert. Please try again.');
+    } finally {
+      setIsPosting(false);
+    }
   };
 
   const isFormValid = selectedCategory && description.trim() && coordinates;
@@ -177,18 +267,22 @@ const AddAlertModal = ({ visible, onClose, onAddPost, userLocation }) => {
             onPress={handlePost}
             style={[
               styles.postButton,
-              !isFormValid && styles.postButtonDisabled,
+              (!isFormValid || isPosting) && styles.postButtonDisabled,
             ]}
-            disabled={!isFormValid}
+            disabled={!isFormValid || isPosting}
           >
-            <Text
-              style={[
-                styles.postButtonText,
-                !isFormValid && styles.postButtonTextDisabled,
-              ]}
-            >
-              Post
-            </Text>
+            {isPosting ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text
+                style={[
+                  styles.postButtonText,
+                  !isFormValid && styles.postButtonTextDisabled,
+                ]}
+              >
+                Post
+              </Text>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -355,6 +449,9 @@ const getStyles = (isDark, colors) => StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
     backgroundColor: '#ff5621',
+    minWidth: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   postButtonDisabled: {
     backgroundColor: colors.inputBackground || (isDark ? '#444' : '#e0e0e0'),

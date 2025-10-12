@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, LogBox } from 'react-native';
 import React, { useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemeProvider } from './assets/contexts/ColorContext';
@@ -21,6 +21,9 @@ import WalkDetails from './assets/componets/WalkingMapComponents/WalkDetails';
 import LocatePartner from './assets/componets/LocatePartner';
 
 
+
+// Hide the location error
+LogBox.ignoreLogs(['Error requesting background location']);
 
 export default function App() {
   const batteryCleanupRef = useRef(null);

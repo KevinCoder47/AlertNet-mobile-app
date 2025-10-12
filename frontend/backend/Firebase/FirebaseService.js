@@ -718,6 +718,7 @@ sendFriendRequest: async (friendData) => {
     // console.log($&);
     
     const currentUser = auth.currentUser;
+    // DEPRECATED: const currentUser = auth.currentUser;
     const { firstName, lastName, phone, senderPhone, senderEmail, senderUserData, senderUserId } = friendData;
     
     // CRITICAL FIX: Validate that we have a real user ID, not a temporary one
@@ -809,6 +810,7 @@ sendFriendRequest: async (friendData) => {
                       senderProfileData?.FirstName || 
                       senderProfileData?.firstName ||
                       currentUser?.displayName || 
+                      // currentUser?.displayName || // Avoid relying on auth object
                       'AlertNet User';
                       
     const senderSurname = senderProfileData?.Surname || 
@@ -999,13 +1001,18 @@ createFriendship: async (friendshipData) => {
 /**
  * Enhanced acceptFriendRequest with better validation
  */
-acceptFriendRequest: async (requestId, currentUserPhone) => {
+acceptFriendRequest: async (requestId, accepterUserData) => {
   try {
-    // console.log($&);
-    
+    const currentUserPhone = accepterUserData?.phone || 
+                             accepterUserData?.Phone || 
+                             accepterUserData?.phoneNumber;
+    if (!currentUserPhone) {
+      throw new Error('User phone number not found');
+    }
+
     const requestRef = doc(db, 'friendRequests', requestId);
     const requestDoc = await getDoc(requestRef);
-    
+
     if (!requestDoc.exists()) {
       return { success: false, error: 'Friend request not found' };
     }
@@ -1057,11 +1064,6 @@ acceptFriendRequest: async (requestId, currentUserPhone) => {
     });
     
     // Fetch complete user data
-    const currentUserResult = await FirebaseService.getUserByPhone(formattedCurrentPhone);
-    if (!currentUserResult.exists) {
-      return { success: false, error: 'Current user not found in database' };
-    }
-    
     const senderResult = await FirebaseService.getUserByPhone(requestData.senderPhone);
     if (!senderResult.exists) {
       return { success: false, error: 'Sender user not found in database' };
@@ -1085,10 +1087,10 @@ acceptFriendRequest: async (requestId, currentUserPhone) => {
       user1Email: requestData.senderEmail || senderResult.userData.Email,
       user1Id: requestData.senderId, // Validated ID
       
-      user2Phone: formattedCurrentPhone,
-      user2Name: `${requestData.recipientFirstName} ${requestData.recipientLastName}`,
-      user2Email: currentUserResult.userData.Email,
-      user2Id: requestData.recipientUserId || currentUserResult.userData.id, // Validated ID
+      user2Phone: formattedCurrentPhone, // The phone of the user accepting
+      user2Name: `${accepterUserData.name || accepterUserData.Name} ${accepterUserData.surname || accepterUserData.Surname}`.trim(),
+      user2Email: accepterUserData.email || accepterUserData.Email,
+      user2Id: accepterUserData.userId || accepterUserData.uid, // The ID of the user accepting
       
       requestId: requestId
     });
@@ -1112,13 +1114,13 @@ acceptFriendRequest: async (requestId, currentUserPhone) => {
         requestId: requestId,
         accepterPhone: formattedCurrentPhone,
         accepterName: `${requestData.recipientFirstName} ${requestData.recipientLastName}`,
-        // Add the accepter's full user data here
+        // Pass the accepter's full user data for the notification
         accepterUserData: {
-          Name: currentUserResult.userData.Name || requestData.recipientFirstName,
-          Surname: currentUserResult.userData.Surname || requestData.recipientLastName,
-          ImageURL: currentUserResult.userData.ImageURL || null,
+          Name: accepterUserData.name || accepterUserData.Name,
+          Surname: accepterUserData.surname || accepterUserData.Surname,
+          ImageURL: accepterUserData.imageUrl || accepterUserData.ImageURL || null,
           Phone: formattedCurrentPhone,
-          Email: currentUserResult.userData.Email
+          Email: accepterUserData.email || accepterUserData.Email
         }
       }
     });
