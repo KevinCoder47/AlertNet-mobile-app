@@ -1,5 +1,5 @@
-// components/CommentModal.js
-import React, { useState } from 'react';
+// components/CommentModal.js - UPDATED WITH FIREBASE
+import React, { useState, useEffect } from 'react';
 import {
   Modal,
   View,
@@ -11,23 +11,54 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../../../contexts/ColorContext'; // Add this import
+import { useTheme } from '../../../contexts/ColorContext';
+import { AlertFeedService } from '../../../services/alertFeedService';
 
 const CommentModal = ({ visible, onClose, post, onAddComment }) => {
   const { colors } = useTheme();
   const [commentText, setCommentText] = useState('');
+  const [comments, setComments] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [unsubscribe, setUnsubscribe] = useState(null);
+
+  // Setup real-time listener for comments when modal opens
+  useEffect(() => {
+    if (visible && post?.id) {
+      setLoading(true);
+      
+      // Setup real-time listener
+      const unsubscribeFn = AlertFeedService.listenToComments(
+        post.id,
+        (result) => {
+          if (result.success) {
+            setComments(result.comments);
+            setLoading(false);
+          } else {
+            console.error('Error loading comments:', result.error);
+            setLoading(false);
+          }
+        }
+      );
+      
+      setUnsubscribe(() => unsubscribeFn);
+    }
+
+    // Cleanup listener when modal closes
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+        setUnsubscribe(null);
+      }
+    };
+  }, [visible, post?.id]);
 
   const handleAddComment = () => {
-    if (commentText.trim()) {
-      const newComment = {
-        id: Date.now().toString(),
-        name: 'You',
-        text: commentText.trim(),
-        time: 'now',
-      };
-      onAddComment(post.id, newComment);
+    if (commentText.trim() && post?.id) {
+      // Call parent handler which will use Firebase
+      onAddComment(post.id, { text: commentText.trim() });
       setCommentText('');
     }
   };
@@ -35,14 +66,27 @@ const CommentModal = ({ visible, onClose, post, onAddComment }) => {
   const CommentItem = ({ comment }) => (
     <View style={styles.commentItem}>
       <View style={styles.commentAvatar}>
-        <Ionicons name="person-circle" size={32} color={colors.iconSecondary} />
+        {comment.userAvatar ? (
+          <Image 
+            source={{ uri: comment.userAvatar }} 
+            style={styles.avatarImage}
+          />
+        ) : (
+          <Ionicons name="person-circle" size={32} color={colors.iconSecondary} />
+        )}
       </View>
       <View style={styles.commentContent}>
         <View style={[styles.commentBubble, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.commentName, { color: colors.text }]}>{comment.name}</Text>
-          <Text style={[styles.commentText, { color: colors.text }]}>{comment.text}</Text>
+          <Text style={[styles.commentName, { color: colors.text }]}>
+            {comment.userName || comment.name || 'User'}
+          </Text>
+          <Text style={[styles.commentText, { color: colors.text }]}>
+            {comment.text}
+          </Text>
         </View>
-        <Text style={[styles.commentTime, { color: colors.textSecondary }]}>{comment.time}</Text>
+        <Text style={[styles.commentTime, { color: colors.textSecondary }]}>
+          {comment.time}
+        </Text>
       </View>
     </View>
   );
@@ -50,8 +94,21 @@ const CommentModal = ({ visible, onClose, post, onAddComment }) => {
   const EmptyComments = () => (
     <View style={styles.noCommentsContainer}>
       <Ionicons name="chatbubble-outline" size={48} color={colors.iconSecondary} />
-      <Text style={[styles.noCommentsText, { color: colors.textSecondary }]}>No comments yet</Text>
-      <Text style={[styles.noCommentsSubtext, { color: colors.textTertiary }]}>Be the first to comment</Text>
+      <Text style={[styles.noCommentsText, { color: colors.textSecondary }]}>
+        No comments yet
+      </Text>
+      <Text style={[styles.noCommentsSubtext, { color: colors.textTertiary }]}>
+        Be the first to comment
+      </Text>
+    </View>
+  );
+
+  const LoadingComments = () => (
+    <View style={styles.noCommentsContainer}>
+      <ActivityIndicator size="large" color="#ff5621" />
+      <Text style={[styles.noCommentsText, { color: colors.textSecondary, marginTop: 16 }]}>
+        Loading comments...
+      </Text>
     </View>
   );
 
@@ -67,13 +124,17 @@ const CommentModal = ({ visible, onClose, post, onAddComment }) => {
           <TouchableOpacity onPress={onClose}>
             <Ionicons name="close" size={24} color={colors.iconPrimary} />
           </TouchableOpacity>
-          <Text style={[styles.commentHeaderTitle, { color: colors.text }]}>Comments</Text>
+          <Text style={[styles.commentHeaderTitle, { color: colors.text }]}>
+            Comments {comments.length > 0 ? `(${comments.length})` : ''}
+          </Text>
           <View style={{ width: 24 }} />
         </View>
 
         <ScrollView style={styles.commentsList} showsVerticalScrollIndicator={false}>
-          {post?.comments?.length > 0 ? (
-            post.comments.map((comment) => (
+          {loading ? (
+            <LoadingComments />
+          ) : comments.length > 0 ? (
+            comments.map((comment) => (
               <CommentItem key={comment.id} comment={comment} />
             ))
           ) : (
@@ -153,6 +214,11 @@ const styles = StyleSheet.create({
   commentAvatar: {
     marginRight: 12,
     marginTop: 4,
+  },
+  avatarImage: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
   },
   commentContent: {
     flex: 1,
