@@ -60,7 +60,7 @@ const NotificationSystem = ({ children }) => {
         require('../../assets/sounds/notification.mp3') // Add your sound file
       );
     } catch (error) {
-      console.log('Error loading sound:', error);
+      // console.log($&);
     }
   };
 
@@ -71,7 +71,7 @@ const NotificationSystem = ({ children }) => {
         await soundObject.current.replayAsync();
       }
     } catch (error) {
-      console.log('Error playing sound:', error);
+      // console.log($&);
     }
   };
 
@@ -86,7 +86,7 @@ const NotificationSystem = ({ children }) => {
           
           if (data.phone || data.phoneNumber) {
             const userPhone = data.phone || data.phoneNumber;
-            console.log('🔔 Setting up notification listeners for:', userPhone);
+            // console.log($&);
             
             unsubscribeNotifications.current = FirebaseService.listenToNotifications(
               userPhone,
@@ -325,7 +325,7 @@ const getDisplayName = (notification) => {
         handleSOSNotification(notification);
         break;
       default:
-        console.log('Unknown notification type:', notification.type);
+        // console.log($&);
     }
   };
 
@@ -375,7 +375,7 @@ const getDisplayName = (notification) => {
         {
           text: 'Call Emergency',
           onPress: () => {
-            console.log('Emergency call initiated');
+            // console.log($&);
           }
         }
       ]
@@ -416,7 +416,7 @@ const getDisplayName = (notification) => {
       const result = await FirebaseService.declineFriendRequest(requestId, userPhone);
       
       if (result.success) {
-        console.log('Friend request declined');
+        // console.log($&);
       } else {
         Alert.alert('Error', result.error || 'Failed to decline friend request');
       }
@@ -434,7 +434,7 @@ const getDisplayName = (notification) => {
 
       const result = await FirebaseService.markAllNotificationsAsRead(userPhone);
       if (result.success) {
-        console.log(`Marked ${result.updatedCount} notifications as read`);
+        // console.log($&);
       }
     } catch (error) {
       console.error('Error marking all as read:', error);
@@ -484,7 +484,7 @@ const getDisplayName = (notification) => {
           source={{ uri: profilePicture }}
           style={[styles.profilePicture, { width: size, height: size, borderRadius: size / 2 }]}
           onError={(error) => {
-            console.log('Profile picture failed to load:', error.nativeEvent.error);
+            // console.log($&);
           }}
         />
       );

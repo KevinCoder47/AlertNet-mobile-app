@@ -28,6 +28,7 @@ const ChatBot = ({
   onAddContact, 
   myPhone, 
   userEmail, 
+  userData, // This prop is already passed from Home.js
   userId, 
   userLocation,
   onActivateSOS // NEW: Callback to navigate to SOS screen
@@ -130,7 +131,7 @@ const ChatBot = ({
 
       // CRITICAL: Trigger the actual SOS system
       console.log('Chatbot: Triggering real SOS via SOSService...');
-      const sosSessionId = await SOSService.initiateSOSSession('chatbot_safety_word');
+      const sosSessionId = await SOSService.initiateSOSSession('chatbot_safety_word', userData);
 
       console.log('Chatbot: SOS Session ID received:', sosSessionId);
 

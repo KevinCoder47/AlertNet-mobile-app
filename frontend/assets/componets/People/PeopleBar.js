@@ -97,7 +97,7 @@ const PeopleBar = ({ onOpenChat, onFriendsUpdate }) => {
         const jsonValue = await AsyncStorage.getItem('userData');
         if (jsonValue) {
           const user = JSON.parse(jsonValue);
-          console.log('PeopleBar: User data loaded:', user.Phone || user.phone);
+          // console.log($&);
           setUserData(user);
         }
       } catch (error) {
@@ -111,7 +111,7 @@ const PeopleBar = ({ onOpenChat, onFriendsUpdate }) => {
   // Notify Home.js when friends update (for map) - removed onFriendsUpdate from dependencies
   useEffect(() => {
     if (onFriendsUpdate && friendsData.length > 0) {
-      console.log('PeopleBar: Notifying Home.js of', friendsData.length, 'friends');
+      // console.log($&);
       onFriendsUpdate(friendsData);
     }
   }, [friendsData]); // Only depend on friendsData
@@ -121,7 +121,7 @@ const PeopleBar = ({ onOpenChat, onFriendsUpdate }) => {
     setRefreshing(true);
     
     try {
-      console.log('PeopleBar: Refreshing friends...');
+      // console.log($&);
       await refreshFriends();
     } catch (error) {
       console.error('PeopleBar: Error refreshing:', error);

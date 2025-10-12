@@ -52,7 +52,7 @@ const ChatScreen = ({ person, onClose, userData, navigation, onViewProfile }) =>
   const chatRoomId = currentUserId && person?.id
     ? FirebaseService.getChatRoomId(currentUserId, person.id)
     : null;
-  console.log('ChatRoomID:', chatRoomId);
+  // console.log($&);
 
   const [isAttachmentMenuVisible, setIsAttachmentMenuVisible] = useState(false);
   const [isOptionsMenuVisible, setIsOptionsMenuVisible] = useState(false);
@@ -67,7 +67,7 @@ const ChatScreen = ({ person, onClose, userData, navigation, onViewProfile }) =>
                 person?.ImageURL ||
                 null;
     // This log will now only appear when the 'person' prop actually changes.
-    console.log('Resolved profile picture URI (memoized):', uri);
+    // console.log($&);
     return uri;
   }, [person]); // Re-calculate only when the 'person' prop changes
 
@@ -80,11 +80,11 @@ const ChatScreen = ({ person, onClose, userData, navigation, onViewProfile }) =>
   // Listen for new messages from Firebase
   useEffect(() => {
     if (!chatRoomId) {
-      console.log("ChatScreen: No chatRoomId available to listen for messages.");
+      // console.log($&);
       return;
     }
 
-    console.log(`Listening for messages in chat room: ${chatRoomId}`);
+    // console.log($&);
     const unsubscribe = FirebaseService.listenToMessages(chatRoomId, (newMessages) => {
       setMessages(newMessages);
     });
@@ -96,7 +96,7 @@ const ChatScreen = ({ person, onClose, userData, navigation, onViewProfile }) =>
 
     // Cleanup listener on unmount
     return () => {
-      console.log(`Unsubscribing from chat room: ${chatRoomId}`);
+      // console.log($&);
       unsubscribe();
     };
   }, [chatRoomId, currentUserId]);
@@ -104,14 +104,14 @@ const ChatScreen = ({ person, onClose, userData, navigation, onViewProfile }) =>
   // FIXED: Set and clear active chat room for notification handling with debug logs
   useEffect(() => {
     if (chatRoomId) {
-      console.log('🏠 ChatScreen: Setting active chat room:', chatRoomId);
+      // console.log($&);
       setActiveChat(chatRoomId);
     } else {
-      console.log('❌ ChatScreen: No chatRoomId to set as active');
+      // console.log($&);
     }
     
     return () => {
-      console.log('🚪 ChatScreen: Clearing active chat room');
+      // console.log($&);
       clearActiveChat();
     };
   }, [chatRoomId, setActiveChat, clearActiveChat]);
@@ -119,7 +119,7 @@ const ChatScreen = ({ person, onClose, userData, navigation, onViewProfile }) =>
   // Listen for friend's presence updates
   useEffect(() => {
     if (!person?.id) {
-      console.log("ChatScreen: No person.id available to listen for presence.");
+      // console.log($&);
       return;
     }
 
@@ -184,7 +184,7 @@ const ChatScreen = ({ person, onClose, userData, navigation, onViewProfile }) =>
         // And restore the text
         setNewMessage(messageText);
       } else {
-        console.log('✅ Message sent successfully, notification should be created');
+        // console.log($&);
       }
       // If successful, the onSnapshot listener will automatically replace the optimistic message
       // with the real one from Firestore, so no 'else' block is needed.
@@ -437,7 +437,7 @@ const ChatScreen = ({ person, onClose, userData, navigation, onViewProfile }) =>
                 source={{ uri: profilePictureUri }}
                 style={styles.avatar}
                 onError={(error) => {
-                  console.log('Message avatar failed to load:', error.nativeEvent.error);
+                  // console.log($&);
                 }}
               />
             ) : (
@@ -506,7 +506,7 @@ const ChatScreen = ({ person, onClose, userData, navigation, onViewProfile }) =>
               source={{ uri: profilePictureUri }}
               style={styles.headerAvatar}
               onError={(error) => {
-                console.log('Header avatar failed to load:', error.nativeEvent.error);
+                // console.log($&);
               }}
             />
           ) : (

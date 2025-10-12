@@ -60,7 +60,7 @@ const PhoneOverlay = ({ visible, onClose, myPhone, userEmail }) => {
         const level = await Battery.getBatteryLevelAsync();
         setStatusData(prev => ({ ...prev, batteryLevel: Math.round(level * 100) }));
       } catch (error) {
-        console.log('Battery access not available:', error);
+        // console.log($&);
       }
     };
 
@@ -80,11 +80,11 @@ const PhoneOverlay = ({ visible, onClose, myPhone, userEmail }) => {
             const level = await Battery.getBatteryLevelAsync();
             setStatusData(prev => ({ ...prev, batteryLevel: Math.round(level * 100) }));
           } catch (error) {
-            console.log('Battery update failed:', error);
+            // console.log($&);
           }
         }, 10000);
       } catch (error) {
-        console.log('Battery monitoring setup failed:', error);
+        // console.log($&);
       }
     };
 
@@ -106,7 +106,7 @@ const PhoneOverlay = ({ visible, onClose, myPhone, userEmail }) => {
           networkStatus: networkState.isConnected ? 'Online' : 'Offline' 
         }));
       } catch (error) {
-        console.log('Network status check failed:', error);
+        // console.log($&);
         setStatusData(prev => ({ ...prev, networkStatus: 'Unknown' }));
       }
     };

@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View, FlatList } from 'react-native'
 import React, {useState} from 'react'
-import WeekDayTab from '../componets/WeekDayTab'
+import WeekDayTab from './WeekDayTab'
 
 const WeekdaySlotView = ({isFullScreen, setIsFullScreen}) => {
     const getCurrentWeekdayIndex = () => {

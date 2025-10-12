@@ -14,6 +14,7 @@ import {
 } from "firebase/firestore";
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
+import * as Application from 'expo-application';
 import { FirebaseService } from './FirebaseService';
 
 export class SOSFirebaseService {
@@ -41,6 +42,12 @@ export class SOSFirebaseService {
         return null;
       }
 
+      // Check if we're in Expo Go on Android, where remote notifications are not supported.
+      if (Platform.OS === 'android' && !Application.androidId) {
+        console.warn('Push notifications are not supported in Expo Go on Android. Please use a development build.');
+        return null;
+      }
+
       // Request permissions
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
@@ -60,7 +67,7 @@ export class SOSFirebaseService {
         projectId: Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId,
       });
 
-      console.log('FCM Token:', token.data);
+      // console.log($&);
       return token.data;
     } catch (error) {
       console.error('Error getting FCM token:', error);
@@ -79,7 +86,7 @@ export class SOSFirebaseService {
         fcmTokenUpdated: new Date()
       });
       
-      console.log('FCM token stored successfully');
+      // console.log($&);
       return true;
     } catch (error) {
       console.error('Error storing FCM token:', error);
@@ -112,19 +119,19 @@ export class SOSFirebaseService {
   static setupNotificationListener() {
     // Handle notifications when app is in foreground
     const foregroundListener = Notifications.addNotificationReceivedListener(notification => {
-      console.log('Notification received in foreground:', notification);
+      // console.log($&);
       // Handle the notification (show alert, update UI, etc.)
     });
 
     // Handle notification interactions (when user taps notification)
     const interactionListener = Notifications.addNotificationResponseReceivedListener(response => {
-      console.log('Notification interaction:', response);
+      // console.log($&);
       const data = response.notification.request.content.data;
       
       if (data.type === 'sos') {
         // Handle SOS notification tap
         // Navigate to appropriate screen or show SOS details
-        console.log('SOS notification tapped:', data);
+        // console.log($&);
       }
     });
 
@@ -150,140 +157,204 @@ export class SOSFirebaseService {
 
   // Get user's friends list
   static async getUserFriends(userId) {
-    try {
-      console.log('SOS Service: Getting friends for user:', userId);
-      
-      // Method 1: Try from friends collection (new format)
-      const friendsQuery = query(
-        collection(db, 'friends'),
-        where('userId', '==', userId),
-        where('status', '==', 'active')
-      );
-      const friendsSnapshot = await getDocs(friendsQuery);
-      
-      if (!friendsSnapshot.empty) {
-        const friends = friendsSnapshot.docs.map(doc => ({
-          uid: doc.data().friendId,
-          name: doc.data().friendName,
-          email: doc.data().friendEmail,
-          phone: doc.data().friendPhone
-        }));
-        console.log('SOS Service: Found friends from friends collection:', friends.length);
-        return friends;
-      }
+  try {
+    console.log('🔍 [getUserFriends] Starting for userId:', userId);
+    
+    // Method 1: Try from friends collection (new format)
+    const friendsQuery = query(
+      collection(db, 'friends'),
+      where('userId', '==', userId),
+      where('status', '==', 'active')
+    );
+    const friendsSnapshot = await getDocs(friendsQuery);
+    
+    if (!friendsSnapshot.empty) {
+      const friends = friendsSnapshot.docs.map(doc => ({
+        uid: doc.data().friendId,
+        name: doc.data().friendName,
+        email: doc.data().friendEmail,
+        phone: doc.data().friendPhone
+      }));
+      console.log('✅ [getUserFriends] Found friends in friends collection:', friends.length);
+      return friends;
+    }
 
-      // Method 2: Try from user document
-      const userRef = doc(db, 'users', userId);
-      const userDoc = await getDoc(userRef);
-      
-      if (!userDoc.exists()) {
-        console.log('SOS Service: User document not found');
-        return [];
-      }
+    // Method 2: Try from user document Friends array
+    const userRef = doc(db, 'users', userId);
+    const userDoc = await getDoc(userRef);
 
-      const userData = userDoc.data();
-      
-      // Check if friends is an array (new format)
-      if (Array.isArray(userData.friends)) {
-        console.log('SOS Service: Found friends array:', userData.friends.length);
-        return userData.friends;
-      }
-      
-      // Check if Friends is an object (old format)
-      if (userData.Friends && typeof userData.Friends === 'object') {
-        const friendIds = Object.keys(userData.Friends).filter(friendId => 
-          userData.Friends[friendId] === true || 
-          userData.Friends[friendId] === 'accepted'
-        );
-        console.log('SOS Service: Found friends object with IDs:', friendIds.length);
-        return friendIds; // Return IDs for further processing
-      }
-
-      return [];
-    } catch (error) {
-      console.error('SOS Service: Error getting user friends:', error);
+    if (!userDoc.exists()) {
+      console.warn('⚠️ [getUserFriends] User document not found:', userId);
       return [];
     }
+
+    const userData = userDoc.data();
+    
+    // Check if friends is an array (new format)
+    if (Array.isArray(userData.Friends)) {
+      console.log('📋 [getUserFriends] Found Friends array, items:', userData.Friends.length);
+      
+      // CRITICAL FIX: Extract UIDs from objects
+      const friendIds = userData.Friends.map((friend, index) => {
+        if (typeof friend === 'string') {
+          console.log(`  [${index}] Friend is string ID: ${friend}`);
+          return friend;
+        } else if (friend && friend.uid) {
+          console.log(`  [${index}] Friend object has uid: ${friend.uid}`);
+          return friend.uid;
+        } else if (friend && friend.id) {
+          console.log(`  [${index}] Friend object has id: ${friend.id}`);
+          return friend.id;
+        } else {
+          console.warn(`  [${index}] ❌ Cannot extract ID from friend:`, friend);
+          return null;
+        }
+      }).filter(id => id !== null);
+      
+      console.log('✅ [getUserFriends] Extracted friend IDs:', friendIds);
+      return friendIds;
+    }
+    
+    // Check if Friends is an object (old format)
+    if (userData.Friends && typeof userData.Friends === 'object' && !Array.isArray(userData.Friends)) {
+      console.log('📦 [getUserFriends] Found Friends object (old format)');
+      
+      const friendIds = Object.keys(userData.Friends).filter(friendId => 
+        userData.Friends[friendId] === true || 
+        userData.Friends[friendId] === 'accepted'
+      );
+      
+      console.log('✅ [getUserFriends] Extracted friend IDs from object:', friendIds);
+      return friendIds;
+    }
+
+    console.warn('⚠️ [getUserFriends] No friends found in any format');
+    return [];
+    
+  } catch (error) {
+    console.error('❌ [getUserFriends] Error getting user friends:', error);
+    return [];
   }
+}
 
   // Get notification data (token and phone) for friends
   static async getFriendsNotificationData(friendIds) {
-    try {
-      if (!friendIds || friendIds.length === 0) {
-        return [];
-      }
-
-      const tokens = [];
-      const CHUNK_SIZE = 30; // Firestore 'in' query limit is 30
-
-      // Process friend IDs in chunks to stay within query limits
-      for (let i = 0; i < friendIds.length; i += CHUNK_SIZE) {
-        const chunk = friendIds.slice(i, i + CHUNK_SIZE);
-        const idsToQuery = chunk.map(friendId => 
-          typeof friendId === 'string' ? friendId : friendId.uid
-        ).filter(id => id);
-
-        if (idsToQuery.length === 0) continue;
-
-        const q = query(collection(db, 'users'), where('__name__', 'in', idsToQuery));
-        const querySnapshot = await getDocs(q);
-
-        querySnapshot.forEach(userDoc => {
-          const userData = userDoc.data();
-          // Collect data for all friends, token can be null
-          tokens.push({
-            token: userData.fcmToken || null,
-            userId: userDoc.id,
-            name: userData.name || userData.Name || 'Friend',
-            email: userData.email || userData.Email,
-            phone: userData.phone || userData.Phone || userData.phoneNumber,
-          });
-        });
-      }
-      
-      console.log(`SOS Service: Found notification data for ${tokens.length} friends.`);
-      return tokens;
-    } catch (error) {
-      console.error('SOS Service: Error getting friends notification data:', error);
+  try {
+    if (!friendIds || friendIds.length === 0) {
+      console.warn('⚠️ [getFriendsNotificationData] No friend IDs provided');
       return [];
     }
-  }
 
-  // Send SOS notifications to friends - MAIN METHOD
-  static async sendSOSNotifications(location, message = null, sosSessionId = null) {
-    try {
-      const currentUser = auth.currentUser;
-      if (!currentUser) {
-        console.error('SOS Service: No current user for SOS notification');
-        return { success: false, error: 'User not authenticated' };
+    console.log(`📍 [getFriendsNotificationData] Processing ${friendIds.length} friend IDs`);
+    console.log('   Friend IDs:', friendIds);
+    
+    const tokens = [];
+    const CHUNK_SIZE = 30;
+
+    // Process friend IDs in chunks
+    for (let i = 0; i < friendIds.length; i += CHUNK_SIZE) {
+      const chunk = friendIds.slice(i, i + CHUNK_SIZE);
+      console.log(`   📦 Processing chunk ${Math.floor(i / CHUNK_SIZE) + 1}: ${chunk.length} IDs`);
+      
+      // Validate IDs are strings
+      const idsToQuery = chunk
+        .map(id => {
+          if (typeof id === 'string') return id;
+          console.warn(`   ❌ Invalid ID type (${typeof id}):`, id);
+          return null;
+        })
+        .filter(id => id && !id.startsWith('temp_'));
+
+      if (idsToQuery.length === 0) {
+        console.log('   ⚠️ No valid IDs in this chunk');
+        continue;
       }
 
-      console.log('SOS Service: Sending SOS notifications for user:', currentUser.uid);
+      console.log(`   🔍 Querying for ${idsToQuery.length} users`);
+      
+      const q = query(collection(db, 'users'), where('__name__', 'in', idsToQuery));
+      const querySnapshot = await getDocs(q);
+
+      console.log(`   ✅ Query returned ${querySnapshot.size} results`);
+
+      querySnapshot.forEach(userDoc => {
+        const userData = userDoc.data();
+        const friendData = {
+          token: userData.fcmToken || userData.ExpoPushToken || null,
+          userId: userDoc.id,
+          name: userData.name || userData.Name || 'Friend',
+          email: userData.email || userData.Email,
+          phone: userData.phone || userData.Phone || userData.phoneNumber,
+        };
+        
+        console.log(`      👤 Found friend: ${friendData.name} (${friendData.userId}) - hasToken: ${!!friendData.token}`);
+        tokens.push(friendData);
+      });
+    }
+    
+    console.log(`✅ [getFriendsNotificationData] Total friends with data: ${tokens.length}`);
+    return tokens;
+    
+  } catch (error) {
+    console.error('❌ [getFriendsNotificationData] Error:', error);
+    return [];
+  }
+}
+
+  // Send SOS notifications to friends - MAIN METHOD
+  static async sendSOSNotifications(location, message = null, sosSessionId = null, userData) {
+    try {
+      const userId = userData?.uid || userData?.id || userData?.userId;
+      const userEmail = userData?.email || userData?.Email;
+
+      if (!userId) {
+        throw new Error('User ID not found in provided user data.');
+      }
+
+      // console.log($&);
 
       // Get user's friends
-      const friends = await SOSFirebaseService.getUserFriends(currentUser.uid);
+      const friends = await SOSFirebaseService.getUserFriends(userId);
       if (friends.length === 0) {
-        console.log('SOS Service: No friends found for SOS notification');
+        // console.log($&);
         return { success: true, notificationsSent: 0, message: 'No friends to notify' };
       }
 
-      console.log('SOS Service: Found friends for SOS:', friends.length);
+      // console.log($&);
 
       // Extract friend IDs (handle both object and string formats)
-      const friendIds = friends.map(friend => 
-        typeof friend === 'string' ? friend : friend.uid || friend.id
-      ).filter(id => id); // Remove any undefined/null values
+      const friendIds = friends.map((friend, index) => {
+        if (typeof friend === 'string') {
+          console.log(`SOS Service: Friend ${index} is string ID:`, friend);
+          return friend;
+        } else if (typeof friend === 'object') {
+          const id = friend.uid || friend.id;
+          console.log(`SOS Service: Friend ${index} object contains ID:`, id, 'Full object:', JSON.stringify(friend));
+          return id;
+        } else {
+          console.warn(`SOS Service: Friend ${index} has unexpected type:`, typeof friend);
+          return null;
+        }
+      }).filter(id => {
+        if (!id) {
+          console.warn('SOS Service: Filtered out null/undefined friend ID');
+          return false;
+        }
+        return true;
+      });
 
       if (friendIds.length === 0) {
-        console.log('SOS Service: No valid friend IDs found');
+        // console.log($&);
         return { success: true, notificationsSent: 0, message: 'No valid friend IDs found' };
       }
+
+      console.log('SOS Service: Extracted friend IDs:', friendIds);
 
       // Get notification data for all friends
       const friendsWithData = await SOSFirebaseService.getFriendsNotificationData(friendIds);
       
       if (friendsWithData.length === 0) {
-        console.log('SOS Service: No friends found in the database.');
+        // // console.log($&);
         return { 
           success: true, 
           notificationsSent: 0, 
@@ -293,13 +364,13 @@ export class SOSFirebaseService {
       }
 
       // Get current user data for the notification
-      const currentUserRef = doc(db, 'users', currentUser.uid);
-      const currentUserDoc = await getDoc(currentUserRef);
+      // Use passed-in userData first, then fetch if needed as a fallback.
+      const currentUserDoc = await getDoc(doc(db, 'users', userId));
       const currentUserData = currentUserDoc.exists() ? currentUserDoc.data() : {};
       const firstName = currentUserData.name || currentUserData.Name || currentUserData.FirstName || '';
       const lastName = currentUserData.surname || currentUserData.Surname || currentUserData.LastName || '';
       const userName = (`${firstName} ${lastName}`).trim() || 'Your friend';
-      const profilePicture = currentUserData.ImageURL || // Correct field from Firestore
+      const profilePicture = currentUserData.ImageURL || 
                              currentUserData.imageUrl || 
                              currentUserData.profilePicture || 
                              currentUserData.localImagePath ||
@@ -317,14 +388,14 @@ export class SOSFirebaseService {
       
       // Store SOS notification in Firestore for each friend
       const sosData = {
-        senderId: currentUser.uid,
+        senderId: userId,
         senderName: userName,
-        senderEmail: currentUser.email,
+        senderEmail: userEmail,
         message: notificationBody,
         location: location || null,
         createdAt: new Date(),
         status: 'sent',
-        sosSessionId: sosSessionId, // Link to the SOS session
+        sosSessionId: sosSessionId,
       };
 
       // 1. Log SOS event in Firestore for each friend
@@ -336,13 +407,13 @@ export class SOSFirebaseService {
         })
       );
       await Promise.all(firestorePromises);
-      console.log(`SOS Service: Logged SOS event for ${friendsWithData.length} friends in Firestore.`);
+      // console.log($&);
 
       // 2. Create in-app notifications and log to activity stream
       const notificationAndLogPromises = friendsWithData.map(async (friend) => {
         if (!friend.phone) {
           console.warn(`SOS Service: Cannot create in-app notification for friend ${friend.name} (${friend.userId}) due to missing phone number.`);
-          return; // Skips this friend
+          return;
         }
 
         // Log this action to the SOS session activity
@@ -363,7 +434,7 @@ export class SOSFirebaseService {
           isUrgent: true,
           priority: 'high',
           data: {
-            senderId: currentUser.uid,
+            senderId: userId,
             senderName: userName,
             profilePicture: profilePicture,
             location: location || null,
@@ -375,7 +446,7 @@ export class SOSFirebaseService {
       });
 
       await Promise.all(notificationAndLogPromises);
-      console.log(`SOS Service: Created in-app notifications and logs for friends.`);
+      // console.log($&);
 
       // 3. Send batch push notifications ONLY to friends with a token
       const tokensForPush = friendsWithData.map(f => f.token).filter(Boolean);
@@ -394,7 +465,7 @@ export class SOSFirebaseService {
             body: notificationBody,
             data: {
               type: 'sos',
-              senderId: currentUser.uid,
+              senderId: userId,
               senderName: userName,
               location: location ? JSON.stringify(location) : null,
               timestamp: new Date().toISOString(),
@@ -417,9 +488,9 @@ export class SOSFirebaseService {
           console.warn(`SOS Service: ${failureMessage}`, result.responses);
         }
 
-        console.log(`SOS Service: Batch push notifications sent: ${notificationsSent}/${tokensForPush.length}`);
+        // console.log($&);
       } else {
-        console.log('SOS Service: No friends had FCM tokens for push notifications.');
+        // console.log($&);
       }
 
       return {
@@ -437,16 +508,18 @@ export class SOSFirebaseService {
   }
 
   // Send "All Safe" broadcast to friends
-  static async sendSafeBroadcast(sessionId) {
+  static async sendSafeBroadcast(sessionId, userData) {
     try {
-      const currentUser = auth.currentUser;
-      if (!currentUser || !sessionId) {
+      const currentUserId = userData?.uid || userData?.id || userData?.userId || auth.currentUser?.uid;
+
+      if (!currentUserId || !sessionId) {
         throw new Error('User or session ID missing for safe broadcast.');
       }
 
       // 1. Get user's name for the notification
-      const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+      const userDoc = await getDoc(doc(db, 'users', currentUserId));
       let userName = 'Your friend';
+
       if (userDoc.exists()) {
         const userData = userDoc.data();
         const firstName = userData.name || userData.Name || userData.FirstName || '';
@@ -459,7 +532,7 @@ export class SOSFirebaseService {
       const querySnapshot = await getDocs(q);
       
       if (querySnapshot.empty) {
-        console.log('SOS Service: No recipients found for this SOS session. Ending session.');
+        // console.log($&);
         await this.endSOSSession(sessionId);
         return { success: true, notifiedCount: 0, message: "Session ended. No one to notify." };
       }
@@ -478,7 +551,7 @@ export class SOSFirebaseService {
       const inAppPromises = recipientsWithData.map(recipient => {
         if (!recipient.phone) {
           console.warn(`Cannot send 'safe' in-app alert to ${recipient.name}, phone number is missing.`);
-          return Promise.resolve(); // Don't block for one failure
+          return Promise.resolve();
         }
         return FirebaseService.createNotification({
           userId: recipient.userId,
@@ -486,11 +559,9 @@ export class SOSFirebaseService {
           type: 'sos_resolved',
           title: `${userName} is Safe`,
           message: 'The emergency alert has been resolved.',
-          priority: 'normal', // 'normal' so it's not as alarming as an SOS
+          priority: 'normal',
           data: {
-            senderId: currentUser.uid,
-            // Set senderName to empty to prevent redundancy in the popup,
-            // as the name is already in the title.
+            senderId: currentUserId,
             senderName: '',
             sosSessionId: sessionId,
             category: 'safety',
@@ -499,7 +570,7 @@ export class SOSFirebaseService {
       });
 
       await Promise.all(inAppPromises);
-      console.log(`Created in-app 'safe' notifications for ${recipientsWithData.length} friends.`);
+      // console.log($&);
 
       if (tokens.length > 0) {
         // 5. Call a cloud function to send the "safe" push notification
@@ -515,7 +586,7 @@ export class SOSFirebaseService {
             data: {
               type: 'sos_resolved',
               sosSessionId: sessionId,
-              senderId: currentUser.uid,
+              senderId: currentUserId,
             },
           }),
         });
@@ -523,7 +594,7 @@ export class SOSFirebaseService {
           const errorText = await response.text();
           console.warn(`"All Safe" broadcast failed: ${errorText}`);
         } else {
-          console.log(`"All Safe" broadcast sent to ${tokens.length} friends.`);
+          // console.log($&);
         }
       }
 
@@ -541,18 +612,28 @@ export class SOSFirebaseService {
   // SOS REAL-TIME ACTIVITY LOG
   // ========================
 
-  // FIXED: Removed trailing comma that was causing syntax error
+  static getCurrentUser() {
+    return new Promise((resolve, reject) => {
+      const unsubscribe = auth.onAuthStateChanged(user => {
+        unsubscribe();
+        if (user) {
+          resolve(user);
+        } else {
+          reject(new Error("User not authenticated"));
+        }
+      });
+    });
+  }
+
   static async createSOSSession(sessionData) {
     try {
-      const currentUser = auth.currentUser;
-      if (!currentUser) throw new Error('User not authenticated');
+      const userId = sessionData.userId;
+      if (!userId) throw new Error('User ID is missing from session data.');
 
       const sessionRef = await addDoc(collection(db, 'sosSessions'), {
-        userId: currentUser.uid,
-        userName: currentUser.displayName || 'Unknown',
         ...sessionData,
         status: 'active',
-        createdAt: new Date() // Added timestamp for better tracking
+        createdAt: new Date()
       });
 
       return { success: true, sessionId: sessionRef.id };
@@ -562,7 +643,6 @@ export class SOSFirebaseService {
     }
   }
 
-  // FIXED: Removed trailing comma that was causing syntax error
   static async addLogToSOSSession(sessionId, message, type = 'info', data = {}) {
     try {
       if (!sessionId) {
@@ -574,7 +654,7 @@ export class SOSFirebaseService {
         sessionId,
         timestamp: new Date(),
         message,
-        type, // e.g., 'info', 'friend_notified', 'police_called', 'user_safe'
+        type,
         ...data
       };
       
@@ -586,11 +666,10 @@ export class SOSFirebaseService {
     }
   }
 
-  // FIXED: Removed trailing comma that was causing syntax error
   static listenToSOSActivity(sessionId, callback) {
     if (!sessionId) {
       console.warn('listenToSOSActivity called with no session ID');
-      return () => {}; // Return an empty unsubscribe function
+      return () => {};
     }
 
     try {
@@ -604,8 +683,7 @@ export class SOSFirebaseService {
         try {
           const logs = snapshot.docs.map(doc => ({ 
             id: doc.id, 
-            ...doc.data(), 
-            // Safely handle timestamp conversion, removed invalid trailing comma
+            ...doc.data(),
             timestamp: doc.data().timestamp?.toDate ? doc.data().timestamp.toDate() : new Date(doc.data().timestamp)
           }));
           callback({ logs, error: null });
@@ -621,7 +699,7 @@ export class SOSFirebaseService {
       return unsubscribe;
     } catch (error) {
       console.error("Error setting up SOS activity listener:", error);
-      return () => {}; // Return empty unsubscribe function
+      return () => {};
     }
   }
 

@@ -1,40 +1,40 @@
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 export class OfflineMapDiagnostics {
   static async testSingleTileDownload() {
     try {
-      console.log('=== Offline Map Diagnostics ===');
+      // console.log($&);
       
       // Test network connectivity
-      console.log('1. Testing network connectivity...');
+      // console.log($&);
       const testUrl = 'https://tile.openstreetmap.org/0/0/0.png';
       const response = await fetch(testUrl, { method: 'HEAD' });
-      console.log(`Network test: ${response.ok ? 'PASS' : 'FAIL'} (Status: ${response.status})`);
+      // console.log($&);
       
       if (!response.ok) {
         return { success: false, error: 'Network connectivity failed' };
       }
       
       // Test file system permissions
-      console.log('2. Testing file system permissions...');
+      // console.log($&);
       const testDir = `${FileSystem.documentDirectory}test_offline_maps/`;
       await FileSystem.makeDirectoryAsync(testDir, { intermediates: true });
-      console.log('File system test: PASS');
+      // console.log($&);
       
       // Test single tile download
-      console.log('3. Testing single tile download...');
+      // console.log($&);
       const tileUrl = 'https://tile.openstreetmap.org/15/17014/10747.png'; // Johannesburg area
       const tileFile = `${testDir}test_tile.png`;
       
       const downloadResult = await FileSystem.downloadAsync(tileUrl, tileFile);
-      console.log('Download result:', downloadResult);
+      // console.log($&);
       
       // Validate downloaded file
       const fileInfo = await FileSystem.getInfoAsync(tileFile);
-      console.log('File info:', fileInfo);
+      // console.log($&);
       
       if (fileInfo.exists && fileInfo.size > 1000) {
-        console.log('Single tile download: PASS');
+        // console.log($&);
         
         // Clean up
         await FileSystem.deleteAsync(testDir, { idempotent: true });
@@ -59,7 +59,7 @@ export class OfflineMapDiagnostics {
   }
   
   static async testTileCoordinates(latitude, longitude, zoom = 15) {
-    console.log(`=== Testing tile coordinates for lat: ${latitude}, lng: ${longitude}, zoom: ${zoom} ===`);
+    // console.log($&);
     
     // Calculate tile coordinates
     const latRad = (latitude * Math.PI) / 180;
@@ -67,14 +67,14 @@ export class OfflineMapDiagnostics {
     const x = Math.floor(((longitude + 180) / 360) * n);
     const y = Math.floor(((1 - Math.asinh(Math.tan(latRad)) / Math.PI) / 2) * n);
     
-    console.log(`Calculated tile coordinates: x=${x}, y=${y}`);
+    // console.log($&);
     
     const tileUrl = `https://tile.openstreetmap.org/${zoom}/${x}/${y}.png`;
-    console.log(`Tile URL: ${tileUrl}`);
+    // console.log($&);
     
     try {
       const response = await fetch(tileUrl, { method: 'HEAD' });
-      console.log(`Tile availability: ${response.ok ? 'AVAILABLE' : 'NOT AVAILABLE'} (Status: ${response.status})`);
+      // console.log($&);
       
       return {
         success: response.ok,

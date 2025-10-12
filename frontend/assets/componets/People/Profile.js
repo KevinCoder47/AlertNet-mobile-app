@@ -19,7 +19,7 @@ import MapView, { Marker } from 'react-native-maps';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import ViewShot from 'react-native-view-shot';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FirebaseService } from '../../../backend/Firebase/FirebaseService';
@@ -438,7 +438,9 @@ export default function Profile(props) {
                 return;
               }
 
-              navigation.navigate('Home', { 
+              navigation.navigate('Home', {
+                navigation: navigation, // Pass navigation object
+                from: 'Profile', // Tell Home where we came from
                 openChatWith: {
                     id: personId,
                     friendId: personId,

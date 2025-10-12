@@ -2,32 +2,37 @@ import 'dotenv/config';
 
 export default {
   expo: {
-    name: 'frontend',
-    slug: 'frontend',
+    name: 'AlertNet',
+    slug: 'alertnet',
     version: '1.0.0',
     orientation: 'portrait',
-    icon: './assets/icon.png',
+    icon: './assets/images/logo-v2.png',
     userInterfaceStyle: 'automatic',
-    newArchEnabled: true,
+    newArchEnabled: false,
+    scheme: 'alertnet', // Add this line for custom URL scheme
     splash: {
       image: './assets/splash-icon.png',
       resizeMode: 'contain',
       backgroundColor: '#ffffff',
     },
     ios: {
+      useFrameworks: "static",
+      useModularHeaders: true,
       config: {
         googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY,
       },
       supportsTablet: true,
-      bundleIdentifier: 'alertnet.co.za',
+      bundleIdentifier: 'com.mpilonhle.alertnet',
       infoPlist: {
         NSLocationWhenInUseUsageDescription:
           'This app uses your location for the SOS feature and to verify functionality during tests.',
-        NSMicrophoneUsageDescription:
-          'AlertNet needs microphone access to detect voice emergency keywords like "help" and "danger" for instant emergency response.',
-        NSSpeechRecognitionUsageDescription:
-          'AlertNet uses speech recognition to listen for emergency keywords in the background, providing hands-free safety monitoring.',
+        NSLocationAlwaysAndWhenInUseUsageDescription:
+          'This app needs access to your location in the background for safety monitoring.',
+        NSLocationAlwaysUsageDescription:
+          'This app needs access to your location in the background for safety monitoring.',
+        // UIBackgroundModes: ['location'],
         LSApplicationQueriesSchemes: ['youtube', 'https'],
+        UIBackgroundModes: ['location'], // ADD THIS LINE
       },
     },
     android: {
@@ -40,14 +45,7 @@ export default {
         foregroundImage: './assets/adaptive-icon.png',
         backgroundColor: '#ffffff',
       },
-      package: 'alertnet.co.za',
-      permissions: [
-        'RECORD_AUDIO',
-        'INTERNET',
-        'ACCESS_NETWORK_STATE',
-        'ACCESS_FINE_LOCATION',
-        'ACCESS_COARSE_LOCATION',
-      ],
+      package: 'com.mpilonhle.alertnet',
       queries: {
         intent: [
           {
@@ -71,20 +69,42 @@ export default {
     plugins: [
       'expo-font',
       'expo-router',
+      "expo-asset",
       [
         'expo-location',
         {
           locationWhenInUsePermission:
             'This app uses your location for the SOS feature and to verify functionality during tests.',
+          locationAlwaysAndWhenInUsePermission:
+            'This app needs access to your location in the background for safety monitoring.',
+          locationAlwaysPermission:
+            'This app needs access to your location in the background for safety monitoring.',
         },
       ],
       [
-        '@react-native-voice/voice',
+        'expo-build-properties',
+        
         {
-          microphonePermission: 'AlertNet needs microphone access to detect voice emergency keywords like "help" and "danger".',
-          speechRecognitionPermission: 'AlertNet uses speech recognition for hands-free emergency detection and safety monitoring.',
+          ios: {
+            useFrameworks: 'static',
+            enableGoogleMaps: true,
+          },
+          android: {
+            compileSdkVersion: 35,
+            targetSdkVersion: 35,
+            buildToolsVersion: "35.0.0",
+            enableGoogleMaps: true,
+          },
         },
       ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/logo-v2.png",
+          "color": "#C84022",
+          "sounds": ["./assets/notification-sounds/walk_request.mp3"]
+        }
+      ]
     ],
     extra: {
       eas: {

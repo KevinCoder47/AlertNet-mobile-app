@@ -76,7 +76,7 @@ export default function SOS({ setIsSOS, setIsQrCode, setIsSafetyResources, sosSe
       await SOSFirebaseService.addLogToSOSSession(sosSessionId, "You marked yourself as Safe", 'user_safe');
       
       // Send "All Safe" broadcast and end the session
-      const result = await SOSFirebaseService.sendSafeBroadcast(sosSessionId);
+      const result = await SOSFirebaseService.sendSafeBroadcast(sosSessionId, userData);
 
       if (result.success) {
         alert(`Marked as Safe. Notified ${result.notifiedCount || 0} friends that the emergency is over.`);

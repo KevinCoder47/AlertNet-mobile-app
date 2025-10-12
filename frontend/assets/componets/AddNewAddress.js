@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ColorContext';
-import { useFontSize } from '../contexts/FontSizeContext'; // ✅ added
+import { useFontSize } from '../contexts/FontSizeContext'; 
 import { GOOGLE_MAPS_API_KEY } from '@env';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { saveUserAddress, updateUserAddress } from '../../services/firestore';
