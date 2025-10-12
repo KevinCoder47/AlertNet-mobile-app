@@ -116,7 +116,7 @@ class FriendsService {
     const distance = R * c;
 
     if (distance < 1) {
-      return `${Math.round(distance * 1000)} m away`;
+      return `${Math.round(distance * 1000)}m away`;
     } else {
       return `${Math.round(distance)} km away`;
     }

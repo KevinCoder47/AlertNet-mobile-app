@@ -23,13 +23,16 @@ export default {
       infoPlist: {
         NSLocationWhenInUseUsageDescription:
           'This app uses your location for the SOS feature and to verify functionality during tests.',
+        NSLocationAlwaysAndWhenInUseUsageDescription:
+          'AlertNet uses your location in the background to keep your friends updated during an emergency SOS session, even when the app is closed.',
+        NSLocationAlwaysUsageDescription:
+          'AlertNet uses your location in the background to keep your friends updated during an emergency SOS session, even when the app is closed.',
         NSMicrophoneUsageDescription:
           'AlertNet needs microphone access to detect voice emergency keywords like "help" and "danger" for instant emergency response.',
         NSSpeechRecognitionUsageDescription:
           'AlertNet uses speech recognition to listen for emergency keywords in the background, providing hands-free safety monitoring.',
-        NSLocationAlwaysAndWhenInUseUsageDescription:
-          'AlertNet uses your location in the background to keep your friends updated during an emergency SOS session, even when the app is closed.',
         LSApplicationQueriesSchemes: ['youtube', 'https'],
+        UIBackgroundModes: ['location'], // ADD THIS LINE
       },
     },
     android: {
@@ -49,6 +52,7 @@ export default {
         'ACCESS_NETWORK_STATE',
         'ACCESS_FINE_LOCATION',
         'ACCESS_COARSE_LOCATION',
+        'ACCESS_BACKGROUND_LOCATION', // ADD THIS LINE
       ],
       queries: {
         intent: [
@@ -78,6 +82,8 @@ export default {
         {
           locationWhenInUsePermission:
             'This app uses your location for the SOS feature and to verify functionality during tests.',
+          locationAlwaysAndWhenInUsePermission:
+            'AlertNet uses your location in the background to keep your friends updated during an emergency SOS session, even when the app is closed.',
         },
       ],
       [

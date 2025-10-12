@@ -125,12 +125,16 @@ const Home = ({ route, handleLogout }) => {
   const [isChatScreen, setIsChatScreen] = useState(false);
   const [chatTarget, setChatTarget] = useState(null);
   const [isViewingProfileOf, setIsViewingProfileOf] = useState(null);
+  const [chatOpenedFrom, setChatOpenedFrom] = useState(null); // Track where chat was opened from
   const [userImage, setUserImage] = useState(null);
   const [cachedImagePath, setCachedImagePath] = useState(null);
   const [imageError, setImageError] = useState(false);
   const [userLocation, setUserLocation] = useState(null);
   const mapRef = useRef(null);
   const [emergencyContacts, setEmergencyContacts] = useState([]);
+  // We need the navigation object to go back
+  const navigation = route.params?.navigation;
+
   const [locationUpdateInterval, setLocationUpdateInterval] = useState(null);
   const [isChatBotOpen, setIsChatBotOpen] = useState(false);
 
@@ -153,10 +157,16 @@ const Home = ({ route, handleLogout }) => {
       const personToChat = route.params.openChatWith;
       console.log('Home.js: Received request to open chat with:', personToChat.name);
       handleOpenChat(personToChat);
+      // If opened via navigation, record the source
+      if (route.params.from) {
+        setChatOpenedFrom(route.params.from);
+      }
+      // Clear the param to prevent re-triggering
+      navigation.setParams({ openChatWith: null, from: null });
     }
   }, [route.params?.openChatWith]);
 
-  const handleOpenChat = async (personData) => {
+  const handleOpenChat = async (personData, from) => {
     console.log('DEBUG: Opening chat with raw personData:', JSON.stringify(personData, null, 2));
     
     const personId = personData?.senderId || personData?.friendId || personData?.id;
@@ -182,6 +192,10 @@ const Home = ({ route, handleLogout }) => {
       
       console.log('Profile picture for chat:', profilePicture);
       
+      if (from) {
+        setChatOpenedFrom(from);
+      }
+
       setChatTarget({
         id: personId,
         name: name,
@@ -276,28 +290,30 @@ const Home = ({ route, handleLogout }) => {
 
   // Background location permissions
   useEffect(() => {
-    const requestBackgroundPermission = async () => {
-      try {
-        const { status } = await Location.requestBackgroundPermissionsAsync();
-        if (status === 'granted') {
-          await Location.startLocationUpdatesAsync('backgroundLocationTask', {
-            accuracy: Location.Accuracy.Balanced,
-            timeInterval: 300000,
-            distanceInterval: 100,
-            showsBackgroundLocationIndicator: true,
-          });
+    if (userData?.userId) { // Only run when we have a user
+      const requestBackgroundPermission = async () => {
+        try {
+          const { status } = await Location.requestBackgroundPermissionsAsync();
+          if (status === 'granted') {
+            await Location.startLocationUpdatesAsync('backgroundLocationTask', {
+              accuracy: Location.Accuracy.Balanced,
+              timeInterval: 300000,
+              distanceInterval: 100,
+              showsBackgroundLocationIndicator: true,
+            });
+          }
+        } catch (error) {
+          console.error("Error requesting background location:", error);
         }
-      } catch (error) {
-        console.error("Error requesting background location:", error);
-      }
-    };
-    
-    requestBackgroundPermission();
-    
-    return () => {
-      Location.stopLocationUpdatesAsync('backgroundLocationTask');
-    };
-  }, []);
+      };
+      
+      requestBackgroundPermission();
+      
+      return () => {
+        Location.stopLocationUpdatesAsync('backgroundLocationTask');
+      };
+    }
+  }, [userData?.userId]); // Now depends on having a valid user ID
 
   // User presence management
   useEffect(() => {
@@ -769,9 +785,18 @@ const Home = ({ route, handleLogout }) => {
       <ChatScreen
         person={chatTarget}
         userData={userData}
+        navigation={navigation}
         onClose={() => {
-          setIsChatScreen(false);
-          setChatTarget(null);
+          if (chatOpenedFrom && navigation) {
+            navigation.goBack();
+          } else if (chatOpenedFrom === 'NotificationsPopup') {
+            setIsChatScreen(false);
+            setIsNotification(true); // Re-open the notification panel
+          } else {
+            setIsChatScreen(false);
+            setChatTarget(null);
+          }
+          setChatOpenedFrom(null); // Reset for next time
         }}
         onViewProfile={(person) => {
           setIsChatScreen(false);

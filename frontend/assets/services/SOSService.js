@@ -40,6 +40,22 @@ class SOSServiceClass {
       return [];
     }
   }
+  
+  static async requestBackgroundLocationPermission() {
+    try {
+      const { status } = await Location.requestBackgroundPermissionsAsync();
+      if (status === 'granted') {
+        console.log('Background location permission granted');
+        return true;
+      } else {
+        console.warn('Background location permission denied');
+        return false;
+      }
+    } catch (error) {
+      console.error('Error requesting background location permission:', error);
+      return false;
+    }
+  }
 
   static async addEmergencyContact(contactData) {
     try {
@@ -87,9 +103,16 @@ class SOSServiceClass {
         return { enabled: false, error: 'Location services are disabled' };
       }
 
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
+      // Request foreground permission
+      const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
+      if (foregroundStatus !== 'granted') {
         return { enabled: false, error: 'Location permission denied' };
+      }
+
+      // Also request background permission for SOS features
+      const backgroundGranted = await this.requestBackgroundLocationPermission();
+      if (!backgroundGranted) {
+        console.warn('Background location permission not granted, but foreground is available');
       }
 
       return { enabled: true };

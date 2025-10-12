@@ -352,7 +352,7 @@ getUserData: async (userId) => {
    * @param {string} notificationId - Notification document ID
    * @returns {Object} - { success: boolean, error?: string }
    */
-  markNotificationAsRead: async (notificationId) => {
+  markNotificationAsRead: async (notificationId) => { // This function now only needs the ID
     try {
       console.log('Marking notification as read:', notificationId);
       

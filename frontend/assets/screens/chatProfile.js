@@ -22,6 +22,7 @@ const { width, height } = Dimensions.get('window');
 
 const ChatProfile = ({ onClose, profileData }) => {
   const [isMenuVisible, setIsMenuVisible] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   const handleCall = async () => {
     if (profileData?.phone) {
@@ -66,6 +67,7 @@ const ChatProfile = ({ onClose, profileData }) => {
           uri: profileData?.profilePicture || profileData?.imageUrl || profileData?.avatar?.uri || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&h=400&fit=crop&crop=face'
         }}
         style={styles.profileImageBackground}
+        onError={() => setImageError(true)}
       >
         <LinearGradient
           colors={['rgba(0,0,0,0.6)', 'transparent', 'rgba(0,0,0,0.8)']}
@@ -107,12 +109,12 @@ const ChatProfile = ({ onClose, profileData }) => {
             </View>
             <View style={styles.statItem}>
               <Ionicons name="walk-outline" size={20} color="#AAAAAA" style={styles.statIcon} />
-              <Text style={styles.statValue}>128</Text>
+              <Text style={styles.statValue}>{profileData?.walks ?? 'N/A'}</Text>
               <Text style={styles.statLabel}>Walks</Text>
             </View>
             <View style={styles.statItem}>
               <Ionicons name="star-outline" size={20} color="#AAAAAA" style={styles.statIcon} />
-              <Text style={styles.statValue}>4.6</Text>
+              <Text style={styles.statValue}>{profileData?.rating ?? 'N/A'}</Text>
               <Text style={styles.statLabel}>Reviews</Text>
             </View>
           </View>
@@ -124,9 +126,6 @@ const ChatProfile = ({ onClose, profileData }) => {
             </TouchableOpacity>
             <TouchableOpacity style={[styles.actionButton, styles.callButton]} onPress={handleCall}>
               <Ionicons name="call-outline" size={20} color="#FFFFFF" />
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.actionButton, styles.videoButton]} onPress={() => Alert.alert('Video Call', 'This feature is coming soon!')}>
-              <Ionicons name="videocam-outline" size={20} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
 

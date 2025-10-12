@@ -16,6 +16,7 @@ import {
   RefreshControl,
   Image,
   TouchableWithoutFeedback,
+  Pressable,
   Linking,
 } from 'react-native';
 import { useNotifications } from '../contexts/NotificationContext';
@@ -277,13 +278,9 @@ const handleAccept = async (notification) => {
     
     if (result.success) {
       Alert.alert('Friend Added!', `${notification.name} is now your friend.`);
-      Vibration.vibrate(100);
-      
-      // Mark as read after accepting
-      const userPhone = userData?.phone || userData?.Phone || userData?.phoneNumber;
-      if (userPhone) {
-        await FirebaseService.markNotificationAsRead(userPhone, notification.id);
-      }
+      Vibration.vibrate(100);      
+      // Mark as read after accepting      
+      await markNotificationAsRead(notification.id);
       
       // Collapse the expanded notification
       setExpandedNotificationId(null);
@@ -307,12 +304,8 @@ const handleDecline = async (notification) => {
     
     if (result.success) {
       Vibration.vibrate(50);
-      
-      // Mark as read after declining
-      const userPhone = userData?.phone || userData?.Phone || userData?.phoneNumber;
-      if (userPhone) {
-        await FirebaseService.markNotificationAsRead(userPhone, notification.id);
-      }
+      // Mark as read after declining      
+      await markNotificationAsRead(notification.id);
       
       // Collapse the expanded notification
       setExpandedNotificationId(null);
@@ -327,29 +320,17 @@ const handleDecline = async (notification) => {
 
   // Mark all as read
   const handleMarkAllAsRead = async () => {
-    if (!userData || !userData.phone) return;
-    
     try {
       Vibration.vibrate(50);
       
       // Get all unread notifications from the current tab
       const unreadNotifications = currentNotifications.filter(n => n.status === 'new');
-      
       if (unreadNotifications.length === 0) {
         Alert.alert('Info', 'All notifications are already read.');
         return;
       }
       
-      // Mark each notification as read in Firebase
-      const userPhone = userData.phone || userData.Phone || userData.phoneNumber;
-      for (const notification of unreadNotifications) {
-        await FirebaseService.markNotificationAsRead(userPhone, notification.id);
-      }
-      
-      // Also call the prop function if it exists
-      if (markAllNotificationsAsRead) {
-        markAllNotificationsAsRead();
-      }
+      await markAllNotificationsAsRead();
       
       Alert.alert('Success', `${unreadNotifications.length} notification${unreadNotifications.length > 1 ? 's' : ''} marked as read.`);
     } catch (error) {
@@ -431,7 +412,7 @@ const handleDecline = async (notification) => {
             profilePicture: notification.profilePicture,
             data: notification.data,
           };
-          onOpenChat(personData);
+          onOpenChat(personData, 'NotificationsPopup'); // Pass the origin
           setIsNotification(false);
         } else {
           Alert.alert('Quick Response', 'Response sent!');
@@ -740,16 +721,14 @@ const handleDecline = async (notification) => {
       visible={true}
       onRequestClose={() => setIsNotification(false)}
     >
-      <View style={styles.modalOverlay}>
-        <TouchableOpacity 
-          style={styles.backdrop} 
-          onPress={() => {
-            setIsNotification(false);
-            setShowMenu(false);
-          }}
-        />
-        
-        <View style={styles.popupContainer}>
+      <Pressable
+        style={styles.modalOverlay}
+        onPress={() => {
+          setIsNotification(false);
+          setShowMenu(false);
+        }}
+      >
+        <Pressable style={styles.popupContainer} onPress={null}>
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.headerTitle}>
@@ -1156,8 +1135,8 @@ const handleDecline = async (notification) => {
             <View style={styles.bottomSpacing} />
           </ScrollView>
 
-        </View>
-      </View>
+        </Pressable>
+      </Pressable>
     </Modal>
 
       {/* Enhanced Calendar Popup as a separate Modal for cross-platform consistency */}
@@ -1248,9 +1227,6 @@ const getStyles = (getScaledFontSize, colors) => StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
-  },
-  backdrop: {
-    flex: 1,
   },
   popupContainer: {
     height: height * 0.8,
