@@ -1,8 +1,9 @@
-import { StyleSheet, Text, View, Dimensions, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, Dimensions, TouchableOpacity, Image } from 'react-native';
 import React, { useState, useEffect } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ColorContext';
+import * as Location from 'expo-location';
 
 const { width, height } = Dimensions.get('window');
 
@@ -16,6 +17,13 @@ const WalkDetails = ({
 }) => {
   const { isDark } = useTheme();
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [navigationSteps, setNavigationSteps] = useState([]);
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [calculatedStats, setCalculatedStats] = useState(null);
+  const [userLocation, setUserLocation] = useState(null);
+  const [locationSubscription, setLocationSubscription] = useState(null);
+  const avatarSource = partnerData?.avatarSource || require('../../images/profile-pictures/default.jpg');
+
   
   // Update time every minute
   useEffect(() => {
@@ -25,11 +33,185 @@ const WalkDetails = ({
     return () => clearInterval(timer);
   }, []);
 
+  // Fetch turn-by-turn navigation instructions
+  useEffect(() => {
+    const origin = userLocation || walkData?.startPoint;
+    const destination = walkData?.destination;
+    
+    if (origin && destination) {
+      fetchTurnByTurnDirections(origin, destination);
+    } else if (origin && !destination) {
+      const horizonHeights = {
+        latitude: -26.1929,
+        longitude: 28.0305,
+      };
+      fetchTurnByTurnDirections(origin, horizonHeights);
+    }
+  }, [userLocation, walkData?.destination]);
+
+  // Location tracking effect
+  useEffect(() => {
+    let isMounted = true;
+    
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          console.log('Location permission denied');
+          return;
+        }
+
+        const location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+        });
+        
+        if (isMounted) {
+          setUserLocation({
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude,
+          });
+          console.log('User location obtained:', location.coords.latitude, location.coords.longitude);
+        }
+
+        const subscription = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.High,
+            timeInterval: 5000,
+            distanceInterval: 10,
+          },
+          (newLocation) => {
+            if (isMounted) {
+              setUserLocation({
+                latitude: newLocation.coords.latitude,
+                longitude: newLocation.coords.longitude,
+              });
+            }
+          }
+        );
+        
+        if (isMounted) {
+          setLocationSubscription(subscription);
+        }
+      } catch (error) {
+        console.error('Error getting location:', error);
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+      if (locationSubscription) {
+        locationSubscription.remove();
+      }
+    };
+  }, []);
+
+  const fetchTurnByTurnDirections = async (origin, destination) => {
+    try {
+      const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
+      const originStr = `${origin.latitude},${origin.longitude}`;
+      const destStr = `${destination.latitude},${destination.longitude}`;
+      
+      const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${originStr}&destination=${destStr}&mode=walking&key=${GOOGLE_MAPS_API_KEY}`;
+      
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      if (data.status === 'OK') {
+        const route = data.routes[0];
+        const leg = route.legs[0];
+        
+        // Extract calculated stats from API
+        setCalculatedStats({
+          distance: leg.distance.text,
+          distanceValue: leg.distance.value,
+          duration: leg.duration.text,
+          durationValue: leg.duration.value,
+          startAddress: leg.start_address,
+          endAddress: leg.end_address
+        });
+        
+        // Parse steps for navigation instructions
+        const steps = leg.steps.map(step => ({
+          instruction: step.html_instructions.replace(/<[^>]*>/g, ''),
+          distance: step.distance.text,
+          distanceValue: step.distance.value,
+          duration: step.duration.text,
+          maneuver: step.maneuver || 'straight',
+        }));
+        
+        setNavigationSteps(steps);
+        console.log('Navigation loaded - Distance:', leg.distance.text, 'Duration:', leg.duration.text);
+      }
+    } catch (error) {
+      console.error('Error fetching navigation instructions:', error);
+    }
+  };
+
+  // Get current navigation instruction
+  const getCurrentInstruction = () => {
+    if (navigationSteps.length === 0 || currentStepIndex >= navigationSteps.length) {
+      return {
+        instruction: 'Head towards destination',
+        distance: 'Calculating...',
+        distanceValue: 0,
+        maneuver: 'straight'
+      };
+    }
+    
+    return navigationSteps[currentStepIndex];
+  };
+
+  const currentInstruction = getCurrentInstruction();
+
+  // Smart data extraction with fallbacks
+  const getLocationData = () => {
+    // FROM location - prioritize userLocation, then walkData, then calculatedStats, then demo fallback
+    const fromLocation = userLocation 
+                        ? 'Current Location'
+                        : (walkData?.meetupPoint || walkData?.startLocationName || 'UJ APB West Entrance');
+    
+    const fromAddress = walkData?.fromAddress || 
+                       (calculatedStats?.startAddress || (userLocation ? 'Your current position' : '52 Algernon St, Auckland Park'));
+    
+    // TO location - prioritize walkData, then use demo fallback (Horizon Heights)
+    const toLocation = walkData?.toDestination || 
+                      walkData?.destinationName || 
+                      'Horizon Heights';
+    
+    const toAddress = walkData?.toAddress || 
+                     (calculatedStats?.endAddress || '1 Jan Smuts Ave, Braamfontein');
+    
+    // Distance - prioritize API calculated data, then walkData, then demo fallback
+    const totalDistance = calculatedStats?.distance || 
+                         walkData?.totalDistance || 
+                         '1.5 km';
+    
+    // Duration - prioritize API calculated data, then walkData, then demo fallback
+    const estimatedDuration = calculatedStats?.duration || 
+                             walkData?.estimatedDuration || 
+                             '18 min';
+    
+    // Extract just the number of minutes for arrival calculation
+    const durationMinutes = calculatedStats?.durationValue 
+      ? Math.round(calculatedStats.durationValue / 60)
+      : parseInt(estimatedDuration.match(/\d+/)?.[0] || '18');
+    
+    return {
+      fromLocation,
+      fromAddress,
+      toLocation,
+      toAddress,
+      totalDistance,
+      estimatedDuration,
+      durationMinutes
+    };
+  };
+
+  const locationData = getLocationData();
+
   // Calculate estimated arrival time
   const calculateArrivalTime = () => {
-    if (!walkData?.estimatedDuration) return '--:--';
-    
-    const minutes = parseInt(walkData.estimatedDuration);
+    const minutes = locationData.durationMinutes;
     const arrival = new Date(currentTime.getTime() + minutes * 60000);
     return arrival.toLocaleTimeString('en-US', { 
       hour: '2-digit', 
@@ -37,36 +219,6 @@ const WalkDetails = ({
       hour12: false 
     });
   };
-
-  // Extract walk data with fallbacks
-  const fromLocation = walkData?.fromLocation || 'Current Location';
-  const toLocation = walkData?.toLocation || 'Destination';
-  const fromAddress = walkData?.fromAddress || '';
-  const toAddress = walkData?.toAddress || '';
-  const totalDistance = walkData?.totalDistance || '0 km';
-  const estimatedDuration = walkData?.estimatedDuration || '0 min';
-  const nextTurnDistance = walkData?.nextTurnDistance || '250 m';
-  const nextStreet = walkData?.nextStreet || 'Continue straight';
-
-  // SAFETY: Ensure locations are always strings
-  const safeFromLocation = typeof walkData?.fromLocation === 'string' 
-    ? walkData.fromLocation 
-    : String(walkData?.fromLocation || 'Your Location');
-
-  const safeToLocation = typeof walkData?.toLocation === 'string'
-    ? walkData.toLocation
-    : String(walkData?.toLocation || 'Destination');
-
-  const safeFromAddress = typeof walkData?.fromAddress === 'string' ? walkData.fromAddress : '';
-  const safeToAddress = typeof walkData?.toAddress === 'string' ? walkData.toAddress : '';
-
-  // Debug log to catch any object rendering attempts
-  console.log('🔍 [WalkDetails] Location data:', {
-    fromLocation: safeFromLocation,
-    toLocation: safeToLocation,
-    fromAddress: safeFromAddress,
-    toAddress: safeToAddress
-  });
 
   // Color scheme
   const colors = {
@@ -77,7 +229,7 @@ const WalkDetails = ({
       gradient: ['rgba(255, 255, 255, 0.95)', 'rgba(255, 255, 255, 0.6)', 'rgba(255, 255, 255, 0)'],
       gradientBottom: ['rgba(255, 255, 255, 0)', 'rgba(255, 255, 255, 0.6)', 'rgba(255, 255, 255, 0.95)'],
       circle: '#656565',
-      divider: '#121212ff'
+      divider: '#e0e0e0'
     },
     dark: {
       primary: '#ffffff',
@@ -103,24 +255,27 @@ const WalkDetails = ({
       
       {/* Directions and buttons */}
       <View style={styles.topSection}>
-        {/* Directions */}
+        {/* Navigation Instructions */}
         <View style={styles.directionsContainer}>
-          {/* Arrow icon */}
-          <Ionicons name="arrow-up" size={90} color={theme.primary} />
-          {/* Distance and street info */}
-          <View>
+          {/* Navigation icon based on maneuver */}
+          <Ionicons 
+            name={getManeuverIcon(currentInstruction.maneuver)} 
+            size={90} 
+            color={theme.primary} 
+          />
+          {/* Distance and instruction info */}
+          <View style={styles.instructionContainer}>
             <Text style={[styles.distanceLarge, {color: theme.primary}]}>
-              {nextTurnDistance}
+              {currentInstruction.distance}
             </Text>
-            <Text style={[styles.streetName, {color: theme.primary}]}>
-              {nextStreet}
+            <Text style={[styles.streetName, {color: theme.primary}]} numberOfLines={2}>
+              {currentInstruction.instruction}
             </Text>
           </View>
         </View>
         
         {/* Control Buttons */}
         <View style={styles.buttonColumn}>
-          {/* More options button */}
           <TouchableOpacity 
             style={styles.circleContainer}
             onPress={onMoreOptions}
@@ -134,7 +289,6 @@ const WalkDetails = ({
             />
           </TouchableOpacity>
           
-          {/* Recenter button */}
           <TouchableOpacity 
             style={[styles.circleContainer, {marginTop: 10}]}
             onPress={onRecenter}
@@ -146,6 +300,14 @@ const WalkDetails = ({
               color={theme.primary} 
               style={styles.icon} 
             />
+          </TouchableOpacity>
+
+          {/* partner icon */}
+          <TouchableOpacity style ={styles.partnerPic}>
+            <Image source={avatarSource}
+              style={{width: '100%', height: '100%'}}
+            />
+            {/* partnerData.imageUrl */}
           </TouchableOpacity>
         </View>
       </View>
@@ -161,7 +323,6 @@ const WalkDetails = ({
       <View style={styles.bottomSection}>
         {/* From/To locations */}
         <View style={styles.locationContainer}>
-          {/* From/To indicator line */}
           <View style={styles.locationRow}>
             <View style={styles.locationIndicators}>
               <Text style={[styles.smallestText, {color: theme.secondary}]}>From</Text>
@@ -172,46 +333,42 @@ const WalkDetails = ({
             </View>
           </View>
           
-          {/* Addresses */}
           <View style={styles.addressRow}>
             <View style={styles.addressColumn}>
-              <Text style={[styles.locationName, {color: theme.primary}]}>
-                {safeFromLocation}
+              <Text style={[styles.locationName, {color: theme.primary}]} numberOfLines={1}>
+                {locationData.fromLocation}
               </Text>
-              <Text style={[styles.addressText, {color: theme.secondary}]}>
-                {safeFromAddress}
+              <Text style={[styles.addressText, {color: theme.secondary}]} numberOfLines={1}>
+                {locationData.fromAddress}
               </Text>
             </View>
             <View style={[styles.addressColumn, {paddingLeft: 20}]}>
-              <Text style={[styles.locationName, {color: theme.primary}]}>
-                {safeToLocation}
+              <Text style={[styles.locationName, {color: theme.primary}]} numberOfLines={1}>
+                {locationData.toLocation}
               </Text>
-              <Text style={[styles.addressText, {color: theme.secondary}]}>
-                {safeToAddress}
+              <Text style={[styles.addressText, {color: theme.secondary}]} numberOfLines={1}>
+                {locationData.toAddress}
               </Text>
             </View>
           </View>
         </View>
         
-        {/* Divider */}
         <View style={[styles.divider, {backgroundColor: theme.divider}]} />
         
-        {/* Distance, time, and emergency button */}
         <View style={styles.statsRow}>
           <View style={styles.statsLeft}>
             <Text style={[styles.distanceText, {color: theme.primary}]}>
-              {totalDistance}
+              {locationData.totalDistance}
             </Text>
             <Text style={[styles.dotSeparator, {color: theme.secondary}]}>•</Text>
             <Text style={[styles.timeText, {color: theme.primary}]}>
-              {estimatedDuration}
+              {locationData.estimatedDuration}
             </Text>
             <Text style={[styles.arrivalTime, {color: theme.secondary}]}>
               {calculateArrivalTime()}
             </Text>
           </View>
           
-          {/* Emergency/SOS Button */}
           <TouchableOpacity 
             style={styles.circleContainer}
             onPress={onEmergency}
@@ -228,6 +385,22 @@ const WalkDetails = ({
       </View>
     </View>
   );
+};
+
+// Helper function to get appropriate icon for maneuver
+const getManeuverIcon = (maneuver) => {
+  if (!maneuver) return 'arrow-up';
+  
+  const maneuverLower = maneuver.toLowerCase();
+  
+  if (maneuverLower.includes('left')) return 'arrow-back';
+  if (maneuverLower.includes('right')) return 'arrow-forward';
+  if (maneuverLower.includes('uturn') || maneuverLower.includes('u-turn')) return 'swap-horizontal';
+  if (maneuverLower.includes('merge')) return 'git-merge';
+  if (maneuverLower.includes('fork')) return 'git-branch';
+  if (maneuverLower.includes('roundabout')) return 'sync-circle';
+  
+  return 'arrow-up';
 };
 
 export default WalkDetails;
@@ -256,6 +429,12 @@ const styles = StyleSheet.create({
   directionsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+    paddingRight: 10,
+  },
+  instructionContainer: {
+    marginLeft: 10,
+    flex: 1,
   },
   buttonColumn: {
     paddingRight: 20,
@@ -364,6 +543,7 @@ const styles = StyleSheet.create({
   streetName: {
     fontSize: 15,
     fontWeight: '600',
+    marginBottom: 4,
   },
   distanceText: {
     fontSize: 30,
@@ -380,5 +560,12 @@ const styles = StyleSheet.create({
   arrivalTime: {
     fontSize: 13,
     fontWeight: '500',
+  },
+  partnerPic: {
+    width: 42,
+    height: 42,
+    borderRadius: 25,
+    overflow: 'hidden',
+    marginTop: 10,
   }
 });

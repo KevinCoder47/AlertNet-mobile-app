@@ -33,6 +33,40 @@ const WalkPartner = ({
   isReceiverWalk = false,
   initialAcceptedWalkRequest = null 
 }) => {
+  // Helper to check if a coordinate object is valid
+  const isValidCoordinate = (coord) => {
+    return (
+      coord &&
+      typeof coord.latitude === 'number' &&
+      typeof coord.longitude === 'number' &&
+      !isNaN(coord.latitude) &&
+      !isNaN(coord.longitude)
+    );
+  };
+
+  // Helper function to get a safe meetup point
+  const getSafeMeetupPoint = (meetupPoint, startPoint, userLocation) => {
+    // First try the provided meetup point
+    if (meetupPoint && isValidCoordinate(meetupPoint)) {
+      return meetupPoint;
+    }
+  
+    // Fallback to start point
+    if (startPoint && isValidCoordinate(startPoint)) {
+      return startPoint;
+    }
+  
+    // Final fallback to user location with offset
+    if (userLocation && isValidCoordinate(userLocation)) {
+      return {
+        latitude: userLocation.latitude + 0.001, // Small offset
+        longitude: userLocation.longitude + 0.001
+      };
+    }
+  
+    // Ultimate fallback - default coordinates
+    return { latitude: -26.2046, longitude: 28.0478 };
+  };
   // Handle immediate walk start for receiver
   useEffect(() => {
     if (isReceiverWalk && initialAcceptedWalkRequest) {
@@ -40,6 +74,19 @@ const WalkPartner = ({
       handleImmediateReceiverWalkStart(initialAcceptedWalkRequest);
     }
   }, [isReceiverWalk, initialAcceptedWalkRequest]);
+
+    const DummywalkDetails = {
+    startLocation: {
+      latitude: 37.7749,
+      longitude: -122.4194,
+    },
+    destination: {
+      latitude: 37.7949,
+      longitude: -122.3994,
+    },
+    partnerLocation: { latitude: -26.2060, longitude: 28.0490 },
+    meetUpPoint: { latitude: -26.2046, longitude: 28.0478 }
+  }
 
   // Handler for immediate receiver walk start
   const handleImmediateReceiverWalkStart = async (walkRequest) => {
@@ -53,7 +100,7 @@ const WalkPartner = ({
       const walkData = {
         // Use string locations for display
         fromLocation: walkRequest.pickup || 'Your Location', // This is a string like "APB Campus West Entrance"
-        toLocation: 'Destination', // Use a generic string since we don't have destination name
+        toLocation: acceptedWalkRequest.toDestination || 'Destination',
         fromAddress: '',
         toAddress: '',
         totalDistance: 'Calculating...',
@@ -66,6 +113,7 @@ const WalkPartner = ({
         // Use coordinate objects for map
         startPoint: walkRequest.startPoint, // This is {latitude, longitude}
         destination: walkRequest.destination, // This is {latitude, longitude}
+        toDestination: acceptedWalkRequest.toDestination || 'Horizon Heights',
         meetupPoint: walkRequest.meetupPoint,
         startedAt: walkRequest.confirmedAt || new Date().toISOString(),
         requestId: walkRequest.requestId,
@@ -115,6 +163,7 @@ const WalkPartner = ({
   const [destinationCoords, setDestinationCoords] = useState(null);
   const [startPointCoords, setStartPointCoords] = useState({ latitude: -26.1872365, longitude: 28.0124719 });
   const [originalWalkRequest, setOriginalWalkRequest] = useState(null);
+  
   
   // NEW STATES FOR ACCEPTED WALKER
   const [acceptedWalker, setAcceptedWalker] = useState(null);
@@ -198,10 +247,11 @@ const calculatePartnerStats = async (walkerLoc, startLoc) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [acceptedWalker, walkerLocation, currentWalkRequest]);
 
-  // Function to handle destination selection with coordinates
-  const handleDestinationSelect = (coordinates) => {
-    // console.log($&);
+  // Function to handle destination selection with coordinates and address
+  const handleDestinationSelect = (coordinates, address) => {
+    console.log('📍 Destination selected:', coordinates, address);
     setDestinationCoords(coordinates);
+    setDropoffLocation(address); // Make sure this is set
   };
   
   const handleStartPointSelect = (coords) => {
@@ -236,14 +286,14 @@ const calculatePartnerStats = async (walkerLoc, startLoc) => {
           // Get accepter's phone number
           const accepterPhone = acceptedWalkRequest.acceptedBy;
           if (!accepterPhone) {
-            console.error('❌ No accepter phone found in accepted walk request');
+            // console.error('❌ No accepter phone found in accepted walk request');
             return;
           }
 
           // Fetch accepter's user data
           const accepterResult = await FirebaseService.getUserByPhone(accepterPhone);
           if (!accepterResult.exists || !accepterResult.userData) {
-            console.error('❌ Could not fetch accepter data for:', accepterPhone);
+            // console.error('❌ Could not fetch accepter data for:', accepterPhone);
             // Fallback to basic accepter info
             showFallbackAcceptedWalker(accepterPhone, acceptedWalkRequest);
             return;
@@ -573,7 +623,7 @@ const handleConfirmWalker = async () => {
     const walkData = {
       // Use string locations for display
       fromLocation: walkRequestData.walkFrom || 'Your Location',
-      toLocation: walkRequestData.walkTo || 'Destination',
+      toLocation: walkRequestData.toDestination || 'Destination',
       fromAddress: '',
       toAddress: '',
       totalDistance: partnerStats?.distance || 'Calculating...',
@@ -583,10 +633,10 @@ const handleConfirmWalker = async () => {
       partnerId: acceptedWalker.id,
       partnerName: acceptedWalker.name,
       partnerPhone: acceptedWalker.phone,
-      // Use coordinate objects for map
+      // Use coordinate objects for map - MAKE SURE THESE ARE VALID
       startPoint: startPointCoords,
+      meetupPoint: walkRequestData.meetupPoint || startPointCoords, // FALLBACK TO startPointCoords
       destination: destinationCoords,
-      meetupPoint: walkRequestData.meetupPoint,
       startedAt: new Date().toISOString(),
       requestId: currentWalkRequestId,
       senderId: userDataObj?.id,
@@ -594,7 +644,11 @@ const handleConfirmWalker = async () => {
       senderPhone: userDataObj?.phone
     };
 
-    console.log('📦 Sender walk data prepared:', walkData);
+    console.log('📍 WalkData coordinates:', {
+      startPoint: walkData.startPoint,
+      meetupPoint: walkData.meetupPoint,
+      destination: walkData.destination
+    });
 
     // Update Firebase with additional data for receiver
     if (currentWalkRequestId) {
@@ -660,7 +714,7 @@ useEffect(() => {
         const walkData = {
           // String locations for display
           fromLocation: acceptedWalkRequest.pickup || 'Your Location',
-          toLocation: 'Destination',
+          toLocation: acceptedWalkRequest.toDestination || 'Destination',
           fromAddress: '',
           toAddress: '',
           totalDistance: 'Calculating...',
@@ -778,14 +832,33 @@ useEffect(() => {
         {/* Show WalkingMap when walk is active */}
         {isWalkActive && activeWalkData && (
           <>
-            <WalkingMap 
-              startPoint={activeWalkData.startPoint}
-              destination={activeWalkData.destination}
-              userLocation={userLocation}
-            />
+            {(() => {
+              // Compute a safe meetup point
+              const safeMeetUpPoint = getSafeMeetupPoint(
+                activeWalkData.meetupPoint,
+                activeWalkData.startPoint,
+                userLocation
+              );
+              return (
+                <WalkingMap 
+                  walkDetails={{
+                    partnerLocation: activeWalkData.partnerLocation,
+                    meetUpPoint: safeMeetUpPoint
+                  }}
+                  onRouteReady={(routeInfo) => {
+                    // Handle route information if needed
+                    console.log('Route ready:', routeInfo);
+                  }}
+                  onUserLocationChange={(location) => {
+                    // Update user location for navigation calculations
+                    console.log('User location updated:', location);
+                  }}
+                />
+              );
+            })()}
             <WalkDetails 
               walkData={activeWalkData}
-              partnerData={acceptedWalker}
+               partnerData={acceptedWalker}
               onEndWalk={handleEndWalk}
               onRecenter={handleRecenterMap}
               onMoreOptions={handleMoreOptions}
@@ -863,6 +936,7 @@ useEffect(() => {
               setIsStartPoint={setIsStartPoint}
               onStartPointSelect={handleStartPointSelect} 
               dropoffLocation={dropoffLocation}
+              destinationCoords = {destinationCoords}
             />
           </View>
         )}

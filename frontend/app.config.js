@@ -6,7 +6,7 @@ export default {
     slug: 'alertnet',
     version: '1.0.0',
     orientation: 'portrait',
-    icon: './assets/images/logo-v2.png',
+    icon: './assets/icon.png',
     userInterfaceStyle: 'automatic',
     newArchEnabled: false,
     scheme: 'alertnet', // Add this line for custom URL scheme

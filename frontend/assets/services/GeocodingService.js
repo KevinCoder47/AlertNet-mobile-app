@@ -54,43 +54,48 @@ export const reverseGeocode = async (latitude, longitude) => {
 
   } catch (expoError) {
     console.warn(`expo-location geocoding failed: ${expoError.message}. Falling back to Nominatim.`);
-    // --- FALLBACK METHOD: Use Nominatim ---
-    const result = await reverseGeocodeNominatim(latitude, longitude);
     
-    // Manage cache size
-    if (geocodeCache.size >= MAX_CACHE_SIZE) {
-      const firstKey = geocodeCache.keys().next().value;
-      geocodeCache.delete(firstKey);
+    try {
+      // --- FALLBACK METHOD: Use Nominatim ---
+      const result = await reverseGeocodeNominatim(latitude, longitude);
+      
+      // Manage cache size
+      if (geocodeCache.size >= MAX_CACHE_SIZE) {
+        const firstKey = geocodeCache.keys().next().value;
+        geocodeCache.delete(firstKey);
+      }
+      
+      geocodeCache.set(cacheKey, {
+        data: result,
+        timestamp: Date.now()
+      });
+      
+      return result;
+    } catch (nominatimError) {
+      console.error('All geocoding methods failed:', nominatimError);
+      
+      // Return fallback with coordinates
+      const fallback = {
+        street: '',
+        city: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
+        province: '',
+        country: '',
+        formattedAddress: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
+      };
+      
+      // Manage cache size before adding fallback
+      if (geocodeCache.size >= MAX_CACHE_SIZE) {
+        const firstKey = geocodeCache.keys().next().value;
+        geocodeCache.delete(firstKey);
+      }
+      
+      geocodeCache.set(cacheKey, {
+        data: fallback,
+        timestamp: Date.now()
+      });
+      
+      return fallback;
     }
-    
-    geocodeCache.set(cacheKey, {
-      data: result,
-      timestamp: Date.now()
-    });
-    
-    return result;
-    
-    // Return fallback with coordinates
-    const fallback = {
-      street: '',
-      city: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
-      province: '',
-      country: '',
-      formattedAddress: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
-    };
-    
-    // Manage cache size before adding fallback
-    if (geocodeCache.size >= MAX_CACHE_SIZE) {
-      const firstKey = geocodeCache.keys().next().value;
-      geocodeCache.delete(firstKey);
-    }
-    
-    geocodeCache.set(cacheKey, {
-      data: fallback,
-      timestamp: Date.now()
-    });
-    
-    return fallback;
   }
 };
 
@@ -116,6 +121,7 @@ const parseExpoLocationResponse = (address) => {
     formattedAddress: formattedAddress || cityName || 'Unknown location'
   };
 };
+
 /**
  * Nominatim with better error handling and retry logic
  */
