@@ -8,7 +8,7 @@ import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { FirebaseService } from '../../backend/Firebase/FirebaseService';
 import { Audio } from 'expo-av';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 const NotificationContext = createContext();
 
@@ -204,33 +204,80 @@ const [acceptedWalkRequest, setAcceptedWalkRequest] = useState(null);
     };
   }, [userData, setCurrentWalkRequest, setIsNotificationVisible]);
 
-  // Listen for acceptance status updates for the current walk request
+  // Listen for acceptance status updates for the current walk request using currentWalkRequestId
+  // New version: Listen for sender confirmation for the receiver
+  const [currentWalkRequestId, setCurrentWalkRequestId] = useState(null);
   useEffect(() => {
-    if (!currentWalkRequest?.requestId) return;
-
-    // console.log($&);
-    
-    const walkRequestRef = doc(db, 'walkRequests', currentWalkRequest.requestId);
-    const unsubscribe = onSnapshot(walkRequestRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        // console.log($&);
-        
-        if (data.status === 'accepted_by_both') {
-          // Sender confirmed - hide loader and close modal
-          setAcceptanceLoading(false);
-          setIsNotificationVisible(false);
-          setCurrentWalkRequest(null);
-        } else if (data.status === 'cancelled') {
-          // Request was cancelled - hide loader
-          setAcceptanceLoading(false);
-          Alert.alert('Cancelled', 'The walk request was cancelled.');
-        }
-      }
-    });
-
-    return () => unsubscribe();
+    // Keep currentWalkRequestId in sync with currentWalkRequest?.requestId
+    if (currentWalkRequest?.requestId) {
+      setCurrentWalkRequestId(currentWalkRequest.requestId);
+    }
   }, [currentWalkRequest?.requestId]);
+
+  // Updated Firestore listener for currentWalkRequestId with detailed logging and handling for both sender and receiver
+useEffect(() => {
+  if (!currentWalkRequestId) return;
+
+  const walkRequestRef = doc(db, 'walkRequests', currentWalkRequestId);
+  const unsubscribe = onSnapshot(walkRequestRef, async (docSnap) => {
+    if (!docSnap.exists()) return;
+    const data = docSnap.data();
+
+    const userId = userData?.id || userData?.userId;
+    const isSender = userId && (userId === data.requesterId);
+    const isReceiver = userId && (userId !== data.requesterId);
+
+    if (data.status === 'accepted_by_both') {
+      const confirmedWalkRequest = {
+        requestId: currentWalkRequestId,
+        walkFrom: data.pickup || data.walkFrom,
+        walkTo: data.destination || data.walkTo,
+        meetupPoint: data.meetupPoint,
+        startPoint: data.startPoint || data.pickup || data.walkFrom,
+        destination: data.destination || data.walkTo,
+        requesterId: data.requesterId,
+        senderPhone: data.requesterPhone,
+        partnerName: isSender 
+          ? data.accepterData?.name || 'Walk Partner' 
+          : data.requesterName || 'Walk Partner',
+        partnerInitials: isSender
+          ? (data.accepterData?.name ? getInitials(data.accepterData.name) : 'WP')
+          : (data.requesterName ? getInitials(data.requesterName) : 'WP'),
+        preferredGender: data.preferredGender,
+        status: data.status,
+        confirmedAt: data.confirmedAt || new Date().toISOString(),
+        time: data.time,
+        senderName: data.senderName,
+      };
+
+      setAcceptedWalkRequest(confirmedWalkRequest);
+      setAcceptanceLoading(false);
+      setIsNotificationVisible(false);
+
+      if (isReceiver) {
+        // Alert.alert('Walk Confirmed! 🎉', 'The sender has confirmed. Your walk is starting!');
+      } else if (isSender) {
+        // Alert.alert('Walk Confirmed! 🎉', 'Your walking partner has accepted and confirmed the walk!');
+      }
+
+    } else if (data.status === 'cancelled') {
+      setAcceptedWalkRequest(null);
+      setAcceptanceLoading(false);
+      setIsNotificationVisible(false);
+      Alert.alert('Walk Cancelled', 'The walk request was cancelled.');
+
+    } else if (data.status === 'accepted_by_receiver') {
+      if (isSender) {
+        Alert.alert(
+          'Receiver Accepted!',
+          'Your walking partner accepted your walk request. Please confirm to start the walk.'
+        );
+      }
+    }
+  });
+
+  return () => unsubscribe();
+}, [currentWalkRequestId, currentWalkRequest, userData]);
 
   // Unified walk request status listener
   useEffect(() => {
@@ -724,16 +771,17 @@ const confirmWalkRequest = async (requestId) => {
 
 // Improved function to send acceptance notification to original requester
 const sendWalkAcceptedNotification = async (requesterPhone, requestId, accepterData, walkData) => {
+  // Log the requesterPhone at the start
+  console.log(`[sendWalkAcceptedNotification] requesterPhone: ${requesterPhone}`);
   try {
-    // console.log($&);
-
     // Get the requester's push token
     const requesterResult = await FirebaseService.getUserByPhone(requesterPhone);
     const userData = requesterResult.userData || requesterResult.data;
 
+    // Check for missing pushToken
     if (!userData?.pushToken) {
-      console.error(`❌ No push token for requester: ${requesterPhone}`);
-      return { success: false, error: 'No push token found' };
+      console.warn(`[sendWalkAcceptedNotification] No push token for requester: ${requesterPhone}`);
+      return { success: true, warning: 'No push token available, using Firestore updates only' };
     }
 
     const notificationData = {
@@ -751,12 +799,11 @@ const sendWalkAcceptedNotification = async (requesterPhone, requestId, accepterD
       notificationData
     );
 
-    // console.log($&);
     return { success: true };
 
   } catch (error) {
-    console.error('💥 Error sending acceptance notification:', error.message || error);
-    return { success: false, error: error.message || error };
+    console.error('[sendWalkAcceptedNotification] Error:', error);
+    return { success: true, warning: 'Push notification failed, using Firestore updates' };
   }
 };
 
@@ -1206,48 +1253,50 @@ const declineWalkRequest = async () => {
     }
   };
 
-  const contextValue = {
-    // State
-    notifications,
-    unreadCount,
-    userData,
-    isInitialized,
-    soundEnabled,
-    activePopup,
-    expoPushToken,
+const contextValue = {
+  // State
+  notifications,
+  unreadCount,
+  userData,
+  isInitialized,
+  soundEnabled,
+  activePopup,
+  expoPushToken,
 
-    // Actions
-    markNotificationAsRead,
-    markAllNotificationsAsRead,
-    acceptFriendRequest,
-    declineFriendRequest,
-    toggleSoundEnabled,
-    clearAllNotifications,
-    dismissPopup,
-    setActiveChat,
-    clearActiveChat,
+  // Walk request acceptance states (exported for easier access)
+  acceptedWalkRequest,
+  setAcceptedWalkRequest,
 
-    // Utilities
-    getNotificationById,
-    getUnreadNotifications,
-    getNotificationsByType,
-    playNotificationByType,
+  // Actions
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
+  acceptFriendRequest,
+  declineFriendRequest,
+  toggleSoundEnabled,
+  clearAllNotifications,
+  dismissPopup,
+  setActiveChat,
+  clearActiveChat,
 
-    // Walk request features
-    sendWalkRequest,
-    currentWalkRequest,
-    isNotificationVisible,
-    acceptWalkRequest,
-    declineWalkRequest,
-    setIsNotificationVisible,
+  // Utilities
+  getNotificationById,
+  getUnreadNotifications,
+  getNotificationsByType,
+  playNotificationByType,
 
-    // New walk request acceptance states
-    acceptanceLoading,
-    setAcceptanceLoading,
-    acceptedWalkRequest,
-    setAcceptedWalkRequest,
-    confirmWalkRequest,
-  };
+  // Walk request features
+  sendWalkRequest,
+  currentWalkRequest,
+  isNotificationVisible,
+  acceptWalkRequest,
+  declineWalkRequest,
+  setIsNotificationVisible,
+
+  // Additional walk request actions
+  acceptanceLoading,
+  setAcceptanceLoading,
+  confirmWalkRequest,
+};
 
   return (
     <NotificationContext.Provider value={contextValue}>
