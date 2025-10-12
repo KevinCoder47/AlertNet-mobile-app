@@ -32,6 +32,7 @@ export default {
           'This app needs access to your location in the background for safety monitoring.',
         // UIBackgroundModes: ['location'],
         LSApplicationQueriesSchemes: ['youtube', 'https'],
+        UIBackgroundModes: ['location'], // ADD THIS LINE
       },
     },
     android: {

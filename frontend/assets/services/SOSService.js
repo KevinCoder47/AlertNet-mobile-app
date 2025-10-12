@@ -40,6 +40,22 @@ class SOSServiceClass {
       return [];
     }
   }
+  
+  static async requestBackgroundLocationPermission() {
+    try {
+      const { status } = await Location.requestBackgroundPermissionsAsync();
+      if (status === 'granted') {
+        console.log('Background location permission granted');
+        return true;
+      } else {
+        console.warn('Background location permission denied');
+        return false;
+      }
+    } catch (error) {
+      console.error('Error requesting background location permission:', error);
+      return false;
+    }
+  }
 
   static async addEmergencyContact(contactData) {
     try {
@@ -87,9 +103,16 @@ class SOSServiceClass {
         return { enabled: false, error: 'Location services are disabled' };
       }
 
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
+      // Request foreground permission
+      const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
+      if (foregroundStatus !== 'granted') {
         return { enabled: false, error: 'Location permission denied' };
+      }
+
+      // Also request background permission for SOS features
+      const backgroundGranted = await this.requestBackgroundLocationPermission();
+      if (!backgroundGranted) {
+        console.warn('Background location permission not granted, but foreground is available');
       }
 
       return { enabled: true };
@@ -140,18 +163,23 @@ class SOSServiceClass {
    * This function is designed to be fast. It creates the SOS session,
    * then triggers the notification dispatch in the background.
    * @param {string} triggeredBy - The source of the SOS trigger (e.g., 'manual', 'voice').
+   * @param {object} userData - The authenticated user's data object.
    * @returns {Promise<string>} The ID of the created SOS session.
    */
-  static async initiateSOSSession(triggeredBy = 'manual') {
+  static async initiateSOSSession(triggeredBy = 'manual', userData) {
     // console.log($&);
     // 1. Get location first, as it's critical for all notifications.
     const location = await this.getCurrentLocation();
 
-    // 2. Create the SOS session in Firestore to get a session ID. This is awaited.
+    // 2. Create the SOS session in Firestore.
+    // MODIFIED: Pass the userId and userName from the userData object.
+    // This was the missing piece causing the "User not authenticated" error.
     const sessionResult = await SOSFirebaseService.createSOSSession({
       triggeredBy,
       startTime: new Date(),
       location, // Store initial location in the session document.
+      userId: userData.uid || userData.id || userData.userId,
+      userName: userData.name || userData.Name || 'Unknown User',
     });
 
     if (!sessionResult.success || !sessionResult.sessionId) {
@@ -165,7 +193,7 @@ class SOSServiceClass {
 
     // 4. Dispatch all notifications in the background.
     // We DO NOT await this. This is "fire-and-forget".
-    this.dispatchNotificationsInBackground(sosSessionId, location);
+    this.dispatchNotificationsInBackground(sosSessionId, location, userData);
     // console.log($&);
 
     // 5. Return the session ID to the UI immediately.
@@ -177,8 +205,9 @@ class SOSServiceClass {
    * This includes calling police, sending SMS, and sending push notifications.
    * @param {string} sosSessionId - The ID of the active SOS session.
    * @param {object} location - The user's location coordinates.
+   * @param {object} userData - The authenticated user's data object.
    */
-  static async dispatchNotificationsInBackground(sosSessionId, location) {
+  static async dispatchNotificationsInBackground(sosSessionId, location, userData) {
     // console.log($&);
     try {
       // Call police and log the event
@@ -198,7 +227,7 @@ class SOSServiceClass {
       }
 
       // Send push notifications to app friends
-      await SOSFirebaseService.sendSOSNotifications(location, null, sosSessionId);
+      await SOSFirebaseService.sendSOSNotifications(location, null, sosSessionId, userData);
 
       // console.log($&);
     } catch (error) {

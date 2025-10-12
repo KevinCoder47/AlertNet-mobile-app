@@ -15,6 +15,7 @@ import {
   RefreshControl,
   Image,
   TouchableWithoutFeedback,
+  Pressable,
   Linking,
 } from 'react-native';
 import { useNotifications } from '../contexts/NotificationContext';
@@ -58,7 +59,12 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
   const [selectedDate, setSelectedDate] = React.useState(new Date());
   const [showMenu, setShowMenu] = React.useState(false);
   const [allowNotifications, setAllowNotifications] = React.useState(true);
-  
+  const { 
+    acceptFriendRequest, 
+    declineFriendRequest,
+    playNotificationByType 
+  } = useNotifications();
+
   // New state for enhanced features
   const [searchQuery, setSearchQuery] = React.useState('');
   const [isRefreshing, setIsRefreshing] = React.useState(false);
@@ -241,47 +247,99 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
   }, [fetchNotifications]);
 
   // Mark notification as read
-  const handleMarkAsRead = (notificationId) => {
-    if (markNotificationAsRead) {
-      markNotificationAsRead(notificationId);
+  const handleMarkAsRead = async (notificationId) => {
+    if (!userData || !(userData.phone || userData.Phone || userData.phoneNumber)) {
+      console.error('User data not available');
+      return;
+    }
+  
+    try {
+      const userPhone = userData.phone || userData.Phone || userData.phoneNumber;
+      await FirebaseService.markNotificationAsRead(userPhone, notificationId);
       Vibration.vibrate(30);
+      
       // Collapse any expanded notification when it's marked as read
       if (expandedNotificationId === notificationId) {
         setExpandedNotificationId(null);
       }
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
     }
   };
 
-  const handleAccept = async (notification) => {
-    if (notification?.data?.requestId && acceptFriendRequest) { // Use the context function
-      const result = await acceptFriendRequest(notification.data.requestId);
-      if (result.success) {
-        Alert.alert('Friend Added!', `${notification.name} is now your friend.`);
-        // Mark as read after accepting
-        handleMarkAsRead(notification.id);
-      } else {
-        Alert.alert('Error', result.error || 'Could not accept friend request.');
-      }
-    }
-  };
+const handleAccept = async (notification) => {
+  if (!notification?.data?.requestId) {
+    Alert.alert('Error', 'Invalid friend request data');
+    return;
+  }
 
-  const handleDecline = async (notification) => {
-    if (notification?.data?.requestId && declineFriendRequest) { // Use the context function
-      await declineFriendRequest(notification.data.requestId);
-      // Mark as read after declining
-      handleMarkAsRead(notification.id);
-      // No need for an alert on decline
+  try {
+    const result = await acceptFriendRequest(notification.data.requestId);
+    
+    if (result.success) {
+      Alert.alert('Friend Added!', `${notification.name} is now your friend.`);
+      Vibration.vibrate(100);      
+      // Mark as read after accepting      
+      await markNotificationAsRead(notification.id);
+      
+      // Collapse the expanded notification
+      setExpandedNotificationId(null);
+    } else {
+      Alert.alert('Error', result.error || 'Could not accept friend request.');
     }
-  };
+  } catch (error) {
+    console.error('Error accepting friend request:', error);
+    Alert.alert('Error', 'An error occurred while accepting the friend request.');
+  }
+};
+
+const handleDecline = async (notification) => {
+  if (!notification?.data?.requestId) {
+    Alert.alert('Error', 'Invalid friend request data');
+    return;
+  }
+
+  try {
+    const result = await declineFriendRequest(notification.data.requestId);
+    
+    if (result.success) {
+      Vibration.vibrate(50);
+      // Mark as read after declining      
+      await markNotificationAsRead(notification.id);
+      
+      // Collapse the expanded notification
+      setExpandedNotificationId(null);
+    } else {
+      Alert.alert('Error', result.error || 'Could not decline friend request.');
+    }
+  } catch (error) {
+    console.error('Error declining friend request:', error);
+    Alert.alert('Error', 'An error occurred while declining the friend request.');
+  }
+};
 
   // Mark all as read
-  const handleMarkAllAsRead = () => {
-    if (markAllNotificationsAsRead) {
-      markAllNotificationsAsRead();
+  const handleMarkAllAsRead = async () => {
+    try {
       Vibration.vibrate(50);
+      
+      // Get all unread notifications from the current tab
+      const unreadNotifications = currentNotifications.filter(n => n.status === 'new');
+      if (unreadNotifications.length === 0) {
+        Alert.alert('Info', 'All notifications are already read.');
+        return;
+      }
+      
+      await markAllNotificationsAsRead();
+      
+      Alert.alert('Success', `${unreadNotifications.length} notification${unreadNotifications.length > 1 ? 's' : ''} marked as read.`);
+    } catch (error) {
+      console.error('Error marking all as read:', error);
+      Alert.alert('Error', 'Could not mark all notifications as read.');
     }
   };
-
+  
+  
   // Clear all notifications
   const handleClearAll = () => {
     Alert.alert(
@@ -354,7 +412,7 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
             profilePicture: notification.profilePicture,
             data: notification.data,
           };
-          onOpenChat(personData);
+          onOpenChat(personData, 'NotificationsPopup'); // Pass the origin
           setIsNotification(false);
         } else {
           Alert.alert('Quick Response', 'Response sent!');
@@ -663,16 +721,14 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
       visible={true}
       onRequestClose={() => setIsNotification(false)}
     >
-      <View style={styles.modalOverlay}>
-        <TouchableOpacity 
-          style={styles.backdrop} 
-          onPress={() => {
-            setIsNotification(false);
-            setShowMenu(false);
-          }}
-        />
-        
-        <View style={styles.popupContainer}>
+      <Pressable
+        style={styles.modalOverlay}
+        onPress={() => {
+          setIsNotification(false);
+          setShowMenu(false);
+        }}
+      >
+        <Pressable style={styles.popupContainer} onPress={null}>
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.headerTitle}>
@@ -1079,8 +1135,8 @@ const NotificationsPopup = ({ setIsNotification, userData, onViewLocation, onOpe
             <View style={styles.bottomSpacing} />
           </ScrollView>
 
-        </View>
-      </View>
+        </Pressable>
+      </Pressable>
     </Modal>
 
       {/* Enhanced Calendar Popup as a separate Modal for cross-platform consistency */}
@@ -1171,9 +1227,6 @@ const getStyles = (getScaledFontSize, colors) => StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
-  },
-  backdrop: {
-    flex: 1,
   },
   popupContainer: {
     height: height * 0.8,

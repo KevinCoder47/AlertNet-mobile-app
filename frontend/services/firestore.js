@@ -231,48 +231,124 @@ const fieldMap = {
 };
 
 /**
- * Fetches a user document
+ * Fetches a user document with enhanced error handling
  * @param {string} userId - Firebase Auth UID
  * @returns {Promise<Object|null>} - User data or null if not found
  */
 export const getUserDocument = async (userId) => {
   try {
+    console.log("Fetching user document for:", userId);
+    
+    if (!userId || typeof userId !== 'string') {
+      console.error("Invalid userId provided:", userId);
+      return null;
+    }
+    
     const docRef = doc(db, "users", userId);
     const docSnap = await getDoc(docRef);
     
-    if (docSnap.exists()) {
-      // Map back to our app's naming convention
-      const data = docSnap.data();
-      return {
-        userId: data.userID,
-        campus: data.Campus,
-        createdAt: data.CreatedAt?.toDate() || null,
-        currentLocation: data.CurrentLocation || { latitude: 0, longitude: 0 },
-        email: data.Email,
-        friends: data.Friends.map(friend => ({
-          uid: friend.uid || friend.id || '',
-          name: friend.name || '',
-          email: friend.email || '',
-          phoneNumber: friend.phoneNumber || ''
-        })),
-        gender: data.Gender,
-        imageUrl: data.ImageURL,
-        lastLogin: data.LastLogin?.toDate() || null,
-        name: data.Name,
-        phone: data.Phone,
-        rating: data.Rating,
-        residenceAddress: data.ResidenceAddress || { latitude: 0, longitude: 0 },
-        schoolAddress: data.SchoolAddress || { latitude: 0, longitude: 0 },  // Add this line
-        surname: data.Surname,
-        walks: data.Walks,
-        lastLocationUpdate: data.LastLocationUpdate?.toDate() || null
-      };
+    if (!docSnap.exists()) {
+      console.log("User document does not exist for:", userId);
+      return null;
     }
-    return null;
+    
+    // Map back to our app's naming convention
+    const data = docSnap.data();
+    console.log("Raw Firestore data:", data);
+    
+    // Safely map friends array
+    let mappedFriends = [];
+    if (Array.isArray(data.Friends)) {
+      mappedFriends = data.Friends.map(friend => {
+        // Handle different friend object structures
+        if (typeof friend === 'object' && friend !== null) {
+          return {
+            uid: friend.uid || friend.id || friend.userID || '',
+            name: friend.name || friend.Name || '',
+            email: friend.email || friend.Email || '',
+            phoneNumber: friend.phoneNumber || friend.Phone || friend.phone || '',
+            isEmergency: friend.isEmergency || friend.IsEmergency || false
+          };
+        }
+        return null;
+      }).filter(f => f !== null);
+    }
+    
+    const mappedData = {
+      userId: data.userID || userId,
+      campus: data.Campus || '',
+      createdAt: data.CreatedAt?.toDate ? data.CreatedAt.toDate() : null,
+      currentLocation: data.CurrentLocation || { latitude: 0, longitude: 0 },
+      email: data.Email || '',
+      friends: mappedFriends,
+      gender: data.Gender || '',
+      imageUrl: data.ImageURL || '',
+      lastLogin: data.LastLogin?.toDate ? data.LastLogin.toDate() : null,
+      name: data.Name || '',
+      phone: data.Phone || '',
+      rating: data.Rating || 0,
+      residenceAddress: data.ResidenceAddress || { latitude: 0, longitude: 0 },
+      schoolAddress: data.SchoolAddress || { latitude: 0, longitude: 0 },
+      surname: data.Surname || '',
+      walks: data.Walks || 0,
+      lastLocationUpdate: data.LastLocationUpdate?.toDate ? data.LastLocationUpdate.toDate() : null
+    };
+    
+    console.log("Mapped user data:", mappedData);
+    return mappedData;
+    
   } catch (error) {
-    const handledError = handleFirestoreError(error);
-    console.error("Error fetching user document:", handledError);
-    throw handledError;
+    console.error("Error in getUserDocument:", error);
+    console.error("Error details:", {
+      message: error.message,
+      code: error.code,
+      stack: error.stack
+    });
+    
+    // Return null instead of throwing to allow fallback handling
+    return null;
+  }
+};
+
+/**
+ * ALTERNATIVE: Direct emergency user fetch (bypasses mapping issues)
+ * Use this specifically for emergency scenarios
+ */
+export const getEmergencyUserData = async (userId) => {
+  try {
+    console.log("Emergency fetch for userId:", userId);
+    
+    if (!userId || typeof userId !== 'string') {
+      throw new Error("Invalid userId");
+    }
+    
+    const docRef = doc(db, "users", userId);
+    const docSnap = await getDoc(docRef);
+    
+    if (!docSnap.exists()) {
+      throw new Error("User not found");
+    }
+    
+    const rawData = docSnap.data();
+    
+    // Return minimal, safe data for emergency use
+    return {
+      name: rawData.Name || "User",
+      surname: rawData.Surname || "Unknown",
+      phone: rawData.Phone || "No phone",
+      email: rawData.Email || "No email",
+      currentLocation: rawData.CurrentLocation || { latitude: 0, longitude: 0 },
+      emergencyContacts: (rawData.Friends || [])
+        .filter(f => f && (f.isEmergency || f.IsEmergency))
+        .map(f => ({
+          name: f.name || f.Name || "Unknown",
+          phoneNumber: f.phoneNumber || f.Phone || f.phone || "N/A"
+        }))
+    };
+    
+  } catch (error) {
+    console.error("Emergency user fetch error:", error);
+    throw error;
   }
 };
 

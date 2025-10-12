@@ -1,5 +1,5 @@
 /**
- * Geocoding Service
+ * Geocoding Service - React Native Compatible Version
  * Converts coordinates to human-readable location names with street-level detail
  * Includes distance calculation functionality
  */
@@ -7,6 +7,18 @@
 // Cache for storing geocoded locations to minimize API calls
 const geocodeCache = new Map();
 const CACHE_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours
+
+/**
+ * React Native compatible fetch with timeout
+ */
+const fetchWithTimeout = (url, options = {}, timeout = 10000) => {
+  return Promise.race([
+    fetch(url, options),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Request timeout')), timeout)
+    )
+  ]);
+};
 
 /**
  * Reverse geocode coordinates to get location name with street
@@ -41,7 +53,7 @@ export const reverseGeocode = async (latitude, longitude) => {
   }
 
   try {
-    // Try primary provider: OpenStreetMap Nominatim (free, no API key needed)
+    // Try primary provider: OpenStreetMap Nominatim
     const result = await reverseGeocodeNominatim(latitude, longitude);
     
     // Cache the result
@@ -54,14 +66,28 @@ export const reverseGeocode = async (latitude, longitude) => {
   } catch (error) {
     console.error('Geocoding failed:', error);
     
-    // Fallback to approximate location
-    return {
-      street: '',
-      city: 'Near coordinates',
-      province: '',
-      country: '',
-      formattedAddress: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
-    };
+    // Try fallback provider
+    try {
+      const fallbackResult = await reverseGeocodePhoton(latitude, longitude);
+      
+      geocodeCache.set(cacheKey, {
+        data: fallbackResult,
+        timestamp: Date.now()
+      });
+      
+      return fallbackResult;
+    } catch (fallbackError) {
+      console.error('Fallback geocoding also failed:', fallbackError);
+      
+      // Return approximate location
+      return {
+        street: '',
+        city: 'Near coordinates',
+        province: '',
+        country: '',
+        formattedAddress: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
+      };
+    }
   }
 };
 
@@ -72,29 +98,84 @@ export const reverseGeocode = async (latitude, longitude) => {
  * @returns {Promise<Object>} - Location data with street information
  */
 const reverseGeocodeNominatim = async (lat, lon) => {
-  // Use zoom=18 for street-level detail (higher zoom = more detail)
+  // Use zoom=18 for street-level detail
   const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`;
   
-  const response = await fetch(url, {
-    headers: {
-      'User-Agent': 'AlertNetApp/1.0' // Nominatim requires a User-Agent
+  try {
+    const response = await fetchWithTimeout(url, {
+      method: 'GET',
+      headers: {
+        'User-Agent': 'AlertNetApp/1.0',
+        'Accept': 'application/json'
+      }
+    }, 10000);
+
+    if (!response.ok) {
+      throw new Error(`Nominatim API error: ${response.status}`);
     }
-  });
 
-  if (!response.ok) {
-    throw new Error(`Nominatim API error: ${response.status}`);
+    const data = await response.json();
+    
+    if (!data.address) {
+      throw new Error('No address data returned');
+    }
+
+    return parseNominatimResponse(data);
+  } catch (error) {
+    console.error('Nominatim request failed:', error.message);
+    throw error;
   }
+};
 
-  const data = await response.json();
+/**
+ * Photon geocoding API (alternative, often more reliable in React Native)
+ * @param {number} lat - Latitude
+ * @param {number} lon - Longitude
+ * @returns {Promise<Object>} - Location data
+ */
+const reverseGeocodePhoton = async (lat, lon) => {
+  const url = `https://photon.komoot.io/reverse?lon=${lon}&lat=${lat}`;
   
-  if (!data.address) {
-    throw new Error('No address data returned');
-  }
+  try {
+    const response = await fetchWithTimeout(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json'
+      }
+    }, 10000);
 
-  // Extract relevant location components with priority for street-level info
+    if (!response.ok) {
+      throw new Error(`Photon API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    if (!data.features || data.features.length === 0) {
+      throw new Error('No results from Photon');
+    }
+
+    const props = data.features[0].properties;
+    
+    return {
+      street: props.street || props.name || '',
+      city: props.city || props.locality || props.county || 'Unknown',
+      province: props.state || props.region || '',
+      country: props.country || '',
+      formattedAddress: props.name || `${props.city || 'Unknown location'}`
+    };
+  } catch (error) {
+    console.error('Photon request failed:', error.message);
+    throw error;
+  }
+};
+
+/**
+ * Parse Nominatim API response
+ */
+const parseNominatimResponse = (data) => {
   const address = data.address;
   
-  // Build street address (combining house number and road)
+  // Build street address
   const houseNumber = address.house_number || '';
   const road = address.road || 
                address.street || 
@@ -123,7 +204,7 @@ const reverseGeocodeNominatim = async (lat, lon) => {
   
   const country = address.country || '';
   
-  // Build formatted address with street priority
+  // Build formatted address
   let formattedAddress = '';
   
   if (street) {
@@ -135,7 +216,6 @@ const reverseGeocodeNominatim = async (lat, lon) => {
     formattedAddress = city;
   }
   
-  // Don't add province if it's the same as city (common in some regions)
   if (province && province !== city && formattedAddress) {
     formattedAddress += `, ${province}`;
   }
@@ -152,11 +232,6 @@ const reverseGeocodeNominatim = async (lat, lon) => {
 
 /**
  * Calculate distance between two coordinates in meters (Haversine formula)
- * @param {number} lat1 - First latitude
- * @param {number} lon1 - First longitude
- * @param {number} lat2 - Second latitude
- * @param {number} lon2 - Second longitude
- * @returns {number} - Distance in meters
  */
 const calculateDistanceInMeters = (lat1, lon1, lat2, lon2) => {
   const R = 6371000; // Earth's radius in meters
@@ -172,15 +247,8 @@ const calculateDistanceInMeters = (lat1, lon1, lat2, lon2) => {
 
 /**
  * Calculate distance between two coordinates and return formatted string
- * (Matches OLD GeocodingService API)
- * @param {number} lat1 - First latitude
- * @param {number} lon1 - First longitude
- * @param {number} lat2 - Second latitude
- * @param {number} lon2 - Second longitude
- * @returns {string} - Formatted distance string (e.g., "5.2km away", "120m away")
  */
 export const calculateDistance = (lat1, lon1, lat2, lon2) => {
-  // Validation
   if (!lat1 && lat1 !== 0) return 'Unknown distance';
   if (!lon1 && lon1 !== 0) return 'Unknown distance';
   if (!lat2 && lat2 !== 0) return 'Unknown distance';
@@ -215,14 +283,8 @@ export const calculateDistance = (lat1, lon1, lat2, lon2) => {
 
 /**
  * Calculate distance and return detailed object
- * @param {number} lat1 - First latitude
- * @param {number} lon1 - First longitude
- * @param {number} lat2 - Second latitude
- * @param {number} lon2 - Second longitude
- * @returns {Object} - { meters: number, kilometers: number, formatted: string }
  */
 export const calculateDistanceDetailed = (lat1, lon1, lat2, lon2) => {
-  // Validate inputs
   if (!lat1 || !lon1 || !lat2 || !lon2 ||
       isNaN(lat1) || isNaN(lon1) || isNaN(lat2) || isNaN(lon2)) {
     return {
@@ -234,8 +296,6 @@ export const calculateDistanceDetailed = (lat1, lon1, lat2, lon2) => {
   
   const distanceM = calculateDistanceInMeters(lat1, lon1, lat2, lon2);
   const distanceKm = distanceM / 1000;
-  
-  // Use the same formatting as calculateDistance
   const formatted = calculateDistance(lat1, lon1, lat2, lon2);
   
   return {
@@ -247,19 +307,14 @@ export const calculateDistanceDetailed = (lat1, lon1, lat2, lon2) => {
 
 /**
  * Calculate distance and geocode location in one call
- * @param {Object} fromLocation - Starting location { latitude, longitude }
- * @param {Object} toLocation - Destination location { latitude, longitude }
- * @returns {Promise<Object>} - { location: Object, distance: string }
  */
 export const geocodeWithDistance = async (fromLocation, toLocation) => {
   try {
-    // Geocode the destination
     const locationData = await reverseGeocode(
       toLocation.latitude,
       toLocation.longitude
     );
     
-    // Calculate distance if we have both locations (returns formatted string)
     let distance = 'Unknown distance';
     
     if (fromLocation?.latitude && fromLocation?.longitude) {
@@ -292,16 +347,11 @@ export const geocodeWithDistance = async (fromLocation, toLocation) => {
 
 /**
  * Batch geocode multiple locations with distance calculations
- * @param {Object} fromLocation - Starting location { latitude, longitude }
- * @param {Array<Object>} locations - Array of { latitude, longitude }
- * @returns {Promise<Map>} - Map of coordinates to location and distance data
  */
 export const batchGeocodeWithDistance = async (fromLocation, locations) => {
   const results = new Map();
-  
-  // Process in batches to avoid rate limiting
   const BATCH_SIZE = 5;
-  const DELAY_BETWEEN_BATCHES = 1000; // 1 second
+  const DELAY_BETWEEN_BATCHES = 1500; // Increased to 1.5 seconds for rate limiting
   
   for (let i = 0; i < locations.length; i += BATCH_SIZE) {
     const batch = locations.slice(i, i + BATCH_SIZE);
@@ -310,8 +360,13 @@ export const batchGeocodeWithDistance = async (fromLocation, locations) => {
       if (!loc.latitude || !loc.longitude) return null;
       
       const key = `${loc.latitude},${loc.longitude}`;
-      const result = await geocodeWithDistance(fromLocation, loc);
-      return { key, result };
+      try {
+        const result = await geocodeWithDistance(fromLocation, loc);
+        return { key, result };
+      } catch (error) {
+        console.error(`Failed to geocode ${key}:`, error);
+        return null;
+      }
     });
     
     const batchResults = await Promise.all(promises);
@@ -322,7 +377,6 @@ export const batchGeocodeWithDistance = async (fromLocation, locations) => {
       }
     });
     
-    // Delay between batches to respect rate limits
     if (i + BATCH_SIZE < locations.length) {
       await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_BATCHES));
     }
@@ -333,15 +387,11 @@ export const batchGeocodeWithDistance = async (fromLocation, locations) => {
 
 /**
  * Batch geocode multiple locations (without distance)
- * @param {Array<Object>} locations - Array of { latitude, longitude }
- * @returns {Promise<Map>} - Map of coordinates to location data
  */
 export const batchGeocode = async (locations) => {
   const results = new Map();
-  
-  // Process in batches to avoid rate limiting
   const BATCH_SIZE = 5;
-  const DELAY_BETWEEN_BATCHES = 1000; // 1 second
+  const DELAY_BETWEEN_BATCHES = 1500;
   
   for (let i = 0; i < locations.length; i += BATCH_SIZE) {
     const batch = locations.slice(i, i + BATCH_SIZE);
@@ -350,8 +400,13 @@ export const batchGeocode = async (locations) => {
       if (!loc.latitude || !loc.longitude) return null;
       
       const key = `${loc.latitude},${loc.longitude}`;
-      const result = await reverseGeocode(loc.latitude, loc.longitude);
-      return { key, result };
+      try {
+        const result = await reverseGeocode(loc.latitude, loc.longitude);
+        return { key, result };
+      } catch (error) {
+        console.error(`Failed to geocode ${key}:`, error);
+        return null;
+      }
     });
     
     const batchResults = await Promise.all(promises);
@@ -362,7 +417,6 @@ export const batchGeocode = async (locations) => {
       }
     });
     
-    // Delay between batches to respect rate limits
     if (i + BATCH_SIZE < locations.length) {
       await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_BATCHES));
     }
@@ -373,33 +427,26 @@ export const batchGeocode = async (locations) => {
 
 /**
  * Format location for display with street name priority
- * @param {Object} location - Location object from reverseGeocode
- * @returns {string} - Formatted location string
  */
 export const formatLocationForDisplay = (location) => {
   if (!location) return 'Unknown location';
   
-  // Priority 1: Street and city (most detailed)
   if (location.street && location.city) {
     return `${location.street}, ${location.city}`;
   }
   
-  // Priority 2: Just street (if no city)
   if (location.street) {
     return location.street;
   }
   
-  // Priority 3: City and province
   if (location.city && location.province) {
     return `${location.city}, ${location.province}`;
   }
   
-  // Priority 4: Just city
   if (location.city) {
     return location.city;
   }
   
-  // Fallback to formatted address
   return location.formattedAddress || 'Unknown location';
 };
 

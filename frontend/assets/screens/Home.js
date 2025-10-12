@@ -1,4 +1,4 @@
-import { StyleSheet, View, Dimensions, Image } from 'react-native';
+import { StyleSheet, View, Dimensions, Image, TouchableOpacity, Text, KeyboardAvoidingView, Platform } from 'react-native';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Map from '../componets/Map';
 import TopBar from '../componets/TopBar';
@@ -43,6 +43,8 @@ import SafetyZones from './SafetyResource_Screens/safetyZones';
 import LocationViewer from './LocationViewer';
 import ChatProfile from './chatProfile';
 import ChatScreen from './ChatScreen';
+import ChatBot from '../componets/ChatBot';
+import { BlurView } from 'expo-blur';
 
 const { width, height } = Dimensions.get('window');
 
@@ -133,13 +135,18 @@ const Home = ({ route, handleLogout }) => {
   const [isChatScreen, setIsChatScreen] = useState(false);
   const [chatTarget, setChatTarget] = useState(null);
   const [isViewingProfileOf, setIsViewingProfileOf] = useState(null);
+  const [chatOpenedFrom, setChatOpenedFrom] = useState(null); // Track where chat was opened from
   const [userImage, setUserImage] = useState(null);
   const [cachedImagePath, setCachedImagePath] = useState(null);
   const [imageError, setImageError] = useState(false);
   const [userLocation, setUserLocation] = useState(null);
   const mapRef = useRef(null);
   const [emergencyContacts, setEmergencyContacts] = useState([]);
+  // We need the navigation object to go back
+  const navigation = route.params?.navigation;
+
   const [locationUpdateInterval, setLocationUpdateInterval] = useState(null);
+  const [isChatBotOpen, setIsChatBotOpen] = useState(false);
 
   const handleViewLocation = (notification) => {
     if (notification && notification.location) {
@@ -160,11 +167,17 @@ const Home = ({ route, handleLogout }) => {
       const personToChat = route.params.openChatWith;
       // console.log($&);
       handleOpenChat(personToChat);
+      // If opened via navigation, record the source
+      if (route.params.from) {
+        setChatOpenedFrom(route.params.from);
+      }
+      // Clear the param to prevent re-triggering
+      navigation.setParams({ openChatWith: null, from: null });
     }
   }, [route.params?.openChatWith]);
 
-  const handleOpenChat = async (personData) => {
-    // // console.log($&);
+  const handleOpenChat = async (personData, from) => {
+    console.log('DEBUG: Opening chat with raw personData:', JSON.stringify(personData, null, 2));
     
     const personId = personData?.senderId || personData?.friendId || personData?.id;
     // // console.log($&);
@@ -189,6 +202,10 @@ const Home = ({ route, handleLogout }) => {
       
       // console.log($&);
       
+      if (from) {
+        setChatOpenedFrom(from);
+      }
+
       setChatTarget({
         id: personId,
         name: name,
@@ -283,28 +300,30 @@ const Home = ({ route, handleLogout }) => {
 
   // Background location permissions
   useEffect(() => {
-    const requestBackgroundPermission = async () => {
-      try {
-        const { status } = await Location.requestBackgroundPermissionsAsync();
-        if (status === 'granted') {
-          await Location.startLocationUpdatesAsync('backgroundLocationTask', {
-            accuracy: Location.Accuracy.Balanced,
-            timeInterval: 300000,
-            distanceInterval: 100,
-            showsBackgroundLocationIndicator: true,
-          });
+    if (userData?.userId) { // Only run when we have a user
+      const requestBackgroundPermission = async () => {
+        try {
+          const { status } = await Location.requestBackgroundPermissionsAsync();
+          if (status === 'granted') {
+            await Location.startLocationUpdatesAsync('backgroundLocationTask', {
+              accuracy: Location.Accuracy.Balanced,
+              timeInterval: 300000,
+              distanceInterval: 100,
+              showsBackgroundLocationIndicator: true,
+            });
+          }
+        } catch (error) {
+          console.error("Error requesting background location:", error);
         }
-      } catch (error) {
-        // console.error("Error requesting background location:", error);
-      }
-    };
-    
-    requestBackgroundPermission();
-    
-    return () => {
-      Location.stopLocationUpdatesAsync('backgroundLocationTask');
-    };
-  }, []);
+      };
+      
+      requestBackgroundPermission();
+      
+      return () => {
+        Location.stopLocationUpdatesAsync('backgroundLocationTask');
+      };
+    }
+  }, [userData?.userId]);
 
   // User presence management
   useEffect(() => {
@@ -807,9 +826,18 @@ const Home = ({ route, handleLogout }) => {
       <ChatScreen
         person={chatTarget}
         userData={userData}
+        navigation={navigation}
         onClose={() => {
-          setIsChatScreen(false);
-          setChatTarget(null);
+          if (chatOpenedFrom && navigation) {
+            navigation.goBack();
+          } else if (chatOpenedFrom === 'NotificationsPopup') {
+            setIsChatScreen(false);
+            setIsNotification(true); // Re-open the notification panel
+          } else {
+            setIsChatScreen(false);
+            setChatTarget(null);
+          }
+          setChatOpenedFrom(null); // Reset for next time
         }}
         onViewProfile={(person) => {
           setIsChatScreen(false);
@@ -823,43 +851,94 @@ const Home = ({ route, handleLogout }) => {
   return (
     <MapProvider value={{ mapRef, userLocation, setUserLocation }}>
       <View style={styles.container}>
-        <Map 
-          userImage={getImageSource()} 
-          friendsDetails={friendsDetails}
-          setFriendsDetails={() => {}} // No longer needed - context handles updates
-          userLocation={userLocation}
-          mapRef={mapRef}
-        />
-        <TopBar 
-          setIsUserProfile={setIsUserProfile}
-          isNotHome={isNotHome}
-          isPeopleActive={isPeopleActive}
-          isTopBarManuallyExpanded={isTopBarManuallyExpanded}
-          setIsTopBarManuallyExpanded={setIsTopBarManuallyExpanded}
-          setIsSafetyResources={() => {
-            setPreviousScreen('home');
-            setIsSafetyResources(true);
-          }}
-          userImage={getImageSource()}
-          setIsNotification={setIsNotification}
-          renderProfileImage={renderProfileImage}
-          userLocation={userLocation}
-          unreadCount={unreadCount}
-        />
+        {/* Map Layer */}
+        <View style={styles.mapContainer}>
+          <Map 
+            userImage={getImageSource()} 
+            friendsDetails={friendsDetails}
+            setFriendsDetails={() => {}} // No longer needed - context handles updates
+            userLocation={userLocation}
+            mapRef={mapRef}
+          />
+        </View>
 
-        <BottomNav
-          isNotHome={isNotHome}
-          setIsNotHome={setIsNotHome}
-          isWalkPartner={isWalkPartner}
-          setIsWalkPartner={setIsWalkPartner}
-          setIsSOS={(sessionId) => {
-            setActiveSosSessionId(sessionId);
-            setIsSOS(true); 
-          }}
-          setIsPeopleActive={setIsPeopleActive}
-          setIsTopBarManuallyExpanded={setIsTopBarManuallyExpanded}
-          onOpenChat={handleOpenChat}
-        />
+        {/* TopBar - Fixed at top */}
+        <View style={styles.topBarContainer}>
+          <TopBar 
+            setIsUserProfile={setIsUserProfile}
+            isNotHome={isNotHome}
+            isPeopleActive={isPeopleActive}
+            isTopBarManuallyExpanded={isTopBarManuallyExpanded}
+            setIsTopBarManuallyExpanded={setIsTopBarManuallyExpanded}
+            setIsSafetyResources={() => {
+              setPreviousScreen('home');
+              setIsSafetyResources(true);
+            }}
+            userImage={getImageSource()}
+            setIsNotification={setIsNotification}
+            renderProfileImage={renderProfileImage}
+            userLocation={userLocation}
+            unreadCount={unreadCount}
+          />
+        </View>
+
+        {/* BottomNav - Fixed at bottom */}
+        <View style={styles.bottomNavContainer}>
+          <BottomNav
+            isNotHome={isNotHome}
+            setIsNotHome={setIsNotHome}
+            isWalkPartner={isWalkPartner}
+            setIsWalkPartner={setIsWalkPartner}
+            setIsSOS={(sessionId) => {
+              setActiveSosSessionId(sessionId);
+              setIsSOS(true); 
+            }}
+            setIsPeopleActive={setIsPeopleActive}
+            setIsTopBarManuallyExpanded={setIsTopBarManuallyExpanded}
+            onOpenChat={handleOpenChat}
+          />
+        </View>
+        
+        {/* Floating Chatbot Button - Hidden when People bar or helpline page are open */}
+        {!isChatBotOpen && !IsNotification && !isPeopleActive && !isNotHome && (
+        <BlurView intensity={80} tint="light" style={styles.chatButton}>
+          <TouchableOpacity
+            style={styles.chatButtonInner}
+            onPress={() => setIsChatBotOpen(true)}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="chatbubbles" size={26} color="#FF6600" />
+          </TouchableOpacity>
+        </BlurView>
+      )}
+
+          {/* Floating Chatbot Overlay - Hidden when People bar or helpline page are open */}
+          {isChatBotOpen && !isPeopleActive && !isNotHome && (
+            <KeyboardAvoidingView 
+              style={styles.chatBotOverlay}
+              behavior={Platform.OS === "ios" ? "padding" : "height"}
+            >
+              <View style={styles.chatBotContainer}>
+                <View style={styles.chatBotContent}>
+                  <ChatBot 
+                    setIsChatBot={setIsChatBotOpen} 
+                    isFloating={true}
+                    userId={userData?.userId}
+                    userLocation={userLocation}
+                    userEmail={userData?.Email || userData?.email || ""}
+                    myPhone={userData?.Phone || userData?.phone || ""}
+                    userData={userData}
+                    onActivateSOS={(sosSessionId) => {
+                      console.log('Home: Received SOS activation from chatbot, session:', sosSessionId);
+                      setActiveSosSessionId(sosSessionId);
+                      setIsChatBotOpen(false);
+                      setIsSOS(true);
+                    }}
+                  />
+                </View>
+              </View>
+            </KeyboardAvoidingView>
+          )}
         
         {IsNotification && (
           <NotificationsPopup
@@ -906,7 +985,7 @@ export default Home;
 
 const styles = StyleSheet.create({
   container: {
-    // flex: 1,
+    flex: 1,
   },
   profileImage: {
     width: 40,
@@ -924,5 +1003,69 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 2,
     borderColor: '#fff',
+  },
+  chatButton: {
+    position: "absolute",
+    bottom: 150,
+    left: 25,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    overflow: 'hidden',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 10,
+    zIndex: 9999,
+  },
+
+  chatButtonInner: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 102, 0, 0.2)',
+  },
+
+  chatBotOverlay: {
+    position: 'absolute',
+    bottom: 140,
+    right: 10,
+    left: 10,
+    height: height * 0.55,
+    zIndex: 1001,
+  },
+  chatBotContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(26, 26, 26, 0.75)',
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 15,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  chatBotHeader: {
+    backgroundColor: '#FF6600',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 15,
+    paddingVertical: 15,
+  },
+  chatBotTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  chatBotClose: {
+    padding: 5,
+  },
+  chatBotContent: {
+    flex: 1,
   },
 });

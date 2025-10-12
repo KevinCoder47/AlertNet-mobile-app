@@ -438,7 +438,9 @@ export default function Profile(props) {
                 return;
               }
 
-              navigation.navigate('Home', { 
+              navigation.navigate('Home', {
+                navigation: navigation, // Pass navigation object
+                from: 'Profile', // Tell Home where we came from
                 openChatWith: {
                     id: personId,
                     friendId: personId,

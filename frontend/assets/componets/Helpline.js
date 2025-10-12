@@ -5,7 +5,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Clipboard from 'expo-clipboard';
 import { BlurView } from 'expo-blur';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons, MaterialIcons, FontAwesome5, AntDesign } from '@expo/vector-icons';
 
 const { width, height } = Dimensions.get('window')
 
@@ -73,12 +73,12 @@ const Helpline = ({ onClose = () => console.log('Close button pressed - please i
   }, []);
 
   const emergencyServices = [
-    { title: 'Police Emergency', number: '10111', description: 'Crime, accidents, emergencies', icon: '🚔', color: '#E74C3C', priority: 'Critical' },
-    { title: 'Campus Security', number: '011 559 2885', description: 'On-campus safety & security', icon: '🛡️', color: '#3498DB', priority: 'High' },
-    { title: 'Medical Emergency', number: '10177', description: 'Ambulance & medical assistance', icon: '🚑', color: '#27AE60', priority: 'Critical' },
-    { title: 'Fire Department', number: '10177', description: 'Fire emergencies & rescue', icon: '🚒', color: '#F39C12', priority: 'Critical' },
-    { title: 'Crisis Counseling', number: '0800 567 567', description: '24/7 mental health support', icon: '🤝', color: '#1ABC9C', priority: 'High' },
-    { title: 'Add Emergency Contact', number: 'Tap to add new contact', description: 'Add personal emergency contacts', icon: '➕', color: '#9B59B6', priority: 'Normal', isAddButton: true }
+    { title: 'Police Emergency', number: '10111', description: 'Crime, accidents, emergencies', icon: { pack: 'MaterialIcons', name: 'local-police' }, color: '#E74C3C', priority: 'Critical', infoIcon: 'help-circle-outline' },
+    { title: 'Campus Security', number: '011 559 2885', description: 'On-campus safety & security', icon: { pack: 'Ionicons', name: 'shield-checkmark-outline' }, color: '#3498DB', priority: 'High' },
+    { title: 'Medical Emergency', number: '10177', description: 'Ambulance & medical assistance', icon: { pack: 'MaterialCommunityIcons', name: 'ambulance' }, color: '#27AE60', priority: 'Critical' },
+    { title: 'Fire Department', number: '10177', description: 'Fire emergencies & rescue', icon: { pack: 'MaterialCommunityIcons', name: 'fire-truck' }, color: '#F39C12', priority: 'Critical' },
+    { title: 'Crisis Counseling', number: '0800 567 567', description: '24/7 mental health support', icon: { pack: 'Ionicons', name: 'heart-outline' }, color: '#1ABC9C', priority: 'High' },
+    { title: 'Add Emergency Contact', number: 'Tap to add new contact', description: 'Add personal emergency contacts', icon: { pack: 'Ionicons', name: 'add' }, color: '#9B59B6', priority: 'Normal', isAddButton: true }
   ];
 
   const allServices = [...emergencyServices, ...customContacts];
@@ -211,6 +211,15 @@ const Helpline = ({ onClose = () => console.log('Close button pressed - please i
     }
   }
 
+  const handleInfoPress = (service) => {
+    Alert.alert(
+      `${service.title} Information`,
+      `The number ${service.number} is the national toll-free number for the South African Police Service (SAPS) for any crime-related emergencies.`,
+      [{ text: 'OK' }]
+    );
+  };
+
+
   const handleLongPress = (service, index) => {
     if (service.isAddButton) return
     
@@ -282,7 +291,7 @@ const Helpline = ({ onClose = () => console.log('Close button pressed - please i
 
   const handleAddContact = () => {
     if (newContact.name && newContact.number) {
-      const contact = { title: newContact.name, number: newContact.number, description: newContact.description || 'Personal emergency contact', icon: '👤', color: '#8E44AD', priority: 'Personal' }
+      const contact = { title: newContact.name, number: newContact.number, description: newContact.description || 'Personal emergency contact', icon: { pack: 'FontAwesome5', name: 'user-friends' }, color: '#8E44AD', priority: 'Personal' }
       setCustomContacts([...customContacts, contact])
       setNewContact({ name: '', number: '', description: '' })
       setShowAddContact(false)
@@ -293,12 +302,28 @@ const Helpline = ({ onClose = () => console.log('Close button pressed - please i
   }
 
   const getPriorityColor = (priority) => {
-    switch(priority) {
+    switch (priority) {
       case 'Critical': return '#E74C3C'
       case 'High': return '#F39C12'
       default: return '#95A5A6'
     }
   }
+
+  const renderIcon = (iconData) => {
+    const iconSize = 24;
+    const iconColor = colors.text;
+
+    if (iconData?.pack === 'MaterialCommunityIcons') {
+      return <MaterialCommunityIcons name={iconData.name} size={iconSize} color={iconColor} />;
+    }
+    if (iconData?.pack === 'MaterialIcons') {
+      return <MaterialIcons name={iconData.name} size={iconSize} color={iconColor} />;
+    }
+    if (iconData?.pack === 'FontAwesome5') {
+      return <FontAwesome5 name={iconData.name} size={iconSize} color={iconColor} />;
+    }
+    return <Ionicons name={iconData?.name || 'help-circle-outline'} size={iconSize} color={iconColor} />;
+  };
 
   const formatTime = (date) => date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -319,7 +344,10 @@ const Helpline = ({ onClose = () => console.log('Close button pressed - please i
 
           {/* Header matching PeopleBar style */}
           <View style={styles.header}>
-            <Text style={styles.headerText}>🚨 Emergency Services</Text>
+            <View style={styles.headerTitleContainer}>
+              <AntDesign name="alert" size={22} color="#E74C3C" style={styles.headerIcon} />
+              <Text style={styles.headerText}>Emergency Services</Text>
+            </View>
             <View style={styles.headerRight}>
               {isExpanded && (
                 <TouchableOpacity 
@@ -357,7 +385,7 @@ const Helpline = ({ onClose = () => console.log('Close button pressed - please i
                 >
                   <View style={styles.leftSection}>
                     <View style={styles.iconContainer}>
-                      <Text style={styles.cardIcon}>{service.icon}</Text>
+                      {renderIcon(service.icon)}
                       {favorites.includes(index) && (
                         <View style={styles.favoriteIndicator}>
                           <Ionicons name="star" size={12} color="#FFD700" />
@@ -381,6 +409,14 @@ const Helpline = ({ onClose = () => console.log('Close button pressed - please i
                     <View style={[styles.priorityTag, { backgroundColor: getPriorityColor(service.priority) }]}>
                       <Text style={styles.priorityText}>{service.priority}</Text>
                     </View>
+                    {service.infoIcon && (
+                      <TouchableOpacity 
+                        style={styles.infoIcon} 
+                        onPress={() => handleInfoPress(service)}
+                      >
+                        <Ionicons name={service.infoIcon} size={getScaledFontSize(22)} color={colors.textSecondary} />
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </TouchableOpacity>
               ))}
@@ -494,6 +530,14 @@ const getStyles = (isDark, colors, getScaledFontSize) => StyleSheet.create({
     paddingHorizontal: 5,
     marginBottom: 5,
   },
+  headerTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  headerIcon: {
+    marginRight: 8,
+  },
   headerText: {
     fontSize: getScaledFontSize(18),
     fontWeight: 'bold',
@@ -547,9 +591,6 @@ const getStyles = (isDark, colors, getScaledFontSize) => StyleSheet.create({
   iconContainer: {
     position: 'relative',
     alignItems: 'center',
-  },
-  cardIcon: {
-    fontSize: 24,
   },
   favoriteIndicator: {
     position: 'absolute',
@@ -608,6 +649,10 @@ const getStyles = (isDark, colors, getScaledFontSize) => StyleSheet.create({
     color: '#fff',
     fontSize: getScaledFontSize(9),
     fontWeight: 'bold',
+  },
+  infoIcon: {
+    marginTop: 8,
+    padding: 4,
   },
   modalContainer: {
     flex: 1,
