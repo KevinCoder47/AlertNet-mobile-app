@@ -158,77 +158,23 @@ export class SOSFirebaseService {
   // Get user's friends list
   static async getUserFriends(userId) {
   try {
-    console.log('🔍 [getUserFriends] Starting for userId:', userId);
-    
-    // Method 1: Try from friends collection (new format)
-    const friendsQuery = query(
-      collection(db, 'friends'),
-      where('userId', '==', userId),
-      where('status', '==', 'active')
-    );
-    const friendsSnapshot = await getDocs(friendsQuery);
-    
-    if (!friendsSnapshot.empty) {
-      const friends = friendsSnapshot.docs.map(doc => ({
-        uid: doc.data().friendId,
-        name: doc.data().friendName,
-        email: doc.data().friendEmail,
-        phone: doc.data().friendPhone
-      }));
-      console.log('✅ [getUserFriends] Found friends in friends collection:', friends.length);
-      return friends;
-    }
-
-    // Method 2: Try from user document Friends array
-    const userRef = doc(db, 'users', userId);
-    const userDoc = await getDoc(userRef);
-
-    if (!userDoc.exists()) {
-      console.warn('⚠️ [getUserFriends] User document not found:', userId);
+    if (!userId) {
+      console.warn('⚠️ [getUserFriends] No userId provided');
       return [];
     }
+    console.log('🔍 [getUserFriends] Starting for userId:', userId);
 
-    const userData = userDoc.data();
-    
-    // Check if friends is an array (new format)
-    if (Array.isArray(userData.Friends)) {
-      console.log('📋 [getUserFriends] Found Friends array, items:', userData.Friends.length);
-      
-      // CRITICAL FIX: Extract UIDs from objects
-      const friendIds = userData.Friends.map((friend, index) => {
-        if (typeof friend === 'string') {
-          console.log(`  [${index}] Friend is string ID: ${friend}`);
-          return friend;
-        } else if (friend && friend.uid) {
-          console.log(`  [${index}] Friend object has uid: ${friend.uid}`);
-          return friend.uid;
-        } else if (friend && friend.id) {
-          console.log(`  [${index}] Friend object has id: ${friend.id}`);
-          return friend.id;
-        } else {
-          console.warn(`  [${index}] ❌ Cannot extract ID from friend:`, friend);
-          return null;
-        }
-      }).filter(id => id !== null);
-      
-      console.log('✅ [getUserFriends] Extracted friend IDs:', friendIds);
-      return friendIds;
-    }
-    
-    // Check if Friends is an object (old format)
-    if (userData.Friends && typeof userData.Friends === 'object' && !Array.isArray(userData.Friends)) {
-      console.log('📦 [getUserFriends] Found Friends object (old format)');
-      
-      const friendIds = Object.keys(userData.Friends).filter(friendId => 
-        userData.Friends[friendId] === true || 
-        userData.Friends[friendId] === 'accepted'
-      );
-      
-      console.log('✅ [getUserFriends] Extracted friend IDs from object:', friendIds);
+    // Use the reliable method from FirebaseService to get the Friends array
+    const friendsResult = await FirebaseService.getFriendsFromArray(userId);
+
+    if (friendsResult.success) {
+      // Extract just the friend IDs
+      const friendIds = friendsResult.friends.map(f => f.friendId);
+      console.log(`✅ [getUserFriends] Found ${friendIds.length} friend IDs from user document.`);
       return friendIds;
     }
 
-    console.warn('⚠️ [getUserFriends] No friends found in any format');
+    console.warn('⚠️ [getUserFriends] Could not retrieve friends from user document:', friendsResult.error);
     return [];
     
   } catch (error) {
