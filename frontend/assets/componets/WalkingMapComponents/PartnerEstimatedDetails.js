@@ -2,7 +2,10 @@ import { StyleSheet, Text, View, TouchableOpacity, Image } from 'react-native'
 import React from 'react'
 import { Ionicons } from '@expo/vector-icons';
 
-const PartnerEstimatedDetails = ({setShowPartnerUpdate, setFindPartnerView}) => {
+const PartnerEstimatedDetails = ({ setShowPartnerUpdate, setFindPartnerView, partnerData }) => {
+  
+  const avatarSource = partnerData?.avatarSource || require('../../images/profile-pictures/default.jpg');
+
   return (
     <View style={styles.container}>
       <View style={styles.closeAndHelpContainer}>
@@ -35,11 +38,11 @@ const PartnerEstimatedDetails = ({setShowPartnerUpdate, setFindPartnerView}) => 
                 // setShowPartnerUpdate(false);
                 setFindPartnerView(true);
               }}>
-                  <Image source={require('../../images/profile-pictures/default.jpg')} style={{ width: 50, height: 50, borderRadius: 25 }} />
+                  <Image source={avatarSource} style={{ width: 50, height: 50, borderRadius: 25 }} />
               </TouchableOpacity>
               <View>
                       <Text style={{ fontSize: 10, color: 'black', fontWeight: '400', paddingTop: 5 }}>YOUR PARTNER</Text>
-                        <Text style={{ fontSize: 14, color: 'black', fontWeight: '700', paddingTop: 5 }}>John Doe</Text> 
+            <Text style={{ fontSize: 14, color: 'black', fontWeight: '700', paddingTop: 5 }}>{partnerData.partnerName}</Text> 
                   </View>
               </View>
               <TouchableOpacity style={{padding: 5}}>

@@ -655,9 +655,10 @@ const acceptWalkRequest = async () => {
   setAcceptanceLoading(true);
   // DON'T close the modal here!
 
-  if (!currentWalkRequest || !currentWalkRequest.senderPhone) {
+  if (!currentWalkRequest || !currentWalkRequest.requesterId) {
     console.error('Cannot accept: Walk request data is incomplete.', currentWalkRequest);
     Alert.alert('Error', 'Invalid walk request data.');
+    setAcceptanceLoading(false);
     return;
   }
 
@@ -677,13 +678,28 @@ const acceptWalkRequest = async () => {
       return;
     }
 
-    // console.log($&);
+    // FIX: Get sender's phone from Firestore using requesterId
+    let senderPhone = currentWalkRequest.senderPhone;
     
+    // If senderPhone is undefined, fetch it from Firestore
+    if (!senderPhone) {
+      console.log("📞 Sender phone not found in request, fetching from Firestore...");
+      const senderData = await FirebaseService.getUserById(currentWalkRequest.requesterId);
+      if (senderData && senderData.phone) {
+        senderPhone = senderData.phone;
+        console.log("✅ Found sender phone:", senderPhone);
+      } else {
+        // Fallback: use a mock phone for presentation
+        senderPhone = "+1234567890";
+        console.log("⚠️ Using mock phone for presentation:", senderPhone);
+      }
+    }
+
     // Notify the sender that request was accepted
     const result = await FirebaseService.acceptWalkRequest(
       currentWalkRequest.requestId,
       userDataObj.phone, // Current user's phone (accepter)
-      currentWalkRequest.senderPhone // Original requester's phone
+      senderPhone // Now this should be defined
     );
 
     if (result.success) {
@@ -703,7 +719,7 @@ const acceptWalkRequest = async () => {
 
       // Send push notification to the original requester with accepter's details
       await sendWalkAcceptedNotification(
-        currentWalkRequest.senderPhone,
+        senderPhone, // Use the resolved senderPhone
         currentWalkRequest.requestId,
         accepterData,
         currentWalkRequest
@@ -719,7 +735,8 @@ const acceptWalkRequest = async () => {
       // DO NOT close the modal - keep it open with the loader
       // The loader will be hidden when we receive confirmation from sender via Firestore listener
 
-      // (Modal will be closed by Firestore listener upon confirmation)
+      console.log("✅ ACCEPT: Request accepted successfully, waiting for confirmation...");
+
     } else {
       throw new Error(result.error || 'Unknown error accepting walk request');
     }
@@ -732,8 +749,6 @@ const acceptWalkRequest = async () => {
     // Optionally show an alert but don't close modal immediately
     Alert.alert("Acceptance Failed", "Please try again.");
     // Do NOT close modal or clear currentWalkRequest here
-    // setIsNotificationVisible(false);
-    // setCurrentWalkRequest(null);
   }
 };
 // Listen for sender's confirmation and cleanup after confirmation

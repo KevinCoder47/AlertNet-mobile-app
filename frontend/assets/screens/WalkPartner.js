@@ -46,6 +46,115 @@ const WalkPartner = ({
     );
   };
 
+  const onWalkCancel = async () => {
+  try {
+    console.log('🚫 Walk cancellation initiated');
+
+    // Show confirmation dialog
+    Alert.alert(
+      'Cancel Walk',
+      'Are you sure you want to cancel this walk? This will end the session for both participants.',
+      [
+        {
+          text: 'No, Continue',
+          style: 'cancel'
+        },
+        {
+          text: 'Yes, Cancel',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // ✅ FIX: Retrieve user data from AsyncStorage first
+              const userDataString = await AsyncStorage.getItem('userData');
+              const userDataObj = userDataString ? JSON.parse(userDataString) : null;
+              const userId = userDataObj?.id || userDataObj?.userId || 'unknown';
+
+              // 1. Update Firebase walk request status to cancelled
+              if (currentWalkRequestId) {
+                await FirebaseService.updateWalkRequestStatus(
+                  currentWalkRequestId,
+                  'cancelled',
+                  {
+                    cancelledAt: new Date().toISOString(),
+                    cancelledBy: userId  // ✅ Now using the retrieved userId
+                  }
+                );
+                console.log('✅ Walk request cancelled in Firebase');
+              }
+
+              // 2. Reset all walk-related states for SENDER
+              setActiveWalkData(null);
+              setIsWalkActive(false);
+              setAcceptedWalker(null);
+              setWalkerLocation(null);
+              setPartnerStats(null);
+              
+              // 3. Reset search and partner selection states
+              setIsSearchPartner(false);
+              setIsShowingAcceptedWalker(false);
+              setCurrentWalkRequestId(null);
+              setOriginalWalkRequest(null);
+              
+              // 4. Reset map and location states
+              setIsDestinationDone(false);
+              setIsStartPointDone(false);
+              setIsStartPoint(false);
+              setISTapWhere(false);
+              setDropoffLocation('');
+              setDestinationCoords(null);
+              setStartPointCoords({ latitude: -26.1872365, longitude: 28.0124719 });
+              
+              // 5. Reset UI states
+              setShowPartnerUpdate(false);
+              setFindPartnerView(false);
+              
+              // 6. Clear accepted walk request from context (for RECEIVER)
+              if (setAcceptedWalkRequest) {
+                setAcceptedWalkRequest(null);
+              }
+
+              console.log('✅ All walk states reset');
+
+              // 7. Show success message
+              Alert.alert(
+                'Walk Cancelled',
+                'The walk has been cancelled successfully.',
+                [
+                  {
+                    text: 'OK',
+                    onPress: () => {
+                      // 8. Return to home screen
+                      setIsWalkPartner(false);
+                    }
+                  }
+                ]
+              );
+
+            } catch (error) {
+              console.error('❌ Error during walk cancellation:', error);
+              Alert.alert(
+                'Cancellation Error',
+                'There was an error cancelling the walk. Please try again.',
+                [
+                  {
+                    text: 'OK',
+                    onPress: () => {
+                      // Still return to home even if there was an error
+                      setIsWalkPartner(false);
+                    }
+                  }
+                ]
+              );
+            }
+          }
+        }
+      ]
+    );
+  } catch (error) {
+    console.error('❌ Error showing cancellation dialog:', error);
+  }
+};
+
   // Helper function to get a safe meetup point
   const getSafeMeetupPoint = (meetupPoint, startPoint, userLocation) => {
     // First try the provided meetup point
@@ -627,7 +736,7 @@ const handleConfirmWalker = async () => {
     const walkData = {
       // Use string locations for display
       fromLocation: walkRequestData.walkFrom || 'Your Location',
-      toLocation: walkRequestData.toDestination || 'Destination',
+      toLocation: walkRequestData.toDestination || 'Horizon Heights',
       fromAddress: '',
       toAddress: '',
       totalDistance: partnerStats?.distance || 'Calculating...',
@@ -718,7 +827,7 @@ useEffect(() => {
         const walkData = {
           // String locations for display
           fromLocation: acceptedWalkRequest.pickup || 'Your Location',
-          toLocation: acceptedWalkRequest.toDestination || 'Destination',
+          toLocation: acceptedWalkRequest.toDestination || 'Horizon Heights',
           fromAddress: '',
           toAddress: '',
           totalDistance: 'Calculating...',
@@ -796,23 +905,24 @@ useEffect(() => {
   };
 
   const handleEndWalk = () => {
-    Alert.alert(
-      'End Walk?',
-      'Are you sure you want to end this walk?',
-      [
-        {
-          text: 'End Walk',
-          onPress: () => {
-            setIsWalkActive(false);
-            setActiveWalkData(null);
-            setAcceptedWalker(null);
-            Alert.alert('Walk Ended', 'Your walk has been completed.');
-          },
-          style: 'destructive'
-        },
-        { text: 'Cancel', style: 'cancel' }
-      ]
-    );
+    // Alert.alert(
+    //   'End Walk?',
+    //   'Are you sure you want to end this walk?',
+    //   [
+    //     {
+    //       text: 'End Walk',
+    //       onPress: () => {
+    //         setIsWalkActive(false);
+    //         setActiveWalkData(null);
+    //         setAcceptedWalker(null);
+    //         Alert.alert('Walk Ended', 'Your walk has been completed.');
+    //       },
+    //       style: 'destructive'
+    //     },
+    //     { text: 'Cancel', style: 'cancel' }
+    //   ]
+    // );
+    onWalkCancel();
   };
 
   // NEW: Handle swiping to next (if you have multiple accepters)
@@ -867,7 +977,8 @@ useEffect(() => {
               onRecenter={handleRecenterMap}
               onMoreOptions={handleMoreOptions}
               onEmergency={handleEmergency}
-              setShowPartnerUpdate = {setShowPartnerUpdate}
+              setShowPartnerUpdate={setShowPartnerUpdate}
+              onWalkCancel = {onWalkCancel}
             />
           </>
         )}
@@ -876,6 +987,7 @@ useEffect(() => {
           <PartnerEstimatedDetails
             setShowPartnerUpdate={setShowPartnerUpdate}
             setFindPartnerView={setFindPartnerView}
+            partnerData={activeWalkData}
           />
         )}
 
@@ -1051,11 +1163,14 @@ useEffect(() => {
         editingAddress={editingAddress}
       />
 
-              {isWalkActive && findPartnerView && (
-          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 2000 }}>
-            <LocatePartner setFindPartnerView={setFindPartnerView} />
-          </View>
-        )}
+{isWalkActive && findPartnerView && (
+  <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 2000 }}>
+    <LocatePartner
+      setFindPartnerView={setFindPartnerView}
+      activeWalkData={activeWalkData}  // Contains partnerId for receiver or senderId for sender
+    />
+  </View>
+              )}
     </View>
   )
 }

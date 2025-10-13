@@ -14,7 +14,8 @@ const WalkDetails = ({
   onRecenter,
   onMoreOptions,
   onEmergency,
-  setShowPartnerUpdate
+  setShowPartnerUpdate,
+  onWalkCancel
 }) => {
   const { isDark } = useTheme();
   const [currentTime, setCurrentTime] = useState(new Date());
