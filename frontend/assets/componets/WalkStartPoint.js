@@ -13,7 +13,7 @@ const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 
 // Location cleaning function
 const cleanLocationName = (location) => {
-  if (!location) return 'Destination';
+  if (!location) return 'Horizon Heights';
   
   // console.log($&);
   
@@ -82,7 +82,7 @@ const handleSearch = async () => {
       // Basic request info
       requesterId: userId,
       requesterName: `${userData.name} ${userData.surname}`,
-      requesterPhone: userData.phone,
+      // requesterPhone: userData.phone,
       senderName: `${userData.name} ${userData.surname}`,
       senderPhone: userData.phone,
       

@@ -3,6 +3,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import { FirebaseService } from '../../backend/Firebase/FirebaseService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
 
@@ -11,13 +13,131 @@ const scale = (size) => (width / 375) * size;
 const verticalScale = (size) => (height / 812) * size;
 const moderateScale = (size, factor = 0.5) => size + (scale(size) - size) * factor;
 
-const LocatePartner = ({setFindPartnerView}) => {
+const LocatePartner = ({ setFindPartnerView, activeWalkData }) => {
   const [primaryColor, setPrimaryColor] = useState('#F57527');
   const [isNavigateView, setIsNavigateView] = useState(true);
   const [userLocation, setUserLocation] = useState(null);
   const [distance, setDistance] = useState(null);
   const [gpsAccuracy, setGpsAccuracy] = useState(null);
   const [locationStrategy, setLocationStrategy] = useState('high_accuracy');
+  
+  // ✅ State for complete partner object
+  const [partnerDetails, setPartnerDetails] = useState(null);
+  const [isLoadingPartner, setIsLoadingPartner] = useState(true);
+
+  // All refs - MUST be declared before any conditional returns
+  const headingRef = useRef(0);
+  const bearingRef = useRef(0);
+  const filteredHeading = useRef(0);
+  const filteredBearing = useRef(0);
+  const filterFactor = 0.15;
+  const headingSubscription = useRef(null);
+  const locationSubscription = useRef(null);
+  const hasPromptedCalibration = useRef(false);
+  const proximityState = useRef('far');
+  const lastVibrationTime = useRef(0);
+
+  // All animated values - MUST be declared before any conditional returns
+  const arrowRotation = useSharedValue(0);
+  const arrowOpacity = useSharedValue(1);
+
+  // ✅ Fetch partner details on mount
+  useEffect(() => {
+    const fetchPartnerDetails = async () => {
+      try {
+        setIsLoadingPartner(true);
+        
+        console.log('🔍 ActiveWalkData received:', activeWalkData);
+
+        // Get current user's phone number
+        const userDataString = await AsyncStorage.getItem('userData');
+        const currentUser = userDataString ? JSON.parse(userDataString) : null;
+        const currentUserPhone = currentUser?.phone;
+
+        console.log('📱 Current user phone:', currentUserPhone);
+
+        // Determine partner phone and ID based on who the current user is
+        let partnerPhone;
+        let partnerIdToFetch;
+        let partnerName;
+
+        // Check if current user is the SENDER (requester)
+        if (activeWalkData.senderPhone === currentUserPhone || activeWalkData.requesterPhone === currentUserPhone) {
+          // Current user is SENDER, partner is RECEIVER (acceptedBy)
+          partnerPhone = activeWalkData.acceptedBy || activeWalkData.partnerPhone;
+          partnerIdToFetch = activeWalkData.receiverId || activeWalkData.partnerId;
+          partnerName = activeWalkData.receiverName || activeWalkData.partnerName;
+          console.log('👤 Current user is SENDER, fetching RECEIVER data');
+        } else {
+          // Current user is RECEIVER, partner is SENDER (requester)
+          partnerPhone = activeWalkData.senderPhone || activeWalkData.requesterPhone || activeWalkData.partnerPhone;
+          partnerIdToFetch = activeWalkData.senderId || activeWalkData.requesterId || activeWalkData.partnerId;
+          partnerName = activeWalkData.senderName || activeWalkData.requesterName || activeWalkData.partnerName;
+          console.log('👤 Current user is RECEIVER, fetching SENDER data');
+        }
+
+        console.log('🔍 Fetching partner - Phone:', partnerPhone, 'ID:', partnerIdToFetch, 'Name:', partnerName);
+
+        // Try fetching by ID first
+        let partnerResult = null;
+        if (partnerIdToFetch) {
+          partnerResult = await FirebaseService.getUserById(partnerIdToFetch);
+        }
+
+        // If ID fetch failed, try by phone
+        if ((!partnerResult || !partnerResult.exists) && partnerPhone) {
+          console.log('⚠️ ID fetch failed, trying phone:', partnerPhone);
+          partnerResult = await FirebaseService.getUserByPhone(partnerPhone);
+        }
+        
+        if (partnerResult && partnerResult.exists && partnerResult.userData) {
+          const partner = partnerResult.userData;
+          
+          // Create complete partner object
+          const partnerObj = {
+            id: partner.id || partnerIdToFetch,
+            name: `${partner.Name || ''} ${partner.Surname || ''}`.trim() || partnerName || 'Walk Partner',
+            firstName: partner.Name || partnerName?.split(' ')[0] || 'Walk',
+            phone: partner.phone || partnerPhone,
+            location: partner.CurrentLocation || activeWalkData.meetupPoint || activeWalkData.startPoint,
+            avatarSource: partner.ImageURL ? { uri: partner.ImageURL } : require('../images/profile-pictures/default.jpg'),
+            rating: partner.rating || 4.5,
+            walksCompleted: partner.walksCompleted || 0,
+            isVerified: partner.isVerified || false
+          };
+
+          console.log('✅ Partner details fetched:', partnerObj.name, partnerObj.avatarSource);
+          setPartnerDetails(partnerObj);
+        } else {
+          console.warn('⚠️ Partner data not found in Firestore, using fallback');
+          // Fallback to data from activeWalkData
+          setPartnerDetails({
+            id: partnerIdToFetch || 'unknown',
+            name: partnerName || 'Walk Partner',
+            firstName: partnerName?.split(' ')[0] || 'Walk',
+            phone: partnerPhone,
+            location: activeWalkData.meetupPoint || activeWalkData.startPoint,
+            avatarSource: require('../images/profile-pictures/default.jpg')
+          });
+        }
+      } catch (error) {
+        console.error('❌ Error fetching partner details:', error);
+        // Fallback to basic data
+        setPartnerDetails({
+          name: activeWalkData.partnerName || activeWalkData.senderName || activeWalkData.requesterName || 'Walk Partner',
+          firstName: (activeWalkData.partnerName || activeWalkData.senderName || activeWalkData.requesterName || 'Walk')?.split(' ')[0],
+          location: activeWalkData.meetupPoint || activeWalkData.startPoint,
+          avatarSource: require('../images/profile-pictures/default.jpg')
+        });
+      } finally {
+        setIsLoadingPartner(false);
+      }
+    };
+
+    if (activeWalkData) {
+      fetchPartnerDetails();
+    }
+  }, [activeWalkData]);
 
   // Update primary color based on distance
   useEffect(() => {
@@ -40,27 +160,6 @@ const LocatePartner = ({setFindPartnerView}) => {
     
     setPrimaryColor(newColor);
   }, [distance]);
-
-  const headingRef = useRef(0);
-  const bearingRef = useRef(0);
-  const filteredHeading = useRef(0);
-  const filteredBearing = useRef(0);
-  const filterFactor = 0.15;
-  const headingSubscription = useRef(null);
-  const locationSubscription = useRef(null);
-  const hasPromptedCalibration = useRef(false);
-
-  const proximityState = useRef('far');
-  const lastVibrationTime = useRef(0);
-
-  const arrowRotation = useSharedValue(0);
-  const arrowOpacity = useSharedValue(1);
-
-  const partnerLocation = {
-    latitude: -26.1833,
-    longitude: 28.0006,
-    altitude: 0,
-  };
 
   useEffect(() => {
     requestPermissions();
@@ -197,8 +296,10 @@ const LocatePartner = ({setFindPartnerView}) => {
   };
 
   const calculateDistanceAndBearing = useCallback((userCoords) => {
+    if (!partnerDetails?.location) return;
+    
     const { latitude: lat1, longitude: lon1, altitude: alt1 = 0 } = userCoords || {};
-    const { latitude: lat2, longitude: lon2, altitude: alt2 = 0 } = partnerLocation;
+    const { latitude: lat2, longitude: lon2, altitude: alt2 = 0 } = partnerDetails.location;
 
     if (lat1 == null || lon1 == null) return;
 
@@ -228,7 +329,7 @@ const LocatePartner = ({setFindPartnerView}) => {
 
     updateArrowDirection();
     handleProximityFeedback(trueDistance);
-  }, [partnerLocation, gpsAccuracy]);
+  }, [partnerDetails, gpsAccuracy]);
 
   const updateArrowDirection = useCallback(() => {
     if (!userLocation || distance == null) return;
@@ -306,6 +407,19 @@ const LocatePartner = ({setFindPartnerView}) => {
 
   const handleToggle = () => setIsNavigateView(!isNavigateView);
 
+  // ✅ CRITICAL FIX: Show loading state AFTER all hooks have been declared
+  if (isLoadingPartner || !partnerDetails) {
+    return (
+      <View style={[styles.container, { backgroundColor: primaryColor, justifyContent: 'center', alignItems: 'center' }]}>
+        <Text style={{ color: 'white', fontSize: 18 }}>Loading partner details...</Text>
+      </View>
+    );
+  }
+
+  // ✅ Now safe to use partner details
+  const avatarSource = partnerDetails.avatarSource;
+  const partnerName = partnerDetails.firstName;
+
   return (
     <View style={[styles.container, { backgroundColor: primaryColor }]}>
       <TouchableOpacity style={styles.backBtn} onPress={() =>
@@ -329,8 +443,8 @@ const LocatePartner = ({setFindPartnerView}) => {
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.partnerInfo}>
-        <Image source={require('../images/profile-pictures/siphe.jpeg')} style={styles.smallPic} />
-        <Text style={styles.partnerName}>Siphephile</Text>
+        <Image source={avatarSource} style={styles.smallPic} />
+        <Text style={styles.partnerName}>{partnerName}</Text>
       </TouchableOpacity>
 
       <View style={styles.arrowContainer}>
