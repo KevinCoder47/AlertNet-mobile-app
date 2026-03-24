@@ -1,0 +1,39 @@
+diff --git a/node_modules/react-native-maps/src/MapCircle.tsx b/node_modules/react-native-maps/src/MapCircle.tsx
+index ad03aa3..43511f1 100644
+--- a/node_modules/react-native-maps/src/MapCircle.tsx
++++ b/node_modules/react-native-maps/src/MapCircle.tsx
+@@ -125,7 +125,7 @@ export class MapCircle extends React.Component<MapCircleProps> {
+   // declaration only, as they are set through decorateMap
+   /// @ts-ignore
+   context!: React.ContextType<typeof ProviderContext>;
+-  getNativeComponent!: () => NativeComponent<NativeProps>;
++  //getNativeComponent;
+   getMapManagerCommand!: (name: string) => MapManagerCommand;
+   getUIManagerCommand!: (name: string) => UIManagerCommand;
+ 
+diff --git a/node_modules/react-native-maps/src/MapMarker.tsx b/node_modules/react-native-maps/src/MapMarker.tsx
+index 39d9e5b..a70679d 100644
+--- a/node_modules/react-native-maps/src/MapMarker.tsx
++++ b/node_modules/react-native-maps/src/MapMarker.tsx
+@@ -373,7 +373,7 @@ export class MapMarker extends React.Component<MapMarkerProps> {
+   // declaration only, as they are set through decorateMap
+   /// @ts-ignore
+   context!: React.ContextType<typeof ProviderContext>;
+-  getNativeComponent!: () => NativeComponent<NativeProps>;
++  //getNativeComponent;
+   getMapManagerCommand!: (name: string) => MapManagerCommand;
+   getUIManagerCommand!: (name: string) => UIManagerCommand;
+ 
+diff --git a/node_modules/react-native-maps/src/MapPolyline.tsx b/node_modules/react-native-maps/src/MapPolyline.tsx
+index 20d9981..375bc84 100644
+--- a/node_modules/react-native-maps/src/MapPolyline.tsx
++++ b/node_modules/react-native-maps/src/MapPolyline.tsx
+@@ -152,7 +152,7 @@ export class MapPolyline extends React.Component<MapPolylineProps> {
+   // declaration only, as they are set through decorateMap
+   /// @ts-ignore
+   context!: React.ContextType<typeof ProviderContext>;
+-  getNativeComponent!: () => NativeComponent<NativeProps>;
++  //getNativeComponent;
+   getMapManagerCommand!: (name: string) => MapManagerCommand;
+   getUIManagerCommand!: (name: string) => UIManagerCommand;
+ 

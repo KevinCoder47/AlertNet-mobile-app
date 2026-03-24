@@ -1,0 +1,12 @@
+{
+  "android": {
+    "package": "com.mpilonhleradebe.frontend"
+  },
+  "ios": {
+    "bundleIdentifier": "com.mpilonhleradebe.frontend"
+  },
+  "plugins": [
+    "expo-font",
+    "expo-asset"
+  ]
+}
