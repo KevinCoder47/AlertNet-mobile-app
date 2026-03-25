@@ -34,8 +34,7 @@ AlertNet is a cross-platform mobile safety app built to protect students in and 
 | ![Home](frontend/assets/screenshots/screenshot-home.png) | ![SOS](frontend/assets/screenshots/screenshot-sos.png) | ![Walk Partner](frontend/assets/screenshots/screenshot-walk-partner.png) | ![People](frontend/assets/screenshots/screenshot-people.png) |
 
 | Partner Profile | Plan Your Walk | Helpline |
-|:---:|:---:|:---:|
-| ![Partner Profile](frontend/assets/screenshots/screenshot-walk-partner-profile.png) | ![Plan Walk](frontend/assets/screenshots/screenshot-plan-walk.png) | ![Helpline](frontend/assets/screenshots/screenshot-helpline.png) |
+|:---:|:---:|:---: | ![Plan Walk](frontend/assets/screenshots/screenshot-plan-walk.png) | ![Helpline](frontend/assets/screenshots/screenshot-helpline.png) |
 
 </div>
 
