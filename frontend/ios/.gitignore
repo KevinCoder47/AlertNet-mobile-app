@@ -28,3 +28,26 @@ project.xcworkspace
 
 # CocoaPods
 /Pods/
+
+# System files
+.DS_Store
+.DS_Store?
+._*
+
+# Expo
+.expo/
+.expo-shared/
+
+# AI tools
+.codebuddy/
+
+# Dependencies
+node_modules/
+
+# Environment secrets
+.env
+*.env.local
+
+# Build outputs
+dist/
+build/
