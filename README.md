@@ -49,7 +49,6 @@ AlertNet is a cross-platform mobile safety app built to protect students in and 
 | 🚶 **Walk Partner System** | Find a verified walking companion for your route with live shared tracking |
 | 📍 **Real-Time Live Tracking** | Continuous encrypted GPS broadcasting to trusted contacts |
 | 🗺️ **High-Crime Zone Alerts** | Geofencing detects dangerous areas and suggests safer alternative routes |
-| 🎙️ **Voice Activation** | Hands-free SOS trigger using a custom passphrase (Kotlin/Swift native) |
 | 🔳 **QR Emergency Card** | Scannable QR code gives first responders instant access to your emergency contacts |
 | 📞 **Emergency Helpline** | One-tap access to Police (10111), Ambulance (10177), and Campus Security |
 | 👥 **Safety Circle** | Manage trusted contacts who receive alerts and can track your journey live |
@@ -144,8 +143,6 @@ RESEND_API_KEY=your_key_here
 | SOS activation & alert delivery under 3s | ✅ Passed |
 | Walk Partner request & live connection | ✅ Passed |
 | Emergency notification with correct location | ✅ Passed |
-| High-crime zone geofence alert | ✅ Passed |
-| Voice activation (quiet environment) | ⚠️ Minor issues in noisy environments |
 
 ---
 
@@ -153,23 +150,21 @@ RESEND_API_KEY=your_key_here
 
 - [ ] SMS fallback for emergencies during connectivity loss
 - [ ] Direct integration with SAPS and campus security
-- [ ] Multilingual support (Zulu, Sotho, Afrikaans)
 - [ ] Adaptive GPS refresh rate for battery optimisation
-- [ ] UJ campus pilot deployment
 
 ---
 
 ## 👥 Team
 
-| Name | Student No. |
-|---|---|
-| Mpilonhle Radebe | 222087503 |
-| Kevin Serakalala | 223088123 |
-| Thembinkosi Madiba | 222223279 |
-| Siphephile Mtshali | 223125261 |
-| Okuhle Mgudlwa | 222073209 |
-| Musa Buthelezi | 222023907 |
-| Nathi Gumede | 222021634 |
+| Name |
+|---|
+| Mpilonhle Radebe |
+| Kevin Serakalala |
+| Thembinkosi Madiba |
+| Siphephile Mtshali |
+| Okuhle Mgudlwa |
+| Musa Buthelezi |
+| Nathi Gumede |
 
 **Supervisor:** Thamie Mhlanga · **Institution:** University of Johannesburg
 
